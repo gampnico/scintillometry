@@ -1,0 +1,1 @@
+Data in these folders are from external sources, used for development only, and are not redistributed via git (i.e. the folder "data" should only be visible locally)

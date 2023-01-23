@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scintillometry"
+version = "0.01.a02"
+authors = [
+  { name="Nicolas Gampierakis", email="" },
+]
+description = "A suite of tools for computing sensible heat fluxes from the BLS450 scintillometer and working with 2D flux footprints."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+classifiers = [
+    "Private :: Do Not Upload",
+    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 2 - Pre-Alpha",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Environment :: Console",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+
+]
+dependencies = [
+  "pytest >= 7.0",
+  "pytest-dependency >= 0.5",
+  "pytest-mock >= 3.10",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/gampnico/scintillometry-tools"
+"Bug Tracker" = "https://github.com/gampnico/scintillometry-tools/issues"
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
