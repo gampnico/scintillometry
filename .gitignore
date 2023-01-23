@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# additional ignores
+pylintrc
+data/
+ext/data/
+logs/
+models/
+reports/figures/
+.vscode/
+.idea/
