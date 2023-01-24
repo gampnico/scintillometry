@@ -1,6 +1,6 @@
 # Scintillometry Tools
 
-A suite of tools for computing sensible heat fluxes from the BLS450 scintillometer and working with 2D flux footprints.
+Compute heat fluxes & 2D flux footprints from the BLS450 scintillometer.
 
 This repository is a complete rewrite of gampnico/ss19-feldkurs. If you have any existing forks or local clones, **please delete them**. The legacy code no longer works. No user features will be lost, but rewriting may take some time. Contributions are always welcome.
 
