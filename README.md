@@ -1,6 +1,6 @@
 # Scintillometry Tools
 
-Compute heat fluxes & 2D flux footprints from the BLS450 scintillometer.
+Analyse data & 2D flux footprints from Scintec's BLS scintillometers.
 
 This repository is a complete rewrite of gampnico/ss19-feldkurs. If you have any existing forks or local clones, **please delete them**. The legacy code no longer works. No user features will be lost, but rewriting may take some time. Contributions are always welcome.
 
@@ -12,7 +12,7 @@ This project initially formed part of a scintillometry field course. Due to lice
 
 ### 1.1 Scintillometry
 
-- Parses scintillometry data from BLS450 scintillometer.
+- Parses scintillometry data from Scintec's BLS series of large aperture scintillometers.
 - Processes this data and computes sensible heat fluxes.
 - Processes topographical data.
 - Processes InnFlux and HATPRO data.
