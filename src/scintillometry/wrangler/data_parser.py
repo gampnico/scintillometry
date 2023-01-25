@@ -40,7 +40,7 @@ def file_handler(filename):
     if not os.path.exists(filename):
         raise FileNotFoundError(f"No file found with path: {filename}")
 
-    with open(filename, "r") as file:
+    with open(filename, mode="r", encoding="utf-8") as file:
         file_list = file.readlines()
 
     return file_list
