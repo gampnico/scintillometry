@@ -1,2 +1,4 @@
 hatchling
+numpy
 pandas
+scipy
