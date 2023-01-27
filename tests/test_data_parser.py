@@ -17,7 +17,9 @@ limitations under the License.
 Tests data parsing module.
 """
 
+import numpy as np
 import pandas as pd
+import pandas.api.types as ptypes
 import pytest
 
 import scintillometry.wrangler.data_parser
@@ -78,7 +80,7 @@ class TestDataParsingBLS:
         scope="class",
     )
     def test_parse_mnd_lines(self, conftest_create_test_data):
-        """Raise error if .mnd file is not FORMAT-1"""
+        """Parse .mnd file lines."""
 
         test_data = conftest_create_test_data.setup_mnd_file()
         test_lines = test_data.data.readlines()
@@ -112,8 +114,48 @@ class TestDataParsingBLS:
         assert compare_string != "/"
         if arg_date is True:
             assert compare_string == "2020-06-03T03:23:00Z"
-        elif arg_date is False:
+        else:
             assert compare_string == "PT00H00M30S"
+
+    @pytest.mark.dependency(
+        name="TestDataParsingBLS::test_calibrate_data",
+        scope="class",
+    )
+    def test_calibrate_data(self):
+        """Recalibrate data from path lengths."""
+
+        test_data = pd.DataFrame(
+            data=[[1.03, 2.04, 3], [1.4, 3.1, 4]],
+            columns=["Cn2", "H_convection", "Var03"],
+        )
+        compare_data = scintillometry.wrangler.data_parser.calibrate_data(
+            data=test_data.copy(deep=True), path_lengths=[2, 3]  # [incorrect, correct]
+        )
+        test_calib = (3 ** (-3)) / (2 ** (-3))  # correct / incorrect
+        for key in ["Cn2", "H_convection"]:
+            assert ptypes.is_numeric_dtype(compare_data[key])
+            assert np.allclose(compare_data[key], test_data[key] * test_calib)
+
+    @pytest.mark.dependency(
+        name="TestDataParsingBLS::test_calibrate_data_error",
+        depends=["TestDataParsingBLS::test_calibrate_data"],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_calibration", [["2", "3", "4"], ["2"]])
+    def test_calibrate_data_error(self, arg_calibration):
+        """Raise error if calibration is incorrectly formatted."""
+
+        test_data = pd.DataFrame(
+            data=[[1.03, 2.04, 3], [1.4, 3.1, 4]],
+            columns=["Cn2", "H_convection", "Var03"],
+        )
+        error_message = "Calibration path lengths must be formatted as: "
+        with pytest.raises(  # incorrect path or missing file raises error
+            ValueError, match=error_message
+        ):
+            scintillometry.wrangler.data_parser.calibrate_data(
+                data=test_data, path_lengths=arg_calibration
+            )
 
     @pytest.mark.dependency(
         name="TestDataParsingBLS::test_parse_scintillometer",
@@ -121,6 +163,7 @@ class TestDataParsingBLS:
             "TestFileHandling::test_file_handler_read",
             "TestDataParsingBLS::test_parse_iso_date",
             "TestDataParsingBLS::test_parse_mnd_lines",
+            "TestDataParsingBLS::test_calibrate_data_error",
         ],
         scope="module",
     )
@@ -129,16 +172,55 @@ class TestDataParsingBLS:
         """Parse raw data from BLS450."""
 
         dataframe = scintillometry.wrangler.data_parser.parse_scintillometer(
-            file_path=conftest_mnd_path, timezone=arg_timezone
+            file_path=conftest_mnd_path, timezone=arg_timezone, calibration=None
         )
 
         assert isinstance(dataframe, pd.DataFrame)
-        data_keys = ["Cn2", "CT2", "H_convection", "pressure", "iso_duration"]
-        for key in data_keys:
-            assert key in dataframe.columns
+
         assert dataframe.index.name == "time"
         assert "time" not in dataframe.columns
+        assert ptypes.is_datetime64_any_dtype(dataframe.index)
+
+        data_keys = ["Cn2", "CT2", "H_convection", "pressure"]
+        for key in data_keys:
+            assert key in dataframe.columns
+            assert ptypes.is_numeric_dtype(dataframe[key])
+        assert "iso_duration" in dataframe.columns
+        assert ptypes.is_timedelta64_dtype(dataframe["iso_duration"])
+
         if arg_timezone:
             assert dataframe.index.tz.zone == arg_timezone
         else:
             assert dataframe.index.tz.zone == "UTC"
+
+    @pytest.mark.dependency(
+        name="TestDataParsingBLS::test_parse_scintillometer_calibration",
+        depends=[
+            "TestDataParsingBLS::test_parse_scintillometer",
+            "TestDataParsingBLS::test_calibrate_data_error",
+        ],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_calibration", [[2, 3], None])
+    def test_parse_scintillometer_calibration(self, conftest_mnd_path, arg_calibration):
+        """Parse raw data from BLS450 with calibration."""
+
+        test_data = scintillometry.wrangler.data_parser.parse_scintillometer(
+            file_path=conftest_mnd_path, calibration=None
+        )
+        compare_data = scintillometry.wrangler.data_parser.parse_scintillometer(
+            file_path=conftest_mnd_path, calibration=arg_calibration
+        )
+
+        assert isinstance(compare_data, pd.DataFrame)
+        if arg_calibration:  # [<incorrect>, <correct>]
+            test_calib = (arg_calibration[1] ** (-3)) / (arg_calibration[0] ** (-3))
+        else:
+            test_calib = 1
+
+        data_keys = ["Cn2", "H_convection"]
+        for key in data_keys:
+            assert key in compare_data.columns
+            assert ptypes.is_numeric_dtype(compare_data[key])
+            # pd.equals() doesn't handle FPP
+            assert np.allclose(compare_data[key], test_data[key] * test_calib)

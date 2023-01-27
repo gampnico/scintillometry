@@ -65,8 +65,11 @@ def parse_mnd_lines(line_list):
         raise Warning("The input file does not follow FORMAT-1.")
 
     timestamp = line_list[1]
-    header_number = line_list[3].partition(" ")[0]
-    variables_start_line = 6 + int(header_number)
+    header_number = int(line_list[3].partition(" ")[0])
+    variable_number = int(line_list[3].partition(" ")[-1])
+    variables_start_line = 6 + header_number
+    data_start_line = variables_start_line + variable_number + 1
+
     # fmt: off
     header_parameters = [
         line.strip() for line in line_list[5: (variables_start_line - 1)]
@@ -75,13 +78,11 @@ def parse_mnd_lines(line_list):
 
     reg_match = r"\#(.+?)\#"  # find variable abbreviations in second column
     variable_names = []
-    for line in line_list[variables_start_line:]:
-        if line != "\n":  # ensure stop before reaching data
+    for line in line_list[variables_start_line:data_start_line]:
+        if line != "\n":  # avoid greedy capture
             match_list = re.findall(reg_match, line)
             variable_names.append(match_list[0].strip())
-        else:
-            break
-    data_start_line = variables_start_line + len(variable_names) + 1
+
     parsed_mnd_lines = {
         "data": line_list[data_start_line:],
         "names": variable_names,
@@ -109,16 +110,56 @@ def parse_iso_date(x, date=True):
     return x.partition("/")[-date]
 
 
-def parse_scintillometer(file_path, timezone=None):
+def calibrate_data(data, path_lengths):
+    """Calibrates data if the wrong path length was set.
+
+    Recalibrate data if the wrong path length was set in SRun or on the
+    dip switches in the scintillometer. Use the argument::
+
+        --c, --calibrate <wrong_path_length> <correct_path_length>
+
+    Args:
+        data (pd.DataFrame): Parsed and localised scintillometry
+            dataframe.
+        path_lengths (list): Contains the incorrect and correct path
+            lengths. Format as [incorrect, correct].
+
+    Returns:
+        pd.DataFrame: Recalibrated dataframe.
+
+    Raises:
+        ValueError: Calibration path lengths must be formatted as:
+            <wrong_path_length> <correct_path_length>.
+    """
+
+    if len(path_lengths) == 2:
+        calibration_constant = (float(path_lengths[1]) ** (-3)) / (
+            float(path_lengths[0]) ** (-3)  # correct / incorrect
+        )
+        for key in ["Cn2", "H_convection"]:
+            data[key] = data[key] * calibration_constant  # (path / incorrect) * correct
+    else:
+        error_msg = (
+            "Calibration path lengths must be formatted as: ",
+            "<wrong_path_length> <correct_path_length>.",
+        )
+        raise ValueError(error_msg)
+
+    return data
+
+
+def parse_scintillometer(file_path, timezone=None, calibration=None):
     """Parses .mnd files into dataframes.
 
     Args:
         filename (str): Path to a raw .mnd data file using FORMAT-1.
         timezone (str): Local timezone during the scintillometer's
             operation. Default None.
+        calibration (list): Contains the incorrect and correct path
+            lengths. Format as [incorrect, correct].
 
     Returns:
-        pd.DataFrame: Correctly indexed scintillometry data.
+        pd.DataFrame: Parsed and localised scintillometry data.
     """
 
     mnd_lines = file_handler(filename=file_path)
@@ -143,5 +184,8 @@ def parse_scintillometer(file_path, timezone=None):
     dataframe = dataframe.set_index("time")
     if timezone:
         dataframe = dataframe.tz_convert(timezone)
+
+    if calibration:
+        dataframe = calibrate_data(data=dataframe, path_lengths=calibration)
 
     return dataframe

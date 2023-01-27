@@ -30,6 +30,8 @@ Optional switches:
 
 Optional arguments:
 -t, --timezone <str>: Convert to local timezone. Default "CET".
+-c, --calibrate <float> <float>: Recalibrate path lengths.
+
 """
 
 import argparse
@@ -50,6 +52,7 @@ def user_argumentation():
 
     Optional arguments:
         -t, --timezone <str>: Convert to local timezone. Default "CET".
+        -c, --calibrate <float> <float>: Recalibrate path lengths.
 
     Returns:
         argparse.Namespace: Namespace of user arguments.
@@ -66,7 +69,7 @@ def user_argumentation():
         type=str,
         metavar="<path>",
         required=True,
-        help="Path to raw BLS450 data",
+        help="path to raw BLS450 data",
     )
     # Switches
     parser.add_argument(
@@ -75,7 +78,7 @@ def user_argumentation():
         action="store_true",
         default=None,
         dest="dry_run",
-        help="Dry run",
+        help="dry run",
     )
     parser.add_argument(
         "-v",
@@ -83,7 +86,7 @@ def user_argumentation():
         action="store_true",
         default=False,
         dest="verbosity",
-        help="Verbose mode",
+        help="verbose mode",
     )
     # Parameters
     parser.add_argument(
@@ -94,8 +97,19 @@ def user_argumentation():
         type=str,
         required=False,
         default="CET",
-        help="Convert to local timezone. Default 'CET'",
+        help="convert to local timezone. Default 'CET'",
     )
+    parser.add_argument(  # -c <wrong_length> <correct_length>
+        "-c",
+        "--calibrate",
+        nargs=2,
+        dest="calibrate",
+        required=False,
+        metavar="<float>",
+        default=None,
+        help="recalibrate path lengths",
+    )
+
     arguments = parser.parse_args()
 
     return arguments
@@ -107,7 +121,7 @@ def main():
 
     # Import raw BLS450 data
     input_data = scintillometry.wrangler.data_parser.parse_scintillometer(
-        file_path=user_input_file, timezone=args.timezone
+        file_path=user_input_file, timezone=args.timezone, calibration=args.calibrate
     )
     print(input_data.head())
 
