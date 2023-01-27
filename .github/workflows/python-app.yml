@@ -56,7 +56,7 @@ jobs:
 #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
     - name: Test with pytest and get coverage
       run: |
-        coverage run --rcfile .coveragerc -m pytest && coverage report
+        coverage run --rcfile=.coveragerc -m pytest && coverage report
     - name: Analysing the code with pylint
       run: |
         pylint --rcfile .pylintrc $(git ls-files '*.py')
