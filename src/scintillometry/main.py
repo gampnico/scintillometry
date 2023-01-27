@@ -22,6 +22,7 @@ Options and arguments (and corresponding environment variables):
 
 Required arguments::
     ``-i, --input <path>: Path to raw BLS450 data.``
+    ``-p, --path <path>: Path to topographical path transect.``
 
 Optional switches::
     ``-h, --help: Show this help message and exit.``
@@ -31,6 +32,7 @@ Optional switches::
 Optional arguments::
     ``-t, --timezone <str>: Convert to local timezone. Default "CET".``
     ``-c, --calibrate <float> <float>: Recalibrate path lengths.``
+    ``-s, --stability <str>: Set stability condition.``
 """
 
 import argparse
@@ -44,6 +46,7 @@ def user_argumentation():
     Required arguments::
 
         -i, --input <path>: Set path to input data file.
+        -p, --path <path>: Path to topographical path transect.
 
     Optional switches::
 
@@ -55,6 +58,7 @@ def user_argumentation():
 
         -t, --timezone <str>: Convert to local timezone. Default "CET".
         -c, --calibrate <float> <float>: Recalibrate path lengths.
+        -s, --stability <str>: Set stability condition.
 
     Returns:
         argparse.Namespace: Namespace of user arguments.
@@ -81,7 +85,7 @@ def user_argumentation():
         type=str,
         metavar="<path>",
         required=True,
-        help="path to topographical data",
+        help="path to topographical path transect",
     )
     # Switches
     parser.add_argument(
@@ -120,6 +124,17 @@ def user_argumentation():
         metavar="<float>",
         default=None,
         help="recalibrate path lengths",
+    )
+    parser.add_argument(
+        "-s",
+        "--stability",
+        dest="stability",
+        metavar="<str>",
+        type=str,
+        required=False,
+        default=None,
+        choices=["stable", "unstable", None],
+        help="set stability condition",
     )
 
     arguments = parser.parse_args()
