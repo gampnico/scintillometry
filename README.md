@@ -1,5 +1,7 @@
 # Scintillometry Tools
 
+[![Pylint and Pytest](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml)
+
 Analyse data & 2D flux footprints from Scintec's BLS scintillometers.
 
 This repository is a complete rewrite of gampnico/ss19-feldkurs. If you have any existing forks or local clones, **please delete them**. The legacy code no longer works. No user features will be lost, but rewriting may take some time. Contributions are always welcome.

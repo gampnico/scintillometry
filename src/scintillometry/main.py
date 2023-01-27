@@ -16,22 +16,21 @@ limitations under the License.
 
 Analyse data & 2D flux footprints from Scintec's BLS scintillometers.
 
-usage: src/main.py [-h] [-i <input_data>] [-d] [...] [-v]
+Usage: ``src/main.py [-h] [-i <input_data>] [-d] [...] [-v]``
 
 Options and arguments (and corresponding environment variables):
 
-Required arguments:
--i, --input <path>: Path to raw BLS450 data.
+Required arguments::
+    ``-i, --input <path>: Path to raw BLS450 data.``
 
-Optional switches:
--h, --help: Show this help message and exit.
--z, --dry-run: Dry run of model.
--v, --verbose: Verbose mode.
+Optional switches::
+    ``-h, --help: Show this help message and exit.``
+    ``-z, --dry-run: Dry run of model.``
+    ``-v, --verbose: Verbose mode.``
 
-Optional arguments:
--t, --timezone <str>: Convert to local timezone. Default "CET".
--c, --calibrate <float> <float>: Recalibrate path lengths.
-
+Optional arguments::
+    ``-t, --timezone <str>: Convert to local timezone. Default "CET".``
+    ``-c, --calibrate <float> <float>: Recalibrate path lengths.``
 """
 
 import argparse
@@ -42,15 +41,18 @@ import scintillometry.wrangler.data_parser
 def user_argumentation():
     """Parses user arguments when run as main.
 
-    Required arguments:
+    Required arguments::
+
         -i, --input <path>: Set path to input data file.
 
-    Optional switches:
+    Optional switches::
+
         -h, --help: Show this help message and exit.
         -z, --dry-run: Dry run of model.
         -v, --verbose: Verbose mode.
 
-    Optional arguments:
+    Optional arguments::
+
         -t, --timezone <str>: Convert to local timezone. Default "CET".
         -c, --calibrate <float> <float>: Recalibrate path lengths.
 
