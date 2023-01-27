@@ -29,7 +29,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = "2023, Nicolas Gampierakis"
 author = "Nicolas Gampierakis"
-release = "0.3.a01"
+release = "0.4.a3"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

@@ -1,6 +1,6 @@
 # Scintillometry Tools
 
-[![Pylint and Pytest](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml)
+[![Pytest and Flake8](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml)
 
 Analyse data & 2D flux footprints from Scintec's BLS scintillometers.
 
