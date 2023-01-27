@@ -4,10 +4,10 @@ Backend
 Submodules
 ----------
 
-scintillometry.backend.path\_weighting module
----------------------------------------------
+scintillometry.backend.transects module
+---------------------------------------
 
-.. automodule:: scintillometry.backend.path_weighting
+.. automodule:: scintillometry.backend.transects
    :members:
    :undoc-members:
    :show-inheritance:
