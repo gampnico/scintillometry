@@ -9,7 +9,7 @@ analyse-fallback-blocks=no
 fail-under=10
 
 # Files or directories to be skipped. They should be base names, not paths.
-ignore=ext
+ignore=ext,docs
 
 # Files or directories matching the regular expression patterns are skipped.
 ignore-patterns=
