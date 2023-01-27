@@ -97,6 +97,16 @@ def conftest_mnd_path():
 
 
 @pytest.fixture(scope="module", autouse=True)  # teardown after each module test
+def conftest_transect_path():
+    """Yields path to a test path transect file."""
+
+    test_file_path = "./tests/test_data/test_fake_path_transect.csv"
+    assert os.path.exists(test_file_path)
+
+    yield test_file_path
+
+
+@pytest.fixture(scope="module", autouse=True)  # teardown after each module test
 def conftest_create_test_data():
     """Creates TestData object."""
 

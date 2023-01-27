@@ -224,3 +224,40 @@ class TestDataParsingBLS:
             assert ptypes.is_numeric_dtype(compare_data[key])
             # pd.equals() doesn't handle FPP
             assert np.allclose(compare_data[key], test_data[key] * test_calib)
+
+
+class TestDataParsingTransect:
+    """Test class for parsing path transects."""
+
+    @pytest.mark.dependency(
+        name="TestDataParsingTransect::test_parse_transect_file_not_found",
+        scope="class",
+    )
+    def test_parse_transect_file_not_found(self):
+        """Raise error if transect file not found."""
+
+        wrong_path = "non_existent_file"
+        error_message = f"No file found with path: {wrong_path}"
+        with pytest.raises(  # incorrect path or missing file raises error
+            FileNotFoundError, match=error_message
+        ):
+            scintillometry.wrangler.data_parser.parse_transect(file_path=wrong_path)
+
+    @pytest.mark.dependency(
+        name="TestDataParsingTransect::test_parse_transect",
+        depends=["TestDataParsingTransect::test_parse_transect_file_not_found"],
+        scope="class",
+    )
+    def test_parse_transect(self, conftest_transect_path):
+        """Parse pre-processed transect file into dataframe."""
+
+        test_dataframe = scintillometry.wrangler.data_parser.parse_transect(
+            file_path=conftest_transect_path
+        )
+
+        assert isinstance(test_dataframe, pd.DataFrame)
+        for key in test_dataframe.keys():
+            assert key in ["path_height", "norm_position"]
+            assert ptypes.is_numeric_dtype(test_dataframe[key])
+
+        assert all(test_dataframe["norm_position"].between(0, 1, "both"))

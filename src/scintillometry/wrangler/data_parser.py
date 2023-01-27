@@ -189,3 +189,33 @@ def parse_scintillometer(file_path, timezone=None, calibration=None):
         dataframe = calibrate_data(data=dataframe, path_lengths=calibration)
 
     return dataframe
+
+
+def parse_transect(file_path):
+    """Parses scintillometer path transect.
+
+    Args:
+        file_path (str): Path to processed transect, formatted as
+            <path_height>, <normalised_path_position>. The normalised
+            path position maps to:
+            [0: receiver location, 1: transmitter location].
+
+    Returns:
+        pd.DataFrame: Parsed and localised scintillometry data.
+
+    Raises:
+        FileNotFoundError: No file found with path: <file_path>.
+        ValueError: Normalised position is not between 0 and 1.
+    """
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"No file found with path: {file_path}")
+
+    path_height_dataframe = pd.read_csv(
+        file_path, header=None, names=["path_height", "norm_position"]
+    )
+
+    if not all(path_height_dataframe["norm_position"].between(0, 1, "both")):
+        raise ValueError("Normalised position is not between 0 and 1.")
+
+    return path_height_dataframe

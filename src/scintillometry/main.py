@@ -73,6 +73,16 @@ def user_argumentation():
         required=True,
         help="path to raw BLS450 data",
     )
+    parser.add_argument(
+        "-p",
+        "--path",
+        default=None,
+        dest="path_topography",
+        type=str,
+        metavar="<path>",
+        required=True,
+        help="path to topographical data",
+    )
     # Switches
     parser.add_argument(
         "-z",
