@@ -201,7 +201,7 @@ def parse_transect(file_path):
             [0: receiver location, 1: transmitter location].
 
     Returns:
-        pd.DataFrame: Parsed and localised scintillometry data.
+        pd.DataFrame: Parsed path transect data.
 
     Raises:
         FileNotFoundError: No file found with path: <file_path>.
