@@ -116,9 +116,7 @@ class TestTransects:
 
     @pytest.mark.dependency(
         name="TestTransects::test_get_z_parameters",
-        depends=[
-            "TestTransects::test_compute_effective_z",
-        ],
+        depends=["TestTransects::test_compute_effective_z"],
         scope="class",
     )
     def test_get_z_parameters(self):
@@ -138,3 +136,57 @@ class TestTransects:
 
         assert test_effective != pytest.approx(test_mean)
         assert test_mean == pytest.approx(np.mean(test_transect["path_height"]))
+
+    @pytest.mark.dependency(
+        name="TestTransects::test_get_all_z_parameters",
+        depends=["TestTransects::test_get_z_parameters"],
+        scope="class",
+    )
+    def test_get_all_z_parameters(self):
+        """Calculate effective & mean path heights in all conditions."""
+
+        test_data = {
+            "path_height": np.linspace(5, 10, num=10),
+            "norm_position": np.linspace(0, 1, num=10),
+        }
+        test_transect = pd.DataFrame(test_data)
+        test_keys = ["stable", "unstable", "None"]
+
+        compare_heights = scintillometry.backend.transects.get_all_z_parameters(
+            path_transect=test_transect
+        )
+
+        assert None not in compare_heights
+        assert all(key in compare_heights for key in test_keys)
+        for key, value in compare_heights.items():
+            assert key in ["stable", "unstable", "None"]
+            assert isinstance(value, tuple)
+            assert isinstance(value[0], float)
+            assert isinstance(value[1], float)
+            assert value[1] > value[0]  # for this test case
+
+    @pytest.mark.parametrize("arg_stability", ["stable", None])
+    def test_print_z_parameters(self, capsys, arg_stability):
+        """Print effective and mean path height."""
+
+        test_eff = 34
+        test_mean = 31.245
+        if arg_stability:
+            test_suffix = f"{arg_stability} conditions"
+        else:
+            test_suffix = "no height dependency"
+
+        test_print = (
+            f"Selected {test_suffix}:\n",
+            f"Effective path height:\t{test_eff:>0.2f} m.\n",
+            f"Mean path height:\t{test_mean:>0.2f} m.\n",
+        )
+        print("".join(test_print))
+        test_capture = capsys.readouterr()
+
+        scintillometry.backend.transects.print_z_parameters(
+            z_eff=34, z_mean=31.245, stability=arg_stability
+        )
+        compare_capture = capsys.readouterr()
+
+        assert compare_capture == test_capture

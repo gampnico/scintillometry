@@ -30,7 +30,7 @@ def bessel_second(x):
         x (float): Normalised path position.
 
     Returns:
-        y (float): Bessel function of path position.
+        float: Bessel function of path position.
     """
 
     bessel_variable = 2.283 * math.pi * (x - 0.5)
@@ -107,7 +107,9 @@ def compute_effective_z(path_heights, path_positions, stability):
             or no height dependency.
 
     Returns:
-        float: Effective path height, in metres.
+        float: Effective path height, |z_eff| [m].
+
+    .. |z_eff| replace:: z :sub: `eff`
     """
 
     b_value = define_stability(stability_name=stability)
@@ -145,3 +147,48 @@ def get_z_parameters(transect_data, stability_condition):
     mean_path_height = np.mean(transect_data["path_height"])
 
     return effective_path_height, mean_path_height
+
+
+def get_all_z_parameters(path_transect):
+    """Calculates effective & mean path heights in all conditions.
+
+    Args:
+        path_transect (pd.DataFrame): Parsed path transect data.
+
+    Returns:
+        dict[tuple[float, float]]: Effective and mean path heights of
+            transect, with each stability condition as key.
+    """
+
+    path_heights_dict = {}
+    for stability in ["stable", "unstable", None]:
+        path_heights = get_z_parameters(
+            transect_data=path_transect, stability_condition=stability
+        )
+        path_heights_dict[str(stability)] = path_heights  # str(None) == "None"
+
+    return path_heights_dict
+
+
+def print_z_parameters(z_eff, z_mean, stability):
+    """Prints effective and mean path height for specific conditions.
+
+    Args:
+        z_eff (float): Effective path height of transect, |z_eff| [m].
+        z_mean (float): Mean effective path height of transect, |z_mean| [m].
+
+    .. |z_eff| replace:: z :sub: `eff`
+    .. |z_mean| replace:: :math: `\bar{z}`
+    """
+
+    if not stability:
+        stability_suffix = "no height dependency"
+    else:
+        stability_suffix = f"{stability} conditions"
+
+    z_eff_print = (
+        f"Selected {stability_suffix}:\n",
+        f"Effective path height:\t{z_eff:>0.2f} m.\n",
+        f"Mean path height:\t{z_mean:>0.2f} m.\n",
+    )
+    print("".join(z_eff_print))
