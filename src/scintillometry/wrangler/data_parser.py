@@ -21,7 +21,22 @@ import io
 import os
 import re
 
+import numpy as np
 import pandas as pd
+
+
+def check_file_exists(fname):
+    """Check file exists.
+
+    Args:
+        fname: Path to a file.
+
+    Raises:
+        FileNotFoundError: No file found with path: <fname>.
+    """
+
+    if not os.path.exists(fname):
+        raise FileNotFoundError(f"No file found with path: {fname}")
 
 
 def file_handler(filename):
@@ -37,8 +52,7 @@ def file_handler(filename):
         FileNotFoundError: No file found with path: <filename>.
     """
 
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"No file found with path: {filename}")
+    check_file_exists(fname=filename)
 
     with open(filename, mode="r", encoding="utf-8") as file:
         file_list = file.readlines()
@@ -148,6 +162,27 @@ def calibrate_data(data, path_lengths):
     return data
 
 
+def convert_time_index(data, tzone=None):
+    """Make tz-naive dataframe tz-aware.
+
+    Args:
+        data (pd.DataFrame): Tz-naive dataframe.
+        tzone (str): Local timezone. Default "UTC".
+
+    Returns:
+        pd.DataFrame: Tz-aware dataframe in local timezone or UTC.
+    """
+
+    data["time"] = pd.to_datetime(data["time"])
+    data = data.set_index("time")
+    if tzone:
+        data = data.tz_convert(tzone)
+    else:
+        data = data.tz_convert("UTC")
+
+    return data
+
+
 def parse_scintillometer(file_path, timezone=None, calibration=None):
     """Parses .mnd files into dataframes.
 
@@ -177,13 +212,9 @@ def parse_scintillometer(file_path, timezone=None, calibration=None):
     if "PT" in dataframe["time"][0]:
         dataframe["iso_duration"] = dataframe["time"].apply(parse_iso_date, date=False)
         dataframe["iso_duration"] = pd.to_timedelta(dataframe["iso_duration"])
-        dataframe["time"] = pd.to_datetime(
-            dataframe["time"].apply(parse_iso_date, date=True)
-        )
+        dataframe["time"] = dataframe["time"].apply(parse_iso_date, date=True)
 
-    dataframe = dataframe.set_index("time")
-    if timezone:
-        dataframe = dataframe.tz_convert(timezone)
+    dataframe = convert_time_index(data=dataframe, tzone=timezone)
 
     if calibration:
         dataframe = calibrate_data(data=dataframe, path_lengths=calibration)
@@ -208,8 +239,7 @@ def parse_transect(file_path):
         ValueError: Normalised position is not between 0 and 1.
     """
 
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"No file found with path: {file_path}")
+    check_file_exists(fname=file_path)
 
     path_height_dataframe = pd.read_csv(
         file_path, header=None, names=["path_height", "norm_position"]
@@ -219,3 +249,101 @@ def parse_transect(file_path):
         raise ValueError("Normalised position is not between 0 and 1.")
 
     return path_height_dataframe
+
+
+def parse_zamg_data(
+    timestamp, station_id, data_dir="./ext/data/raw/ZAMG/", timezone=None
+):
+    """Parses ZAMG climate records.
+
+    Args:
+        timestamp (pd.Timestamp): Start time of climate record.
+        station_id (int): ZAMG weather station ID (Klima-ID).
+        data_dir (str): Location of ZAMG data files.
+        timezone (str): Local timezone during the scintillometer's
+            operation. Default None.
+
+    Returns:
+        pd.DataFrame: Parsed ZAMG records.
+    """
+
+    date = timestamp.strftime("%Y%m%d")
+    file_name = (
+        f"{data_dir}{str(station_id)}_ZEHNMIN Datensatz_{date}T0000_{date}T2350.csv"
+    )
+    check_file_exists(file_name)
+
+    zamg_data = pd.read_csv(file_name, sep=",")
+    zamg_data = convert_time_index(data=zamg_data, tzone=timezone)
+
+    # resample to 60s intervals
+    oidx = zamg_data.index
+    nidx = pd.date_range(oidx.min(), oidx.max(), freq="60s")
+    zamg_data = zamg_data.reindex(oidx.union(nidx)).interpolate("index").reindex(nidx)
+
+    zamg_names = {
+        "DD": "wind_direction",
+        "DDX": "gust_direction",
+        "FF": "vector_wind_speed",
+        "FFAM": "wind_speed",
+        "FFX": "gust_speed",
+        "GSX": "global_irradiance",
+        "HSR": "diffuse_sky_radiation_mv",
+        "HSX": "diffuse_sky_radiation_wm",
+        "P": "pressure",
+        "P0": "mean_sea_level_pressure",
+        "RF": "relative_humidity",
+        "RR": "precipitation",
+        "SH": "snow_depth",
+        "SO": "sunshine_duration",
+        "TB1": "soil_temperature_10cm",
+        "TB2": "soil_temperature_20cm",
+        "TB3": "soil_temperature_50cm",
+        "TL": "temperature_2m",
+        "TLMAX": "temperature_2m_max",
+        "TLMIN": "temperature_2m_min",
+        "TP": "dew_point",
+        "TS": "temperature_5cm",
+        "TSMAX": "temperature_5cm_max",
+        "TSMIN": "temperature_5cm_min",
+        "ZEITX": "gust_time",
+    }
+
+    rename_columns = {}
+    for key, name in zamg_names.items():
+        if key in zamg_data.columns:
+            rename_columns[key] = name
+
+    zamg_data = zamg_data.rename(columns=rename_columns)
+
+    return zamg_data
+
+
+def merge_scintillometry_weather(scint_dataframe, weather_dataframe):
+    """Merges parsed scintillometry and weather dataframes.
+
+    This replaces any weather data collected by the scintillometer with
+    external weather data. Only the collected |Cn2| data is preserved
+    from the scintillometer.
+
+    Args:
+        scint_dataframe (pd.DataFrame): Parsed and localised
+            scintillometry data.
+        weather_dataframe (pd.DataFrame): Parsed and localised weather
+            data.
+
+    Returns:
+        pd.DataFrame: Merged dataframe containing both scintillometry
+            data, and interpolated weather conditions.
+
+    .. |Cn2| replace:: Cn :sup:`2`
+    """
+
+    kelvin = 273.15
+    merged = scint_dataframe.filter(["Cn2", "H_convection"], axis=1)
+    merged = merged.join(weather_dataframe)
+
+    # adjust units
+    merged["temperature_2m"] = merged["temperature_2m"] + kelvin  # C -> K
+
+    return merged

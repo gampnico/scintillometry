@@ -20,6 +20,7 @@ Provides shared classes for tests.
 import io
 import os
 
+import pandas as pd
 import pytest
 
 
@@ -85,6 +86,56 @@ class TestData:
 
         return cls
 
+    @classmethod
+    def setup_bls_dataframe(cls):
+        """Constructs mock dataframe with BLS data."""
+
+        column_names = ["time", "Cn2", "CT2", "H_convection", "pressure"]
+        data = {
+            "time": ["2020-06-03T03:23:00Z", "2020-06-03T03:24:00Z"],
+            "Cn2": [1.9115e-16, 2.4472e-16],
+            "CT2": [1.9343e-04, 2.4764e-04],
+            "H_convection": [4.6, 5.5],
+            "pressure": [1010.0, 1010.0],
+        }
+        dataframe = pd.DataFrame(data=data, columns=column_names)
+        dataframe["time"] = pd.to_datetime(dataframe["time"])
+        dataframe = dataframe.set_index("time")
+        dataframe = dataframe.tz_convert("CET")
+
+        cls.bls_dataframe = dataframe
+
+        return cls
+
+    @classmethod
+    def setup_weather_dataframe(cls):
+        """Constructs mock dataframe with weather data."""
+
+        data = {
+            "time": [
+                "2020-06-03T00:10:00Z",
+                "2020-06-03T00:20:00Z",
+                "2020-06-03T00:30:00Z",
+            ],
+            "station": [0000, 0000, 0000],
+            "wind_direction": [31.0, 235.0, 214.0],
+            "vector_wind_speed": [1.2, 0.9, 1.0],
+            "wind_speed": [1.2, 0.9, 1.1],
+            "global_radiation": [0.0, 0.0, 0.0],
+            "pressure": [950.5, 950.2, 950.4],
+            "relative_humidity": [89.0, 70.0, 79.0],
+            "precipitation": [0.0, 0.0, 0.0],
+            "temperature_2m": [10.8, 10.7, 10.7],
+        }
+        dataframe = pd.DataFrame.from_dict(data)
+        dataframe["time"] = pd.to_datetime(dataframe["time"])
+        dataframe = dataframe.set_index("time")
+        dataframe = dataframe.tz_convert("CET")
+        assert dataframe.index.name == "time"
+        cls.weather_dataframe = dataframe
+
+        return cls
+
 
 @pytest.fixture(scope="module", autouse=True)  # teardown after each module test
 def conftest_mnd_path():
@@ -120,3 +171,21 @@ def conftest_create_test_mnd():
     data_obj = TestData()
 
     yield data_obj.setup_mnd_file()
+
+
+@pytest.fixture(scope="module", autouse=True)  # teardown after each module test
+def conftest_create_test_bls():
+    """Creates dataframe mocking parsed BLS data."""
+
+    data_obj = TestData()
+
+    yield data_obj.setup_bls_dataframe()
+
+
+@pytest.fixture(scope="module", autouse=True)  # teardown after each module test
+def conftest_create_test_weather():
+    """Creates dataframe mocking parsed ZAMG data."""
+
+    data_obj = TestData()
+
+    yield data_obj.setup_weather_dataframe()

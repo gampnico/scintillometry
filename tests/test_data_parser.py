@@ -261,3 +261,65 @@ class TestDataParsingTransect:
             assert ptypes.is_numeric_dtype(test_dataframe[key])
 
         assert all(test_dataframe["norm_position"].between(0, 1, "both"))
+
+
+class TestDataParsingZAMG:
+    """Test class for parsing ZAMG climate records."""
+
+    @pytest.mark.dependency(
+        name="TestDataParsingZAMG::test_parse_zamg_data",
+        scope="class",
+    )
+    @pytest.mark.parametrize(
+        "arg_timestamp",
+        ["2020-06-03T00:00:00Z", "2020-06-03T03:23:00Z"],
+    )
+    def test_parse_zamg_data(self, arg_timestamp):
+        test_timestamp = pd.to_datetime(arg_timestamp)
+        test_station_id = "fake"
+        assert isinstance(test_timestamp, pd.Timestamp)
+
+        test_data = scintillometry.wrangler.data_parser.parse_zamg_data(
+            timestamp=test_timestamp,
+            data_dir="./tests/test_data/test_",  # mock prefix
+            station_id=test_station_id,
+            timezone=None,
+        )
+        assert isinstance(test_data, pd.DataFrame)
+        assert isinstance(test_data.index, pd.DatetimeIndex)
+
+        assert all(  # renamed columns
+            x not in test_data.columns
+            for x in ["DD", "FF", "FAM", "GSX", "P", "RF", "RR", "TL"]
+        )
+
+        assert all(station == 0000 for station in test_data["station"])
+        assert not test_data.isnull().values.any()
+
+    @pytest.mark.dependency(
+        name="TestDataParsingZAMG::test_merge_scintillometry_weather",
+        depends=[
+            "TestDataParsingBLS::test_parse_scintillometer",
+            "TestDataParsingZAMG::test_parse_zamg_data",
+        ],
+        scope="session",
+    )
+    def test_merge_scintillometry_weather(
+        self, conftest_create_test_bls, conftest_create_test_weather
+    ):
+        """Merge scintillometry and weather data."""
+
+        test_weather = conftest_create_test_weather.weather_dataframe
+        test_bls = conftest_create_test_bls.bls_dataframe
+        compare_merged = (
+            scintillometry.wrangler.data_parser.merge_scintillometry_weather(
+                scint_dataframe=test_bls,
+                weather_dataframe=test_weather,
+            )
+        )
+        assert isinstance(compare_merged, pd.DataFrame)
+
+        for key in test_weather.columns:
+            assert key in compare_merged.columns
+        for key in ["Cn2", "H_convection"]:
+            assert key in compare_merged.columns
