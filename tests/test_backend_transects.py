@@ -161,8 +161,8 @@ class TestTransects:
         for key, value in compare_heights.items():
             assert key in ["stable", "unstable", "None"]
             assert isinstance(value, tuple)
-            assert isinstance(value[0], float)
-            assert isinstance(value[1], float)
+            assert isinstance(value[0], np.floating)
+            assert isinstance(value[1], np.floating)
             assert value[1] > value[0]  # for this test case
 
     @pytest.mark.parametrize("arg_stability", ["stable", None])
