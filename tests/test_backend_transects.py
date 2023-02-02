@@ -132,7 +132,7 @@ class TestTransects:
         )
 
         for param in [test_effective, test_mean]:
-            assert isinstance(param, float)
+            assert isinstance(param, np.floating)
 
         assert test_effective != pytest.approx(test_mean)
         assert test_mean == pytest.approx(np.mean(test_transect["path_height"]))

@@ -107,7 +107,7 @@ def compute_effective_z(path_heights, path_positions, stability):
             or no height dependency.
 
     Returns:
-        float: Effective path height, |z_eff| [m].
+        np.floating: Effective path height, |z_eff| [m].
 
     .. |z_eff| replace:: z :sub: `eff`
     """
@@ -136,7 +136,8 @@ def get_z_parameters(transect_data, stability_condition):
         stability_condition (str): Stability conditions.
 
     Returns:
-        tuple[float, float]: Effective and mean path height of transect.
+        tuple[np.floating, np.floating]: Effective and mean path height
+            of transect.
     """
 
     effective_path_height = compute_effective_z(
@@ -156,8 +157,8 @@ def get_all_z_parameters(path_transect):
         path_transect (pd.DataFrame): Parsed path transect data.
 
     Returns:
-        dict[tuple[float, float]]: Effective and mean path heights of
-            transect, with each stability condition as key.
+        dict[tuple[np.floating, np.floating]]: Effective and mean path
+            heights of transect, with each stability condition as key.
     """
 
     path_heights_dict = {}
@@ -174,8 +175,10 @@ def print_z_parameters(z_eff, z_mean, stability):
     """Prints effective and mean path height for specific conditions.
 
     Args:
-        z_eff (float): Effective path height of transect, |z_eff| [m].
-        z_mean (float): Mean effective path height of transect, |z_mean| [m].
+        z_eff (np.floating): Effective path height of transect,
+            |z_eff| [m].
+        z_mean (np.floating): Mean effective path height of transect,
+            |z_mean| [m].
 
     .. |z_eff| replace:: z :sub: `eff`
     .. |z_mean| replace:: :math: `\bar{z}`
