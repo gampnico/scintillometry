@@ -74,8 +74,6 @@ def define_stability(stability_name):
     Raises:
         NotImplementedError: <stability> is not an implemented stability
             condition.
-
-    .. |Cn2| replace:: Cn :sup:`2`
     """
 
     # Hartogenesis et al. (2003), Kleissl et al. (2008).
@@ -104,12 +102,10 @@ def compute_effective_z(path_heights, path_positions, stability):
         path_heights (pd.Series): Actual path heights, in metres.
         path_positions (pd.Series): Normalised positions along transect.
         stability (str): Stability conditions. Can be stable, unstable,
-            or no height dependency.
+            or None for no height dependency.
 
     Returns:
         np.floating: Effective path height, |z_eff| [m].
-
-    .. |z_eff| replace:: z :sub: `eff`
     """
 
     b_value = define_stability(stability_name=stability)
@@ -179,9 +175,8 @@ def print_z_parameters(z_eff, z_mean, stability):
             |z_eff| [m].
         z_mean (np.floating): Mean effective path height of transect,
             |z_mean| [m].
-
-    .. |z_eff| replace:: z :sub: `eff`
-    .. |z_mean| replace:: :math: `\bar{z}`
+        stability (str): Stability conditions. Can be stable, unstable,
+            or None for no height dependency.
     """
 
     if not stability:
