@@ -51,3 +51,45 @@ def get_switch_time(dataframe, local_time=None):
             raise KeyError("No data to calculate switch time. Set manually.")
 
     return local_time
+
+
+def derive_ct2(dataframe, wavelength=880):
+    """Derives the structure parameter of temperature |CT2|.
+
+    Derives |CT2| from measured structure parameter of temperature |Cn2|
+    and weather data. The equation to derive |CT2| is precise to |10^-5|
+    but doesn't account for humidity fluctuations - errors are within 3%
+    of inverse Bowen ratio (Moene 2003).
+
+    Typical transmission beam wavelengths::
+
+        * Ward et al., (2013), Scintillometer Theory Manual: 880 nm
+        * BLS Manual: 850 nm (± 20 nm)
+        * SLS Manual: 670 nm (± 10 nm)
+
+    See specifications in the corresponding hardware maintenance manual.
+
+    Args:
+        dataframe (pd.DataFrame): Parsed and localised data, containing
+            at least |Cn2|, temperature, and pressure.
+        wavelength (int): Wavelength of transmitter beam, in
+            nanometres. Default 880.
+
+    Returns:
+        pd.DataFrame: Input dataframe with updated |CT2| values.
+    """
+
+    transmit_lambda = wavelength
+    # Wavelength-dependent proportionality factor (for 880nm)
+    lambda_2 = 7.53 * (10**-3)  # micron^2
+    lambda_2_m = lambda_2 / (10**6) ** 2  # m^2
+    alpha_factor_2 = 77.6 * (10**-6)  # K hPa^-1
+    alpha_factor_1 = alpha_factor_2 * (1 + (lambda_2_m / (transmit_lambda**2)))
+
+    dataframe["CT2"] = (
+        dataframe["Cn2"]
+        * ((dataframe["temperature_2m"]) ** 4)
+        * ((alpha_factor_1 * dataframe["pressure"]) ** -2)  # pressure in hPa!
+    )
+
+    return dataframe
