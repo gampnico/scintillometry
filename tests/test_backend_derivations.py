@@ -91,3 +91,79 @@ class TestBackendDerivations:
         )
         assert not compare_ct2["CT2"].isnull().values.any()
         assert compare_ct2["CT2"].gt(compare_ct2["Cn2"]).values.any()
+
+    @pytest.mark.dependency(
+        name="TestBackendDerivations::test_kinematic_shf",
+        scope="class",
+    )
+    def test_kinematic_shf(self):
+        """Compute kinematic SHF."""
+
+        test_kshf = self.test_frame[["CT2", "temperature_2m"]].copy()
+        compare_kshf = scintillometry.backend.derivations.kinematic_shf(
+            dataframe=test_kshf, z_eff=self.test_z_eff
+        )
+        assert isinstance(compare_kshf, pd.DataFrame)
+        assert "Q_0" in compare_kshf.columns
+        for key in test_kshf.columns:
+            assert key in compare_kshf.columns
+
+        assert all(
+            ptypes.is_numeric_dtype(compare_kshf[key]) for key in compare_kshf.columns
+        )
+        assert not compare_kshf["Q_0"].isnull().values.any()
+
+    @pytest.mark.dependency(
+        name="TestBackendDerivations::test_free_convection_shf",
+        scope="class",
+    )
+    def test_free_convection_shf(self):
+        """Compute surface SHF with free convection."""
+
+        test_sshf = self.test_frame[["CT2", "temperature_2m", "pressure", "Q_0"]].copy()
+        compare_sshf = scintillometry.backend.derivations.free_convection_shf(
+            dataframe=test_sshf
+        )
+        compare_keys = ["rho_air", "H_free"]
+        assert isinstance(compare_sshf, pd.DataFrame)
+        for key in compare_keys:
+            assert key in compare_sshf.columns
+        for key in test_sshf.columns:
+            assert key in compare_sshf.columns
+
+        assert all(
+            ptypes.is_numeric_dtype(compare_sshf[key]) for key in compare_sshf.columns
+        )
+        assert not compare_sshf[["rho_air", "H_free"]].isnull().values.any()
+
+    @pytest.mark.dependency(
+        name="TestBackendDerivations::test_compute_fluxes",
+        depends=[
+            "TestBackendDerivations::test_derive_ct2",
+            "TestBackendDerivations::test_kinematic_shf",
+            "TestBackendDerivations::test_free_convection_shf",
+        ],
+        scope="session",
+    )
+    @pytest.mark.parametrize("arg_beam_params", [None, (850, 20)])
+    def test_compute_fluxes(self, arg_beam_params):
+        """Compute kinematic and surface sensible heat fluxes."""
+
+        test_fluxes = self.test_frame[["Cn2", "temperature_2m", "pressure"]].copy()
+        compare_fluxes = scintillometry.backend.derivations.compute_fluxes(
+            input_data=test_fluxes,
+            effective_height=self.test_z_eff,
+            beam_params=arg_beam_params,
+        )
+
+        test_keys = ["CT2", "rho_air", "H_free", "Q_0"]
+        compare_keys = compare_fluxes.columns
+        assert isinstance(compare_fluxes, pd.DataFrame)
+
+        for key in test_keys:
+            assert key in compare_keys
+        for key in test_fluxes.columns:
+            assert key in compare_keys
+
+        assert all(ptypes.is_numeric_dtype(compare_fluxes[key]) for key in compare_keys)
+        assert not compare_fluxes[test_keys].isnull().values.any()
