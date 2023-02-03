@@ -323,3 +323,34 @@ class TestDataParsingZAMG:
             assert key in compare_merged.columns
         for key in ["Cn2", "H_convection"]:
             assert key in compare_merged.columns
+
+        assert not (compare_merged["temperature_2m"] < 100).any()
+        assert not (compare_merged["pressure"] > 2000).any()
+
+    @pytest.mark.dependency(
+        name="TestDataParsingZAMG::test_merge_scintillometry_weather_convert",
+        depends=["TestDataParsingZAMG::test_merge_scintillometry_weather"],
+        scope="class",
+    )
+    def test_merge_scintillometry_weather_convert(
+        self, conftest_create_test_bls, conftest_create_test_weather
+    ):
+        """Merge scintillometry and weather data and convert units."""
+
+        test_weather = conftest_create_test_weather.weather_dataframe
+        test_bls = conftest_create_test_bls.bls_dataframe
+        test_weather["pressure"] = test_weather["pressure"] * 100
+        test_weather["temperature_2m"] = test_weather["temperature_2m"] + 273.15
+
+        compare_merged = (
+            scintillometry.wrangler.data_parser.merge_scintillometry_weather(
+                scint_dataframe=test_bls,
+                weather_dataframe=test_weather,
+            )
+        )
+        assert isinstance(compare_merged, pd.DataFrame)
+
+        for key in test_weather.columns:
+            assert key in compare_merged.columns
+        assert not (compare_merged["temperature_2m"] < 100).any()
+        assert not (compare_merged["pressure"] > 2000).any()

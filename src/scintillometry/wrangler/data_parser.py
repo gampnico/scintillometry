@@ -24,6 +24,8 @@ import re
 import numpy as np
 import pandas as pd
 
+from scintillometry.backend.constants import AtmosConstants
+
 
 def check_file_exists(fname):
     """Check file exists.
@@ -323,8 +325,12 @@ def merge_scintillometry_weather(scint_dataframe, weather_dataframe):
     """Merges parsed scintillometry and weather dataframes.
 
     This replaces any weather data collected by the scintillometer with
-    external weather data. Only the collected |Cn2| data is preserved
-    from the scintillometer.
+    external weather data. It only preserves |Cn2| and SHF data from the
+    scintillometer.
+
+    If temperature or pressure data is in Celsius or Pa, they are
+    automatically converted to Kelvin and hPa, respectively - any
+    subsequent maths assumes these units.
 
     Args:
         scint_dataframe (pd.DataFrame): Parsed and localised
@@ -336,14 +342,16 @@ def merge_scintillometry_weather(scint_dataframe, weather_dataframe):
         pd.DataFrame: Merged dataframe containing both scintillometry
             data, and interpolated weather conditions.
 
-    .. |Cn2| replace:: Cn :sup:`2`
+    .. |Cn2| replace:: C :sub:`n`:sup:`2`
     """
 
-    kelvin = 273.15
     merged = scint_dataframe.filter(["Cn2", "H_convection"], axis=1)
     merged = merged.join(weather_dataframe)
 
     # adjust units
-    merged["temperature_2m"] = merged["temperature_2m"] + kelvin  # C -> K
+    if (weather_dataframe["temperature_2m"] < 100).any():  # if True data in Celsius
+        merged["temperature_2m"] = merged["temperature_2m"] + AtmosConstants().kelvin
+    elif (weather_dataframe["pressure"] > 2000).any():  # if True data in Pa
+        merged["pressure"] = merged["pressure"] / 100  # Pa -> hPa
 
     return merged
