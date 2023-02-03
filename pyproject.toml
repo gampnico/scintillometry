@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scintillometry"
-version = "0.04.a3"
+version = "0.05.a6"
 authors = [
   { name="Nicolas Gampierakis", email="" },
 ]
@@ -29,6 +29,7 @@ dependencies = [
   "pandas >= 1.5",
   "numpy",
   "scipy",
+  "mpmath",
 ]
 
 [project.urls]
