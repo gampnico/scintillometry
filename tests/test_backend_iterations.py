@@ -54,7 +54,7 @@ class TestBackendIterationMost:
         """Integrated stability function, momentum, stable conditions."""
 
         test_momentum = self.test_class.momentum_stability_stable(obukhov=200, z=10)
-        assert isinstance(test_momentum, float)
+        assert isinstance(test_momentum, mpmath.mpf)
         assert test_momentum < 0
         assert test_momentum == pytest.approx(-0.25)
 
@@ -69,5 +69,5 @@ class TestBackendIterationMost:
             assert test_momentum > 0
             assert test_momentum == pytest.approx(0.2836137)
         else:  # obukhov lengths of zero are adjusted in pre-processing.
-            assert isinstance(test_momentum, float)
+            assert isinstance(test_momentum, mpmath.mpf)
             assert test_momentum < 0
