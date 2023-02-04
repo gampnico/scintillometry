@@ -2,3 +2,4 @@ hatchling
 numpy
 pandas
 scipy
+mpmath
