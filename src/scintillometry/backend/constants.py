@@ -41,6 +41,10 @@ class AtmosConstants(object):
         aq_opt (float): Aq coefficient for 880 nm & typical atmospheric
             conditions.
 
+        most_coeffs_ft (dict[list[tuple, tuple]]): Coefficients for MOST
+            functions |f_CT2|, in format:
+            [(unstable 01, unstable 02), (stable 01, stable 02)]
+
         kelvin (float): 0°C in kelvins.
         r_dry (float): Specific gas constant for dry air,
             |R_dry| [J |K^-1| |kg^-1|].
@@ -71,6 +75,7 @@ class AtmosConstants(object):
     .. |z_mean| replace:: :math:`\\bar{z}`
     .. |Cn2| replace:: C :sub:`n`:sup:`2`
     .. |CT2| replace:: C :sub:`T`:sup:`2`
+    .. |f_CT2| replace:: f :sub:`CT`:sup:`2`
     """
 
     def __init__(self):
@@ -100,6 +105,16 @@ class AtmosConstants(object):
         # From Ward et al., (2012)
         self.at_opt = -270e-6  # AT coefficient for 880 nm & typical atmos conditions
         self.aq_opt = -0.685e-6  # Aq coefficient for 880 nm & typical atmos conditions
+
+        # MOST coefficients for f_T
+        self.most_coeffs_ft = {  # [(unstable, unstable), (stable, stable)]
+            "an1988": [(4.9, 6.1), (4.9, 2.2)],  # Andreas (1998)
+            "li2012": [(6.7, 14.9), (4.5, 1.3)],  # Li et al. (2012)
+            "wy1971": [(4.9, 7), (4.9, 2.75)],  # Wyngaard et al. (1971)
+            "wy1973": [(4.9, 7), (4.9, 2.4)],  # Wyngaard et al. (1973)
+            "ma2014": [(6.1, 7.6), (0, 0)],  # Maronga et al. (2014)
+            "br2014": [(4.4, 10.2), (0, 0)],  # Braam et al. (2014)
+        }
 
         # Physical constants
         self.kelvin = 273.15

@@ -32,7 +32,9 @@ class TestBackendConstants:
         for constant in attributes_dict.values():
             assert isinstance(constant, (float, dict))
             if isinstance(constant, dict):
-                assert all(isinstance(value, float) for value in constant.values())
+                assert all(
+                    isinstance(value, (float, list)) for value in constant.values()
+                )
 
     @pytest.mark.dependency(name="TestBackendConstants::test_get_error")
     def test_get_error(self):
