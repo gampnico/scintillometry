@@ -180,3 +180,17 @@ class TestBackendIterationMost:
         )
         assert isinstance(test_velocity, mpmath.mpf)
         assert test_velocity > 0
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_calc_obukhov_length",
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_theta", [0.05, -0.05])
+    def test_calc_obukhov_length(self, arg_theta):
+        """Calculate Obukhov length."""
+
+        compare_lob = self.test_class.calc_obukhov_length(
+            temp=295, u_star=0.2, theta_star=mpmath.mpmathify(arg_theta)
+        )
+        assert isinstance(compare_lob, mpmath.mpf)
+        assert (compare_lob < 0) == (arg_theta < 0)  # obukhov and theta have same sign

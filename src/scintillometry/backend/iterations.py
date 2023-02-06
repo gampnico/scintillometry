@@ -263,3 +263,19 @@ class IterationMost(AtmosConstants):
         )
 
         return friction_velocity
+
+    def calc_obukhov_length(self, temp, u_star, theta_star):
+        """Calculate Obukhov length.
+
+        Args:
+            temp (np.floating): Air temperature in Kelvin, T [K].
+            u_star (mpmath.mpf): Friction velocity |u*|.
+            theta_star (mpmath.mpf): Temperature scale, |θ*|.
+
+        Returns:
+            mpmath.mpf: Obukhov Length, |L_Ob| [m].
+        """
+
+        obukhov_length = (temp * (u_star**2)) / (self.g * self.k * theta_star)
+
+        return obukhov_length
