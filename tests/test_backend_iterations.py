@@ -147,3 +147,36 @@ class TestBackendIterationMost:
 
         assert isinstance(test_f_ct2, float)
         assert test_f_ct2 > 0
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_calc_theta_star",
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_params", [(1.9e-04, 5.6, True), (2e-03, 3.6, False)])
+    def test_calc_theta_star(self, arg_params):
+        """Calculate temperature scale."""
+
+        test_theta = self.test_class.calc_theta_star(
+            ct2=arg_params[0], f_ct2=arg_params[1], z=10, stable=arg_params[2]
+        )
+
+        assert isinstance(test_theta, mpmath.mpf)
+        if not arg_params[2]:
+            assert test_theta < 0
+        else:
+            assert test_theta > 0
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_calc_u_star",
+        depends=["TestBackendIterationMost::test_momentum_stability"],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_obukhov", [-100, 100])
+    def test_calc_u_star(self, arg_obukhov):
+        """Calculate friction velocity."""
+
+        test_velocity = self.test_class.calc_u_star(
+            u=1.0, z_u=10, r_length=1, o_length=arg_obukhov
+        )
+        assert isinstance(test_velocity, mpmath.mpf)
+        assert test_velocity > 0

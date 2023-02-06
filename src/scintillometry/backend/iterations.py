@@ -210,3 +210,56 @@ class IterationMost(AtmosConstants):
             f_ct2 = coeffs[1][0] * (1 + coeffs[1][1] * ((z / obukhov) ** (2 / 3)))
 
         return f_ct2
+
+    def calc_theta_star(self, ct2, f_ct2, z, stable):
+        """Calculate temperature scale.
+
+        Args:
+            ct2 (float): Structure parameter of temperature |C_T^2|.
+            f_ct2 (float): MOST function of |C_T^2|, |f_CT2|.
+            z (float): Effective height, z [m].
+            stable (bool): True for stable conditions, otherwise False.
+
+        Returns:
+            mpmath.mpf: Temperature scale, |θ*|.
+
+        .. |C_T^2| replace:: C :sub: `T` :sup:`2`
+        .. |θ*| replace:: θ :sup:`*`
+        """
+
+        theta_star = mpmath.sqrt(ct2 * (z ** (2 / 3)) / f_ct2)
+        if not stable:
+            theta_star = -theta_star
+
+        return theta_star
+
+    def calc_u_star(self, u, z_u, r_length, o_length):
+        """Calculates friction velocity.
+
+        Args:
+            u (float): Wind speed, _u_ [m |s^-1|].
+            z_u (float): Height of wind speed measurement including
+                displacement (z-d), |z_u| [m].
+            r_length (float): Roughness length, |z_0| [m].
+            o_length (float): Obukhov length |LOb| [m].
+
+        Returns:
+            mpmath.mpf: Friction velocity |u*|.
+
+        .. |s^-1| replace:: s :sup:`-1`
+        .. |z_u| replace:: z :sub:`u`
+        .. |z_0| replace:: z :sub:`0`
+        .. |u*| replace:: u :sup:`*`
+        """
+
+        friction_velocity = (
+            self.k
+            * u
+            / (
+                mpmath.ln(z_u / r_length)
+                - self.momentum_stability(o_length, z=z_u)
+                + self.momentum_stability(o_length, z=r_length)
+            )
+        )
+
+        return friction_velocity
