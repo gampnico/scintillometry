@@ -59,7 +59,7 @@ class TestBackendIterationMost:
         scope="class",
     )
     def test_momentum_stability_unstable(self):
-        """Integrated stability function, momentum, unstable conditions."""
+        """Compute ISF for momentum, unstable conditions."""
 
         test_momentum = self.test_class.momentum_stability_unstable(obukhov=-100, z=10)
         assert isinstance(test_momentum, mpmath.mpf)
@@ -71,7 +71,7 @@ class TestBackendIterationMost:
         scope="class",
     )
     def test_momentum_stability_stable(self):
-        """Integrated stability function, momentum, stable conditions."""
+        """Compute ISF for momentum, stable conditions."""
 
         test_momentum = self.test_class.momentum_stability_stable(obukhov=200, z=10)
         assert isinstance(test_momentum, mpmath.mpf)
@@ -88,7 +88,7 @@ class TestBackendIterationMost:
     )
     @pytest.mark.parametrize("arg_obukhov", [-100, 1e-10, 200])
     def test_momentum_stability(self, arg_obukhov):
-        """Integrated stability function for momentum."""
+        """Compute ISF for momentum."""
 
         test_momentum = self.test_class.momentum_stability(obukhov=arg_obukhov, z=10)
 
@@ -105,7 +105,7 @@ class TestBackendIterationMost:
         scope="class",
     )
     def test_get_most_coefficients_error(self):
-        """Raises errors for non-implemented MOST coefficients."""
+        """Raise errors for non-implemented MOST coefficients."""
 
         with pytest.raises(
             NotImplementedError,
@@ -126,7 +126,7 @@ class TestBackendIterationMost:
         scope="class",
     )
     def test_get_most_coefficients(self):
-        """Fetches MOST coefficients from AtmosConstants class."""
+        """Fetch MOST coefficients from AtmosConstants class."""
 
         compare_coeffs = self.test_class.get_most_coefficients(
             most_id="an1988", most_type="ct2"
@@ -143,7 +143,7 @@ class TestBackendIterationMost:
     )
     @pytest.mark.parametrize("arg_obukhov", [(-100, False), (0, True), (100, True)])
     def test_similarity_function(self, arg_obukhov):
-        """Computes similarity function."""
+        """Compute similarity function."""
 
         test_f_ct2 = self.test_class.similarity_function(
             obukhov=arg_obukhov[0], z=10, coeffs=self.test_coeffs, stable=arg_obukhov[1]

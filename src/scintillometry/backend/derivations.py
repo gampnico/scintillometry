@@ -107,7 +107,7 @@ def kinematic_shf(dataframe, z_eff):
 
     Returns:
         pd.DataFrame: Dataframe with new column for kinematic sensible
-            heat flux.
+        heat flux.
     """
 
     constants = AtmosConstants()
@@ -131,7 +131,7 @@ def free_convection_shf(dataframe):
 
     Returns:
         pd.DataFrame: Dataframe with new columns for air density and
-            surface sensible heat flux under free convection.
+        surface sensible heat flux under free convection.
     """
 
     constants = AtmosConstants()

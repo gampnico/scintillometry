@@ -76,6 +76,7 @@ class AtmosConstants(object):
     .. |Cn2| replace:: C :sub:`n`:sup:`2`
     .. |CT2| replace:: C :sub:`T`:sup:`2`
     .. |f_CT2| replace:: f :sub:`CT`:sup:`2`
+    .. |L_Ob| replace:: L:sub:`Ob`
     """
 
     def __init__(self):

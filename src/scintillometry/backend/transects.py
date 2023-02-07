@@ -68,12 +68,12 @@ def define_stability(stability_name):
 
     Returns:
         float: Constant "b" accounting for height dependence of |Cn2|.
-            Values of "b" are from Hartogenesis et al. (2003), and
-            Kleissl et al. (2008).
+        Values of "b" are from Hartogenesis et al. (2003), and
+        Kleissl et al. (2008).
 
     Raises:
-        NotImplementedError: <stability> is not an implemented stability
-            condition.
+        NotImplementedError: <stability_name> is not an implemented
+            stability condition.
     """
 
     # Hartogenesis et al. (2003), Kleissl et al. (2008).
@@ -133,7 +133,7 @@ def get_z_parameters(transect_data, stability_condition):
 
     Returns:
         tuple[np.floating, np.floating]: Effective and mean path height
-            of transect.
+        of transect.
     """
 
     effective_path_height = compute_effective_z(
@@ -154,7 +154,7 @@ def get_all_z_parameters(path_transect):
 
     Returns:
         dict[tuple[np.floating, np.floating]]: Effective and mean path
-            heights of transect, with each stability condition as key.
+        heights of transect, with each stability condition as key.
     """
 
     path_heights_dict = {}
