@@ -17,7 +17,11 @@ limitations under the License.
 Tests iterative scheme.
 """
 
+import warnings
+
 import mpmath
+import numpy as np
+import pandas as pd
 import pytest
 
 import scintillometry.backend.constants
@@ -194,3 +198,135 @@ class TestBackendIterationMost:
         )
         assert isinstance(compare_lob, mpmath.mpf)
         assert (compare_lob < 0) == (arg_theta < 0)  # obukhov and theta have same sign
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_check_signs",
+        scope="class",
+    )
+    @pytest.mark.filterwarnings("error")
+    @pytest.mark.parametrize("arg_shf", [-150, 0, 150])
+    @pytest.mark.parametrize("arg_obukhov", [-100, 0, 100])
+    def test_check_signs(self, arg_shf, arg_obukhov):
+        """Warn if sign of variable doesn't match expected sign."""
+
+        test_data = [{"shf": arg_shf, "obukhov": arg_obukhov}]
+        test_frame = pd.DataFrame.from_records(test_data)
+
+        if arg_shf > 0:
+            with pytest.raises(UserWarning):
+                self.test_class.check_signs(stable_flag=True, dataframe=test_frame)
+        if arg_obukhov < 0:
+            with pytest.raises(UserWarning):
+                self.test_class.check_signs(stable_flag=True, dataframe=test_frame)
+
+        if arg_shf == 0 or arg_obukhov == 0:  # never compare zeros.
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+        elif (arg_shf > 0) == (arg_obukhov > 0):
+            with pytest.raises(UserWarning):
+                self.test_class.check_signs(stable_flag=False, dataframe=test_frame)
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_most_iteration",
+        depends=[
+            "TestBackendIterationMost::test_similarity_function",
+            "TestBackendIterationMost::test_calc_u_star",
+            "TestBackendIterationMost::test_calc_theta_star",
+            "TestBackendIterationMost::test_calc_obukhov_length",
+            "TestBackendIterationMost::test_check_signs",
+        ],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_stable", [(200, True), (-100, False)])
+    def test_most_iteration(self, conftest_create_test_merged, arg_stable):
+        """Iterate single row of dataframe using MOST."""
+
+        test_data = conftest_create_test_merged.merged_dataframe.iloc[0].copy(deep=True)
+        test_data["obukhov"] = arg_stable[0]  # initial Obukhov Length
+
+        compare_most = self.test_class.most_iteration(
+            dataframe=test_data,
+            zm_bls=30,
+            stable_flag=arg_stable[1],
+            most_coeffs=self.test_coeffs,
+        )
+
+        compare_keys = ["u_star", "theta_star", "f_ct2", "shf"]
+        for key in compare_keys:
+            assert key in compare_most.keys()
+            assert isinstance(compare_most[key], mpmath.mpf)
+
+        assert compare_most["obukhov"] != arg_stable[0]
+        assert not (compare_most.isnull()).any()
+
+        # signs match stability
+        assert (compare_most["obukhov"] > 0) == (arg_stable[0] > 0)
+        assert (compare_most["shf"] < 0) == (arg_stable[0] > 0)
+        assert (compare_most["obukhov"] > 0) == (compare_most["shf"] < 0)
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_most_iteration_nan",
+        depends=["TestBackendIterationMost::test_most_iteration"],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_stable", [(200, True), (-100, False)])
+    def test_most_iteration_nan(self, conftest_create_test_merged, arg_stable):
+        """Iterate single row of dataframe using MOST with NaNs."""
+
+        test_data = conftest_create_test_merged.merged_dataframe.iloc[0].copy(deep=True)
+        test_data["CT2"] = np.nan
+        test_data["obukhov"] = arg_stable[0]  # initial Obukhov Length
+
+        compare_most = self.test_class.most_iteration(
+            dataframe=test_data,
+            zm_bls=30,
+            stable_flag=arg_stable[1],
+            most_coeffs=self.test_coeffs,
+        )
+
+        compare_keys = ["u_star", "theta_star", "f_ct2", "shf"]
+        for key in compare_keys:
+            assert key in compare_most.keys()
+            assert isinstance(compare_most[key], (mpmath.mpf, float))
+
+        assert compare_most["obukhov"] != arg_stable[0]
+        assert mpmath.isnan(compare_most["obukhov"])
+        assert mpmath.isnan(compare_most["shf"])
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_most_method",
+        depends=[
+            "TestBackendIterationMost::test_most_iteration",
+            "TestBackendIterationMost::test_check_signs",
+        ],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_stable", [["stable", True], ["unstable", False]])
+    def test_most_method(self, capsys, conftest_create_test_merged, arg_stable):
+        """Calculate Obukhov length and sensible heat fluxes."""
+
+        test_data = conftest_create_test_merged.merged_dataframe
+
+        compare_most = self.test_class.most_method(
+            dataframe=test_data, eff_h=30, stability=arg_stable[0], coeff_id="an1988"
+        )
+        test_print = capsys.readouterr()
+        assert f"Started iteration ({arg_stable[0]})..." in test_print.out
+        assert f"Completed iteration ({arg_stable[0]}) in" in test_print.out
+        compare_keys = [
+            "u_star",
+            "theta_star",
+            "f_ct2",
+            "shf",
+            "obukhov",
+        ]
+        assert isinstance(compare_most, pd.DataFrame)
+        for key in compare_keys:
+            assert not (compare_most[key].isnull()).any()
+            assert key in compare_most.keys()
+            assert all(isinstance(x, (mpmath.mpf)) for x in compare_most[key])
+
+        # signs match stability
+        assert (compare_most["obukhov"] > 0).all() == arg_stable[1]
+        assert (compare_most["shf"] < 0).all() == arg_stable[1]
+        assert (compare_most["obukhov"] < 0).all() == (compare_most["shf"] > 0).all()

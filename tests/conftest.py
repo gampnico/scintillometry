@@ -136,6 +136,30 @@ class TestData:
 
         return cls
 
+    @classmethod
+    def setup_merged_dataframe(cls):
+        """Constructs mock dataframe with BLS and weather data."""
+
+        data = {
+            "time": [
+                "2020-06-03T00:10:00Z",
+                "2020-06-03T00:20:00Z",
+                "2020-06-03T00:30:00Z",
+            ],
+            "CT2": [1.9343e-04, 2.4764e-04, 2.6475e-04],
+            "wind_speed": [1.2, 0.9, 1.1],
+            "rho_air": [1.166186, 1.166229, 1.166474],
+            "temperature_2m": [10.8, 10.7, 10.7],
+        }
+        dataframe = pd.DataFrame.from_dict(data)
+        dataframe["time"] = pd.to_datetime(dataframe["time"])
+        dataframe = dataframe.set_index("time")
+        dataframe = dataframe.tz_convert("CET")
+        assert dataframe.index.name == "time"
+        cls.merged_dataframe = dataframe
+
+        return cls
+
 
 @pytest.fixture(scope="module", autouse=True)  # teardown after each module test
 def conftest_mnd_path():
@@ -189,3 +213,12 @@ def conftest_create_test_weather():
     data_obj = TestData()
 
     yield data_obj.setup_weather_dataframe()
+
+
+@pytest.fixture(scope="module", autouse=True)  # teardown after each module test
+def conftest_create_test_merged():
+    """Creates dataframe mocking merged BLS and weather data."""
+
+    data_obj = TestData()
+
+    yield data_obj.setup_merged_dataframe()

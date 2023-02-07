@@ -37,7 +37,12 @@ TODO:
     - ST-46: Implement Li method (Li et al., 2014; 2015).
 """
 
+import time
+import warnings
+
 import mpmath
+import numpy as np
+import tqdm
 
 from scintillometry.backend.constants import AtmosConstants
 
@@ -279,3 +284,176 @@ class IterationMost(AtmosConstants):
         obukhov_length = (temp * (u_star**2)) / (self.g * self.k * theta_star)
 
         return obukhov_length
+
+    def check_signs(self, stable_flag, dataframe):
+        """Warns if sign of variable doesn't match expected sign.
+
+        Args:
+            stable_flag (bool): True for stable conditions, otherwise
+                False.
+            dataframe (pd.DataFrame): Dataframe with SHF and Obukhov
+                lengths.
+
+        Warns:
+            UserWarning: Sign of Obukhov lengths should be opposite of
+                SHFs.
+            UserWarning: SHFs should never be positive for stable
+                conditions.
+            UserWarning: Obukhov lengths should never be negative for
+                stable conditions.
+        """
+
+        if stable_flag and (dataframe["shf"] > 0).any():
+            msg = "SHFs should never be positive for stable conditions."
+            warnings.warn(UserWarning(msg))
+        if stable_flag and (dataframe["obukhov"] < 0).any():
+            msg = "Obukhov lengths should never be negative for stable conditions."
+            warnings.warn(UserWarning(msg))
+
+        # use "not" with <= to avoid warnings when comparing zeros.
+        if not ((dataframe["shf"] <= 0).any()) == ((dataframe["obukhov"] >= 0).any()):
+            msg = "Sign of Obukhov lengths should be opposite of SHFs."
+            warnings.warn(UserWarning(msg))
+
+    def most_iteration(self, dataframe, zm_bls, stable_flag, most_coeffs):
+        """Iterative MOST method.
+
+        A detailed description of the iterative method is available in:
+
+            - Scintec AG (2022). Scintec Scintillometers Theory Manual
+              (SLS/BLS) [Version 1.05]. Scintec AG, Rottenburg, Germany.
+
+        Iteration until convergence is slower than vectorisation, but
+        more accurate. If a value never converges, the iteration stops
+        after ten runs.
+
+        Args:
+            dataframe (pd.DataFrame): Parsed, localised dataframe row
+                containing at least |C_T^2|, wind speed, air density,
+                and temperature.
+            zm_bls (float): Effective height of scintillometer.
+            stable_flag (bool): Stability conditions. If true, assumes
+                stable conditions, otherwise assumes unstable
+                conditions.
+
+        Returns:
+            pd.DataFrame: Dataframe with additional columns for Obukhov
+            lengths, sensible heat fluxes, frictional velocity, and
+            temperature scale.
+        """
+
+        z0 = zm_bls * 0.1  # estimated roughness length
+        iter_step = 0  # enforce limit if no convergence
+        obukhov_diff = 1
+
+        # converges around 5 iterations, but 10 is safer
+        while not (np.abs(obukhov_diff) < 0.1 or iter_step >= 10):
+            dataframe["f_ct2"] = self.similarity_function(
+                obukhov=dataframe["obukhov"],
+                z=zm_bls,
+                stable=stable_flag,
+                coeffs=most_coeffs,
+            )
+            dataframe["u_star"] = self.calc_u_star(
+                u=dataframe["wind_speed"],
+                z_u=zm_bls,
+                r_length=z0,
+                o_length=dataframe["obukhov"],
+            )
+            dataframe["theta_star"] = self.calc_theta_star(
+                ct2=dataframe["CT2"],
+                f_ct2=dataframe["f_ct2"],
+                z=zm_bls,
+                stable=stable_flag,
+            )
+            obukhov_tmp = self.calc_obukhov_length(
+                temp=dataframe["temperature_2m"],
+                u_star=dataframe["u_star"],
+                theta_star=dataframe["theta_star"],
+            )
+
+            # Use difference to determine convergence
+            obukhov_diff = np.abs(obukhov_tmp - dataframe["obukhov"])
+            dataframe["obukhov"] = obukhov_tmp
+
+            if mpmath.isnan(dataframe["obukhov"]):  # iteration unnecessary if NaN
+                iter_step = 10
+            iter_step += 1
+
+        # Calculate SHF after iteration
+        dataframe["shf"] = (
+            (-1)
+            * dataframe["rho_air"]
+            * self.cp
+            * dataframe["u_star"]
+            * dataframe["theta_star"]
+        )
+        if stable_flag:
+            dataframe["shf"] = -mpmath.fabs(dataframe["shf"])
+
+        return dataframe
+
+    def most_method(self, dataframe, eff_h, stability, coeff_id="an1988"):
+        """Calculate Obukhov length and sensible heat fluxes with MOST.
+
+        Iteration is more accurate but slower than vectorisation.
+
+        Implemented MOST coefficients:
+
+        - **an1988**: E.L. Andreas (1988), DOI: 10.1364/JOSAA.5.000481
+        - **li2012**: D. Li et al. (2012),
+          DOI: 10.1007/s10546-011-9660-y
+        - **wy1971**: Wyngaard et al. (1971),
+          DOI: 10.1364/JOSA.61.001646
+        - **wy1973**: Wyngaard et al. (1973) in Kooijmans and
+          Hartogensis (2016), DOI: 10.1007/s10546-016-0152-y
+        - **ma2014**: Maronga et al. (2014),
+          DOI: 10.1007/s10546-014-9955-x
+        - **br2014**: Braam et al. (2014),
+          DOI: 10.1007/s10546-014-9938-y
+
+        Braam et al. (2014) and Maronga et al. (2014) do not provide
+        coefficients for stable conditions, so gradient functions will
+        evaluate to zero for stable conditions.
+
+        Args:
+            dataframe (pd.DataFrame): Parsed, localised dataframe
+                containing at least |C_T^2|, wind speed, air density,
+                and temperature.
+            eff_h (float): Effective path height.
+            stability (str): Stability conditions. Either "stable" or
+                "unstable".
+            coeff_id (str): ID of MOST coefficients for unstable and
+                stable conditions. Default "an1988".
+
+        Returns:
+            pd.DataFrame: Dataframe with additional columns for Obukhov
+            lengths, sensible heat fluxes, frictional velocity, and
+            temperature scale.
+        """
+
+        coeffs = self.get_most_coefficients(most_id=coeff_id, most_type="ct2")
+        # Prepare dataframe
+        iteration = dataframe.copy(deep=True)
+        if stability == "unstable":
+            iteration["obukhov"] = -100  # unstable conditions
+            stable = False
+        else:
+            iteration["obukhov"] = 200  # stable conditions
+            stable = True
+
+        print(f"Started iteration ({stability})...")
+        start = time.time()
+        tqdm.tqdm.pandas()  # register pd.Series.map_apply with tqdm
+        iteration = iteration.progress_apply(
+            lambda x: self.most_iteration(
+                x, zm_bls=eff_h, stable_flag=stable, most_coeffs=coeffs
+            ),
+            axis=1,
+        )
+
+        end = time.time()
+        self.check_signs(stable_flag=stable, dataframe=iteration)
+        print(f"Completed iteration ({stability}) in {end - start:>0.2f}s.\n")
+
+        return iteration
