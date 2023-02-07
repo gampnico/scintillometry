@@ -175,9 +175,9 @@ disable=abstract-method,
 [EXCEPTIONS]
 
 # Exceptions that will emit a warning when caught.
-overgeneral-exceptions=BaseException,
-                       Exception,
-                       StandardError
+overgeneral-exceptions=builtins.BaseException,
+                       builtins.Exception,
+                       builtins.StandardError
 
 
 [METHOD_ARGS]
