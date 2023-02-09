@@ -8,6 +8,7 @@ include =
     */src/*.py
 omit =
     setup.py
+    */__init__.py
 
 [report]
 # Regexes for lines to exclude from consideration
