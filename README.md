@@ -86,7 +86,7 @@ Data processing:
 
 Metrics:
 - Calculate effective path heights under various stability conditions.
-- Derive |CT2| values from |Cn2| if these were not collected.
+- Derive C<sub>T</sub><sup>2</sup> values from C<sub>n</sub><sup>2</sup> if these were not collected.
 - Estimate the time where stability conditions change. 
 - Compute parameters such as Obukhov length, friction velocity, etc.
 - Compute kinematic and sensible SHF. Supports free convection and iteration with MOST: several sets of coefficients are available for MOST functions, based on previous studies.
