@@ -63,7 +63,7 @@ install-all:	--install-deps	## Install package with tests & documentation
 		@pip install -e .[tests,docs]
 		@make docs
 
-install-dev:	check_python	## Install in development mode
+install-dev:	--check-python	## Install in development mode
 		@echo "\nInstalling dependencies (dev)..."
 		@mamba install --file dev-requirements.txt -c conda-forge
 		@echo "\nInstalling editable in development mode..."
