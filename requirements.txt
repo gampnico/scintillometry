@@ -1,6 +1,6 @@
-hatchling
+pandas>=1.5
+tqdm>4.8
+scipy>=1.10
+mpmath>=1.2.1
 numpy
-pandas
-scipy
-mpmath
-tqdm
+matplotlib

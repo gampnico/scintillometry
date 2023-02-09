@@ -1,0 +1,17 @@
+pandas>=1.5
+tqdm>4.8
+scipy>=1.10
+mpmath>=1.2.1
+numpy
+matplotlib
+pytest>=7.0
+pytest-dependency>=0.5
+coverage>=7.1
+sphinx
+sphinx-rtd-theme>=1.1
+hatchling>=1.12
+build>=0.7
+pylint>=2.16.1
+flake8>=6.0
+black>=23.1
+isort

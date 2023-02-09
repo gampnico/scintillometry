@@ -4,33 +4,53 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scintillometry"
-version = "0.8.a2"
+version = "0.9.a2"
 authors = [
   { name="Nicolas Gampierakis", email="" },
 ]
-description = "A suite of tools for computing sensible heat fluxes from the BLS450 scintillometer and working with 2D flux footprints."
+description = "Analyse data & 2D flux footprints from Scintec's BLS scintillometers."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 license = {file = "LICENSE"}
 classifiers = [
     "Private :: Do Not Upload",
     "License :: OSI Approved :: Apache Software License",
     "Development Status :: 2 - Pre-Alpha",
     "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Environment :: Console",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
     "Topic :: Scientific/Engineering :: Information Analysis",
-
 ]
 dependencies = [
-  "pytest >= 7.0",
-  "pytest-dependency >= 0.5",
   "pandas >= 1.5",
   "tqdm > 4.8",
+  "scipy >= 1.10",
+  "mpmath >= 1.2.1",
   "numpy",
-  "scipy",
-  "mpmath",
+  "matplotlib",
+]
+
+[project.optional-dependencies]
+tests=[
+  "pytest >= 7.0",
+  "pytest-dependency >= 0.5",
+  "coverage >= 7.1",
+]
+docs=[
+  "sphinx",
+  "sphinx-rtd-theme >= 1.1",
+]
+dev=[
+  "scintillometry[tests,docs]",
+  "hatchling >= 1.12",
+  "build >= 0.7",
+  "pylint >= 2.16.1",
+  "flake8 >= 6.0",
+  "black >= 23.1",
+  "isort",
 ]
 
 [project.urls]
