@@ -31,15 +31,15 @@ class AtmosConstants(object):
             BLS type, [|m^(7/3)|].
         alpha12 (dict): |Cn2| measurement coefficients |a_12| for each
             BLS type.
-        lamda (float): BLS wavelength, λ [nm].
+        lamda (float): BLS wavelength, |lamda| [nm].
         lamda_error (float): BLS wavelength error, [nm].
-        m1_opt (float): Needed for AT and Aq, from Owens (1967).
-        m2_opt (float): Needed for AT and Aq, from Owens (1967).
+        m1_opt (float): Needed for |AT| and |Aq|, from Owens (1967).
+        m2_opt (float): Needed for |AT| and |Aq|, from Owens (1967).
 
-        at_opt (float): AT coefficient for 880 nm & typical atmospheric
-            conditions.
-        aq_opt (float): Aq coefficient for 880 nm & typical atmospheric
-            conditions.
+        at_opt (float): |AT| coefficient for 880 nm & typical
+            atmospheric conditions.
+        aq_opt (float): |Aq| coefficient for 880 nm & typical
+            atmospheric conditions.
 
         most_coeffs_ft (dict[list[tuple, tuple]]): Coefficients for MOST
             functions |f_CT2|, in format:
@@ -56,27 +56,9 @@ class AtmosConstants(object):
             |c_p| [J |K^-1| |kg^-1|].
         latent_vapour (float): Latent heat of vapourisation at
             20°C [J |kg^-1|].
-        rho (float): Density of air at STP, ρ [kg |m^-3|].
+        rho (float): Density of air at STP, |rho| [kg |m^-3|].
         k (float): von Kármán's constant.
         g (float): Gravitational acceleration [|ms^-2|].
-
-    .. |K^-1| replace:: K :sup:`-1`
-    .. |kg^-1| replace:: kg :sup:`-1`
-    .. |m^(7/3)| replace:: m :sup:`7/3`
-    .. |m^-3| replace:: m :sup:`-3`
-    .. |ms^-2| replace:: ms :sup:`-2`
-    .. |10^-5| replace:: 10 :sup:`-5`
-    .. |a_11| replace:: α :sub:`11`
-    .. |a_12| replace:: α :sub:`12`
-    .. |R_dry| replace:: R :sub:`dry`
-    .. |R_v| replace:: R :sub:`v`
-    .. |c_p| replace:: c :sub:`p`
-    .. |z_eff| replace:: z :sub:`eff`
-    .. |z_mean| replace:: :math:`\\bar{z}`
-    .. |Cn2| replace:: C :sub:`n`:sup:`2`
-    .. |CT2| replace:: C :sub:`T`:sup:`2`
-    .. |f_CT2| replace:: f :sub:`CT`:sup:`2`
-    .. |L_Ob| replace:: L:sub:`Ob`
     """
 
     def __init__(self):

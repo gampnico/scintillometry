@@ -1,13 +1,15 @@
-# pylint: skip-file
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+#
+# pylint: skip-file
 
 # -- General configuration ---------------------------------------------------
 
 import os
 import sys
+from datetime import date
 
 sys.path.insert(0, os.path.abspath("../src/scintillometry/*"))
 
@@ -27,9 +29,9 @@ def setup(app):
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Scintillometry Tools"
-copyright = "2023, Nicolas Gampierakis"
-author = "Nicolas Gampierakis"
-release = "0.4.a3"
+copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
+author = "Scintillometry Tools Contributors"
+release = "0.9.a3"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -38,6 +40,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
+    "sphinx.ext.todo",
     "sphinx.ext.viewcode",
 ]
 
@@ -50,3 +53,35 @@ exclude_patterns = []
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+
+
+rst_prolog = f"""
+.. |K^-1| replace:: K :sup:`-1`
+.. |kg^-1| replace:: kg :sup:`-1`
+.. |m^(7/3)| replace:: m :sup:`7/3`
+.. |m^-3| replace:: m :sup:`-3`
+.. |ms^-2| replace:: ms :sup:`-2`
+.. |s^-1| replace:: s :sup:`-1`
+.. |10^-5| replace:: 10 :sup:`-5`
+.. |a_11| replace:: :math:`\\alpha_{{11}}`
+.. |a_12| replace:: :math:`\\alpha_{{12}}`
+.. |AT| replace:: A :sub:`T`
+.. |Aq| replace:: A :sub:`q`
+.. |rho| replace:: :math:`\\rho`
+.. |R_dry| replace:: R :sub:`dry`
+.. |R_v| replace:: R :sub:`v`
+.. |c_p| replace:: c :sub:`p`
+.. |Cn2| replace:: :math:`C_{{T}}^{{2}}`
+.. |CT2| replace:: :math:`C_{{n}}^{{2}}`
+.. |f_CT2| replace:: :math:`f_{{C_{{T}}^{{2}}}}`
+.. |LOb| replace:: :math:`L_{{Ob}}`
+.. |Psi_m| replace:: :math:`\\Psi_{{m}}`
+.. |theta*| replace:: :math:`\\theta^{{*}}`
+.. |u| replace:: :math:`u`
+.. |u*| replace:: :math:`u^{{*}}`
+.. |lamda| replace:: :math:`\\lambda`
+.. |z_u| replace:: z :sub:`u`
+.. |z_0| replace:: z :sub:`0`
+.. |z_eff| replace:: z :sub:`eff`
+.. |z_mean| replace:: :math:`\\bar{{z}}`
+"""

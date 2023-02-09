@@ -4,7 +4,7 @@
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
 
-       https://www.apache.org/licenses/LICENSE-2.0
+      https://www.apache.org/licenses/LICENSE-2.0
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,44 +14,177 @@
 
    =====
 
-Quick Start
-===========
+Using the Tools
+===============
 
 Installation
 ------------
 
-Install with pip or conda:
+Scintillometry-Tools supports installation as an editable with pip or conda.
 
-``pip install -r requirements.txt .``
+Install with Conda
+******************
 
-To build this documentation, ensure both ``sphinx`` and ``sphinx_rtd_theme`` are installed in your python environment. Navigate to docs, and run:
+Activate your preferred conda environment and run:
 
-``make clean && make html``
+.. code-block:: bash
 
-To run tests or coverage, ensure ``pytest`` and ``pytest-dependency`` are installed in your Python environment, and run pytest from the package root.
+   git clone https://github.com/gampnico/scintillometry-tools.git
+   make install
+
+Install the package with optional dependencies:
+
+.. code-block:: bash
+
+   make install-tests   # install with dependencies for tests
+   make install-docs    # install and build local documentation
+   make install-all     # install with tests and build local documentation
+   make install-dev     # install with dependencies for development
+
+Install with Pip
+****************
+
+If conda is not your package manager, then run:
+
+.. code-block:: bash
+
+   git clone https://github.com/gampnico/scintillometry-tools.git
+   pip install -e .
+
+Install the package with optional dependencies:
+
+.. code-block:: bash
+
+   pip install -e .[tests]       # install with dependencies for tests
+   pip install -e .[docs]        # install with dependencies for documentation
+   pip install -e .[tests,docs]  # no whitespace after comma
+   pip install -e .[dev]         # install with dependencies for development
 
 Run from Terminal
 -----------------
 
-Usage: ``src/main.py [-h] [-i <input_data>] [-d] [...] [-v]``
+View all command-line arguments:
 
-Options and arguments (and corresponding environment variables):
+.. code-block:: bash
+
+   make commands
+
+Usage:
+
+.. code-block:: bash
+   
+   src/scintillometry/main.py [-h] [-i <input_data>] [-p <path_data>] [-d] [...] [-v]
 
 Required arguments:
-    ``-i, --input <path>: Path to raw BLS450 data.``
+   -i, --input <path>      Path to raw BLS data.
+   -p, --path <path>       Path to topographical path transect.
 
 Optional switches:
-    ``-h, --help: Show this help message and exit.``
-    ``-z, --dry-run: Dry run of model.``
-    ``-v, --verbose: Verbose mode.``
+   -h, --help                 Show this help message and exit.
+   -f, --flux                 Compare scintillometer data to InnFLUX data.
+   -q, --specific-humidity    Derive fluxes from specific humidity.
+   -z, --dry-run              Dry run of model.
+   -v, --verbose              Verbose mode.
 
 Optional arguments:
-    ``-t, --timezone <str>: Convert to local timezone. Default "CET".``
-    ``-c, --calibrate <float> <float>: Recalibrate path lengths.``
+   -t, --timezone <str>             Convert to local timezone. Default "CET".
+   -c, --calibrate <float float>    Recalibrate path lengths.
+   -s, --stability <str>            Set default stability condition.
+   -r, --regime-time <str>          Set local time of switch between stability
+                                       regimes.
+   -w, --wavelength <int>           Transmitter beam wavelength, nm.
+                                       Default 850 nm.
+   --beam-error <int>               Transmitter beam wavelength error, nm.
+                                       Default 20 nm.
 
-Indices and tables
-==================
+Import as Package
+-----------------
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+Scintillometry-Tools and its submodules can be imported as a Python module:
+
+.. code-block:: python
+
+   import scintillometry
+   from scintillometry.wrangler.data_parser import parse_scintillometer
+
+MOST functions are stored in their respective class:
+
+.. code-block:: python
+
+   from scintillometry.backend.iterations import IterationMost
+
+   workflow = IterationMost()
+   workflow.most_method(dataframe, eff_h, stability, coeff_id="an1988")
+
+These classes inherit from the AtmosConstants class:
+
+.. code-block:: python
+   
+   from scintillometry.backend.constants import AtmosConstants
+
+   constants = AtmosConstants()
+   kelvin = constants.kelvin  # 273.15
+
+Make Things Simple
+------------------
+
+The provided Makefile has many uses. View all the available commands:
+
+.. code-block:: bash
+
+   make help
+
+Available commands:
+   :help:            Display this help screen.
+   :install:         Install with conda.
+   :install-tests:   Install with dependencies for tests.
+   :install-docs:    Install with local documentation.
+   :install-all:     Install package with tests & documentation.
+   :install-dev:     Install in development mode.
+   :commands:        Display help for scintillometry package.
+   :test:            Format code and run tests.
+   :doc:             Build documentation.
+   :format:          Format all python files.
+   :coverage:        Run pytest with coverage.
+   :flake8:          Lint with flake8.
+   :pylint:          Lint with Pylint.
+   :scalene:         Profile with scalene (Python 3.9+).
+   :black:           Format all python files with black.
+   :isort:           Optimise python imports.
+   :run:             Alias for `make commands`.
+   :pkg:             Run test, build documentation, build package.
+   :commit:          Format, test, then commit.
+
+Run Tests
+---------
+
+Install dependencies for tests:
+
+.. code-block:: bash
+
+   make install-tests
+
+Run tests with coverage from the package root:
+
+.. code-block:: bash
+
+   make tests
+
+Logs are placed in the ``./logs/`` folder.
+
+Build Local Documentation
+-------------------------
+
+Install dependencies for documentation:
+
+.. code-block:: bash
+
+   make install-docs
+
+Build the documentation:
+
+.. code-block:: bash
+
+   make docs
+
+Formatting breaks if ``sphinx_rtd_theme`` version is less than 1.1.

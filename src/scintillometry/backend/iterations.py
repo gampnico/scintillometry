@@ -81,10 +81,7 @@ class IterationMost(AtmosConstants):
 
         Returns:
             mpmath.mpf: Integrated stability function for momentum,
-            |Ψm| [0-Dim].
-
-        .. |LOb| replace:: L :sub:`Ob`
-        .. |Ψm| replace:: Ψ :sub:`m`
+            |Psi_m| [0-Dim].
         """
 
         x = (1 - 16 * (z / obukhov)) ** (1 / 4)
@@ -108,7 +105,7 @@ class IterationMost(AtmosConstants):
 
         Returns:
             mpmath.mpf: Integrated stability function for momentum,
-            |Ψm| [0-Dim].
+            |Psi_m| [0-Dim].
         """
 
         psi_momentum = (-5) * z / obukhov
@@ -128,7 +125,7 @@ class IterationMost(AtmosConstants):
 
         Returns:
             mpmath.mpf: Integrated stability function for momentum,
-            |Ψm| [0-Dim].
+            |Psi_m| [0-Dim].
         """
 
         if obukhov > 0:
@@ -220,16 +217,13 @@ class IterationMost(AtmosConstants):
         """Calculate temperature scale.
 
         Args:
-            ct2 (float): Structure parameter of temperature |C_T^2|.
-            f_ct2 (float): MOST function of |C_T^2|, |f_CT2|.
+            ct2 (float): Structure parameter of temperature |CT2|.
+            f_ct2 (float): MOST function of |CT2|, |f_CT2|.
             z (float): Effective height, z [m].
             stable (bool): True for stable conditions, otherwise False.
 
         Returns:
-            mpmath.mpf: Temperature scale, |θ*|.
-
-        .. |C_T^2| replace:: C :sub: `T` :sup:`2`
-        .. |θ*| replace:: θ :sup:`*`
+            mpmath.mpf: Temperature scale, |theta*|.
         """
 
         theta_star = mpmath.sqrt(ct2 * (z ** (2 / 3)) / f_ct2)
@@ -242,7 +236,7 @@ class IterationMost(AtmosConstants):
         """Calculates friction velocity.
 
         Args:
-            u (float): Wind speed, _u_ [m |s^-1|].
+            u (float): Wind speed, |u| [m |s^-1|].
             z_u (float): Height of wind speed measurement including
                 displacement (z-d), |z_u| [m].
             r_length (float): Roughness length, |z_0| [m].
@@ -250,11 +244,6 @@ class IterationMost(AtmosConstants):
 
         Returns:
             mpmath.mpf: Friction velocity |u*|.
-
-        .. |s^-1| replace:: s :sup:`-1`
-        .. |z_u| replace:: z :sub:`u`
-        .. |z_0| replace:: z :sub:`0`
-        .. |u*| replace:: u :sup:`*`
         """
 
         friction_velocity = (
@@ -275,10 +264,10 @@ class IterationMost(AtmosConstants):
         Args:
             temp (np.floating): Air temperature in Kelvin, T [K].
             u_star (mpmath.mpf): Friction velocity |u*|.
-            theta_star (mpmath.mpf): Temperature scale, |θ*|.
+            theta_star (mpmath.mpf): Temperature scale, |theta*|.
 
         Returns:
-            mpmath.mpf: Obukhov Length, |L_Ob| [m].
+            mpmath.mpf: Obukhov Length, |LOb| [m].
         """
 
         obukhov_length = (temp * (u_star**2)) / (self.g * self.k * theta_star)
@@ -329,7 +318,7 @@ class IterationMost(AtmosConstants):
 
         Args:
             dataframe (pd.DataFrame): Parsed, localised dataframe row
-                containing at least |C_T^2|, wind speed, air density,
+                containing at least |CT2|, wind speed, air density,
                 and temperature.
             zm_bls (float): Effective height of scintillometer.
             stable_flag (bool): Stability conditions. If true, assumes
@@ -418,7 +407,7 @@ class IterationMost(AtmosConstants):
 
         Args:
             dataframe (pd.DataFrame): Parsed, localised dataframe
-                containing at least |C_T^2|, wind speed, air density,
+                containing at least |CT2|, wind speed, air density,
                 and temperature.
             eff_h (float): Effective path height.
             stability (str): Stability conditions. Either "stable" or
