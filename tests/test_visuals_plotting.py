@@ -225,3 +225,42 @@ class TestVisualsPlotting:
         assert compare_ax.yaxis.label.get_text() == "Pressure, [mbar]"
         assert compare_ax.get_title() == "Pressure at Test, 03 June 2020"
         plt.close()
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_convection",
+        depends=[
+            "TestVisualsFormatting::test_title_plot",
+            "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsPlotting::test_setup_plot_data",
+            "TestVisualsPlotting::test_plot_time_series",
+        ],
+        scope="module",
+    )
+    @pytest.mark.parametrize("arg_stability", ["unstable", None])
+    def test_plot_convection(self, conftest_mock_bls_dataframe_tz, arg_stability):
+        """Plot SHFs for scintillometer and free convection."""
+
+        test_data = conftest_mock_bls_dataframe_tz
+        test_data["H_free"] = pd.Series([4.4, 5.5], index=test_data.index)
+
+        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_convection(
+            dataframe=test_data, stability=arg_stability
+        )
+        assert isinstance(compare_fig, plt.Figure)
+        assert isinstance(compare_ax, plt.Axes)
+
+        assert compare_ax.xaxis.label.get_text() == "Time, CET"
+        assert (
+            compare_ax.yaxis.label.get_text()
+            == r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]"
+        )
+        if arg_stability:
+            compare_conditions = f"{arg_stability.capitalize()} Conditions"
+        else:
+            compare_conditions = "No Height Dependency"
+        compare_title = (
+            "Sensible Heat Fluxes from On-Board Software and",
+            f"for Free Convection ({compare_conditions}), 03 June 2020",
+        )
+        assert compare_ax.get_title() == " ".join(compare_title)
+        plt.close()

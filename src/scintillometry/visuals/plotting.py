@@ -253,3 +253,49 @@ def plot_generic(dataframe, name, site=""):
     set_xy_labels(ax=axes, timezone=date_tzone["tzone"], name=name)
 
     return fig, axes
+
+
+def plot_convection(dataframe, stability):
+    """Plots scintillometer convection and free convection.
+
+    Args:
+        dataframe (pd.DataFrame): Contains data for scintillometer and
+            free convection.
+        stability (str): Stability conditions.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes]: Figure and axes of plotted data.
+    """
+
+    plot_data, plot_mean, date_tzone = setup_plot_data(
+        df=dataframe, names=["H_convection", "H_free"]
+    )
+
+    figure = plt.figure(figsize=(26, 6))
+    plot_time_series(
+        series_data=plot_data["H_convection"],
+        series_mean=plot_mean["H_convection"],
+        line_colour="black",
+        name="On-Board Software",
+    )
+    plot_time_series(
+        series_data=plot_data["H_free"],
+        series_mean=plot_mean["H_free"],
+        line_colour="red",
+        name="Free Convection",
+    )
+
+    if stability:
+        stability_suffix = f"{stability.capitalize()} Conditions"
+    else:
+        stability_suffix = "No Height Dependency"
+    title_string = (
+        "Sensible Heat Fluxes from On-Board Software and",
+        f"for Free Convection ({stability_suffix})",
+    )
+
+    title_plot(title=" ".join(title_string), timestamp=date_tzone["date"])
+    axes = plt.gca()
+    set_xy_labels(ax=axes, timezone=date_tzone["tzone"], name="shf")
+
+    return figure, axes
