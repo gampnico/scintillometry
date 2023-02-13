@@ -264,3 +264,96 @@ class TestVisualsPlotting:
         )
         assert compare_ax.get_title() == " ".join(compare_title)
         plt.close()
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_comparison",
+        depends=[
+            "TestVisualsFormatting::test_title_plot",
+            "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsPlotting::test_setup_plot_data",
+            "TestVisualsPlotting::test_plot_time_series",
+        ],
+        scope="module",
+    )
+    @pytest.mark.parametrize(
+        "arg_keys", [["wind_speed", "rho_air"], ["wind_speed", "wind_speed"]]
+    )
+    @pytest.mark.parametrize("arg_site", ["", "Test Location"])
+    def test_plot_comparison(self, conftest_mock_merged_dataframe, arg_keys, arg_site):
+        """Plot comparison between two dataframes."""
+
+        test_data_01 = conftest_mock_merged_dataframe
+        test_data_02 = conftest_mock_merged_dataframe
+        if "rho_air" in arg_keys:
+            test_labels = ["Wind Speed", "Air Density"]
+        else:
+            test_labels = ["Wind Speed", "Wind Speed"]
+        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_comparison(
+            df_01=test_data_01,
+            df_02=test_data_02,
+            keys=arg_keys,
+            labels=["Test 01", "Test 02"],
+            site=arg_site,
+        )
+        assert isinstance(compare_fig, plt.Figure)
+        assert isinstance(compare_ax, plt.Axes)
+
+        if arg_site:
+            test_site = f" at {arg_site}"
+        else:
+            test_site = ""
+        test_title_label = f"{test_labels[0]}"
+        if test_labels[1] != test_labels[0]:
+            test_title_label = f"{test_title_label} and {test_labels[1]}"
+        test_title = (
+            f"{test_title_label} from Test 01 and Test 02{test_site}, 03 June 2020"
+        )
+        assert compare_ax.get_title() == test_title
+        plt.close()
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_iterated_fluxes",
+        depends=[
+            "TestVisualsFormatting::test_title_plot",
+            "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsPlotting::test_setup_plot_data",
+            "TestVisualsPlotting::test_plot_time_series",
+            "TestVisualsPlotting::test_plot_generic",
+            "TestVisualsPlotting::test_plot_comparison",
+        ],
+        scope="module",
+    )
+    @pytest.mark.parametrize("arg_location", ["", "Test Location"])
+    def test_plot_iterated_fluxes(
+        self,
+        conftest_mock_iterated_dataframe,
+        conftest_mock_save_figure,
+        arg_location,
+    ):
+        """Plot and save iterated fluxes."""
+
+        _ = conftest_mock_save_figure  # otherwise figure is saved to disk
+        timestamp = conftest_mock_iterated_dataframe.index[0]
+        (
+            compare_shf,
+            compare_comp,
+        ) = scintillometry.visuals.plotting.plot_iterated_fluxes(
+            bls_data=conftest_mock_iterated_dataframe,
+            iteration_data=conftest_mock_iterated_dataframe,
+            time_id=timestamp,
+            location=arg_location,
+        )
+        assert isinstance(compare_shf, plt.Figure)
+        assert isinstance(compare_comp, plt.Figure)
+
+        if arg_location:
+            test_location = f" at {arg_location}"
+        else:
+            test_location = ""
+        compare_ax = plt.gca()
+        test_title = (
+            "Sensible Heat Flux from Free Convection and Iterated Flux",
+            f"{test_location}, 03 June 2020",
+        )
+        assert compare_ax.get_title() == "".join(test_title)
+        plt.close()

@@ -299,3 +299,86 @@ def plot_convection(dataframe, stability):
     set_xy_labels(ax=axes, timezone=date_tzone["tzone"], name="shf")
 
     return figure, axes
+
+
+def plot_comparison(df_01, df_02, keys, labels, site=""):
+    """Plots comparison between two dataframes with the same indices.
+
+    Args:
+        df_01 (pd.DataFrame): First dataframe.
+        df_02 (pd.DataFrame): Second dataframe.
+        keys (list): Key names formatted as:
+            [<df_01_key>, <df_series_key>].
+        labels (list): Labels for legend formatted as:
+            [<df_01_label>, <df_02_label>].
+        site (str): Location of data collection. Default empty string.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes]: Figure and axes of time series
+        plot.
+    """
+
+    plot_data_01, plot_mean_01, plot_tzone = setup_plot_data(df=df_01, names=[keys[0]])
+    plot_data_02, plot_mean_02, _ = setup_plot_data(df=df_02, names=[keys[1]])
+
+    fig = plt.figure(figsize=(26, 6))
+    plot_time_series(
+        series_data=plot_data_01[keys[0]],
+        series_mean=plot_mean_01[keys[0]],
+        line_colour="black",
+        name=labels[0],
+    )
+    plot_time_series(
+        series_data=plot_data_02[keys[1]],
+        series_mean=plot_mean_02[keys[1]],
+        line_colour="red",
+        name=labels[1],
+    )
+
+    label_01 = label_selector(keys[0])
+    label_02 = label_selector(keys[1])
+
+    if f"{label_01[0]}" in f"{label_02[0]}":
+        title_name = f"{label_01[0]}"
+    elif f"{label_02[0]}" in f"{label_01[0]}":
+        title_name = f"{label_02[0]}"
+    else:
+        title_name = f"{label_01[0]} and {label_02[0]}"
+
+    title_string = f"{title_name} from {labels[0]} and {labels[1]}"
+    title_plot(title=title_string, timestamp=plot_tzone["date"], location=site)
+    axes = plt.gca()
+    set_xy_labels(ax=axes, timezone=plot_tzone["tzone"], name=keys[1])
+
+    return fig, axes
+
+
+def plot_iterated_fluxes(bls_data, iteration_data, time_id, location=""):
+    """Plots and saves iterated SHF as image.
+
+    Args:
+        scint_series (pd.Series): Scintillometer data for SHF.
+        iter_series (pd.Series): Iterated data for SHF.
+        time_id (pd.Timestamp): Local time of data collection.
+        location (str): Location of data collection. Default empty
+            string.
+
+    Returns:
+        tuple[plt.Figure, plt.Figure]: Time series and comparison.
+    """
+
+    fig_shf, _ = plot_generic(iteration_data, "shf", site=location)
+    fig_shf = plt.gcf()
+    save_figure(figure=fig_shf, timestamp=time_id, suffix="shf")
+
+    fig_comp, _ = plot_comparison(
+        df_01=bls_data,
+        df_02=iteration_data,
+        keys=["H_free", "shf"],
+        labels=["Free Convection", "Iterated Flux"],
+        site=location,
+    )
+    fig_comp = plt.gcf()
+    save_figure(figure=fig_comp, timestamp=time_id, suffix="shf_comp")
+
+    return fig_shf, fig_comp
