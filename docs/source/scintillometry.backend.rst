@@ -15,13 +15,13 @@
    =====
 
 Backend
-==============================
+=======
 
 Submodules
 ----------
 
 Constants module
----------------------------------------
+----------------
 
 In: scintillometry.backend.constants.py
 
@@ -31,7 +31,7 @@ In: scintillometry.backend.constants.py
    :show-inheritance:
 
 Transects module
----------------------------------------
+----------------
 
 In: scintillometry.backend.transects.py
 
@@ -40,8 +40,18 @@ In: scintillometry.backend.transects.py
    :undoc-members:
    :show-inheritance:
 
+Derivations module
+------------------
+
+In: scintillometry.backend.derivations.py
+
+.. automodule:: scintillometry.backend.derivations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Iterations module
----------------------------------------
+-----------------
 
 In: scintillometry.backend.iterations.py
 

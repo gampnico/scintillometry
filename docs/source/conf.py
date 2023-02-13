@@ -4,6 +4,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 #
 # pylint: skip-file
+# flake8: noqa: F541
 
 # -- General configuration ---------------------------------------------------
 
@@ -54,7 +55,7 @@ exclude_patterns = []
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
-rst_prolog = f""" # noqa: F541
+rst_prolog = f"""
 .. |K^-1| replace:: K :sup:`-1`
 .. |kg^-1| replace:: kg :sup:`-1`
 .. |m^(7/3)| replace:: m :sup:`7/3`

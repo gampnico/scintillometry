@@ -37,6 +37,7 @@ Subpackages
 
    scintillometry.wrangler
    scintillometry.backend
+   scintillometry.visuals
 
 Module contents
 ---------------

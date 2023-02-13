@@ -20,8 +20,10 @@ Wrangler
 Submodules
 ----------
 
-scintillometry.wrangler.data\_parser module
--------------------------------------------
+Data Parser module
+------------------
+
+In: scintillometry.wrangler.data_parser.py
 
 .. automodule:: scintillometry.wrangler.data_parser
    :members:

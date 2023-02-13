@@ -15,7 +15,20 @@
    =====
 
 Visuals
-==============================
+=======
+
+Submodules
+----------
+
+Plotting module
+---------------
+
+In: scintillometry.visuals.plotting.py
+
+.. automodule:: scintillometry.visuals.plotting
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------
