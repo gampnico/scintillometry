@@ -545,3 +545,58 @@ class TestDataParsingZAMG:
             assert key in compare_merged.columns
         assert not (compare_merged["temperature_2m"].lt(100)).any()
         assert not (compare_merged["pressure"].gt(2000)).any()
+
+
+class TestDataParsingMerge:
+    """Test class for merging dataframes."""
+
+    @pytest.mark.dependency(
+        name="TestDataParsingMerge::test_wrangle_data",
+        depends=[
+            "TestDataParsingTransect::test_parse_transect",
+            "TestDataParsingBLS::test_parse_scintillometer",
+            "TestDataParsingZAMG::test_parse_zamg_data",
+            "TestDataParsingZAMG::test_merge_scintillometry_weather_convert",
+        ],
+        session="module",
+    )
+    @patch("scintillometry.wrangler.data_parser.parse_zamg_data")
+    @patch("scintillometry.wrangler.data_parser.parse_transect")
+    @patch("scintillometry.wrangler.data_parser.parse_scintillometer")
+    def test_wrangle_data(
+        self,
+        parse_scintillometer_mock,
+        parse_transect_mock,
+        parse_zamg_data_mock,
+        conftest_mock_bls_dataframe_tz,
+        conftest_mock_transect_dataframe,
+        conftest_mock_weather_dataframe_tz,
+    ):
+        """Parse BLS and ZAMG datasets."""
+
+        parse_scintillometer_mock.return_value = conftest_mock_bls_dataframe_tz
+        parse_transect_mock.return_value = conftest_mock_transect_dataframe
+        parse_zamg_data_mock.return_value = conftest_mock_weather_dataframe_tz
+
+        compare_dict = scintillometry.wrangler.data_parser.wrangle_data(
+            bls_path="/path/to/bls/file",
+            transect_path="/path/to/transect/file",
+            calibrate=None,
+            weather_dir="/path/to/zamg/directory/",
+            station_id="0000",
+            tzone="CET",
+        )
+
+        assert isinstance(compare_dict, dict)
+
+        assert "timestamp" in compare_dict
+        assert isinstance(compare_dict["timestamp"], pd.Timestamp)
+        assert compare_dict["timestamp"].tz.zone == "CET"
+
+        test_keys = ["bls", "zamg", "interpolated", "transect"]
+        for key in test_keys:
+            assert key in compare_dict
+            assert isinstance(compare_dict[key], pd.DataFrame)
+        for key in test_keys[:-1]:  # time-indexed dataframes only
+            assert ptypes.is_datetime64_any_dtype(compare_dict[key].index)
+            assert compare_dict[key].index[0].tz.zone == "CET"

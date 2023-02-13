@@ -358,3 +358,67 @@ def merge_scintillometry_weather(scint_dataframe, weather_dataframe):
         merged["pressure"] = merged["pressure"] / 100  # Pa -> hPa
 
     return merged
+
+
+def wrangle_data(
+    bls_path,
+    transect_path,
+    calibrate,
+    weather_dir="./ext/data/raw/ZAMG/",
+    station_id="11803",
+    tzone="CET",
+):
+    """Wrangle BLS, ZAMG, and transect datasets.
+
+    Args:
+        bls_path (str): Path to a raw .mnd data file using FORMAT-1.
+        transect_path (str): Path to processed transect. The data must
+            be formatted as <path_height>, <normalised_path_position>.
+            The normalised path position maps to:
+            [0: receiver location, 1: transmitter location].
+        calibrate (list): Contains the incorrect and correct path
+            lengths. Format as [incorrect, correct].
+        weather_dir (str): Path to directory with local weather data.
+            Default "./ext/data/raw/ZAMG/".
+        station_id (str): ZAMG weather station ID (Klima-ID).
+            Default 11803.
+        tzone (str): Local timezone during the scintillometer's
+            operation. Default "CET".
+
+
+    Returns:
+        dict: BLS, ZAMG, and transect dataframes, an interpolated
+        dataframe at 60s resolution containing BLS and ZAMG data, and a
+        pd.TimeStamp object of the scintillometer's recorded start time
+        of data collection. All returned objects are localised to the
+        timezone selected by the user.
+    """
+
+    bls_data = parse_scintillometer(
+        file_path=bls_path,
+        timezone=tzone,
+        calibration=calibrate,
+    )
+    bls_time = bls_data.index[0]
+
+    transect_data = parse_transect(file_path=transect_path)
+
+    zamg_data = parse_zamg_data(
+        timestamp=bls_time,
+        klima_id=station_id,
+        data_dir=weather_dir,
+        timezone=tzone,
+    )
+    interpolated_data = merge_scintillometry_weather(
+        scint_dataframe=bls_data, weather_dataframe=zamg_data
+    )
+
+    data_dict = {
+        "bls": bls_data,
+        "zamg": zamg_data,
+        "transect": transect_data,
+        "interpolated": interpolated_data,
+        "timestamp": bls_time,
+    }
+
+    return data_dict
