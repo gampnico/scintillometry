@@ -42,9 +42,7 @@ class TestBackendDerivations:
 
     test_z_eff = np.float64(25.628)
 
-    @pytest.mark.dependency(
-        name="TestBackendDerivations::test_get_switch_time_error",
-    )
+    @pytest.mark.dependency(name="TestBackendDerivations::test_get_switch_time_error")
     def test_get_switch_time_error(self):
         """Raise error if no data available to calculate switch time."""
 
@@ -72,10 +70,7 @@ class TestBackendDerivations:
         assert isinstance(compare_switch, str)
         assert compare_switch == "02:10"
 
-    @pytest.mark.dependency(
-        name="TestBackendDerivations::test_derive_ct2",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestBackendDerivations::test_derive_ct2")
     def test_derive_ct2(self):
         """Derive CT2 from Cn2, temperature, pressure."""
 
@@ -92,10 +87,7 @@ class TestBackendDerivations:
         assert not compare_ct2["CT2"].isnull().values.any()
         assert compare_ct2["CT2"].gt(compare_ct2["Cn2"]).values.any()
 
-    @pytest.mark.dependency(
-        name="TestBackendDerivations::test_kinematic_shf",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestBackendDerivations::test_kinematic_shf")
     def test_kinematic_shf(self):
         """Compute kinematic SHF."""
 
@@ -113,10 +105,7 @@ class TestBackendDerivations:
         )
         assert not compare_kshf["Q_0"].isnull().values.any()
 
-    @pytest.mark.dependency(
-        name="TestBackendDerivations::test_free_convection_shf",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestBackendDerivations::test_free_convection_shf")
     def test_free_convection_shf(self):
         """Compute surface SHF with free convection."""
 
@@ -143,7 +132,7 @@ class TestBackendDerivations:
             "TestBackendDerivations::test_kinematic_shf",
             "TestBackendDerivations::test_free_convection_shf",
         ],
-        scope="session",
+        scope="class",
     )
     @pytest.mark.parametrize("arg_beam_params", [None, (850, 20)])
     def test_compute_fluxes(self, arg_beam_params):

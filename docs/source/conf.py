@@ -31,7 +31,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.9.a3"
+release = "0.10.a1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -54,8 +54,7 @@ exclude_patterns = []
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
-
-rst_prolog = f"""
+rst_prolog = f""" # noqa: F541
 .. |K^-1| replace:: K :sup:`-1`
 .. |kg^-1| replace:: kg :sup:`-1`
 .. |m^(7/3)| replace:: m :sup:`7/3`

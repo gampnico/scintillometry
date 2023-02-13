@@ -27,10 +27,7 @@ import scintillometry.backend.transects
 class TestTransects:
     """Test class for path weighting functions."""
 
-    @pytest.mark.dependency(
-        name="TestTransects::test_bessel_second",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestTransects::test_bessel_second")
     @pytest.mark.parametrize("arg_x", [0.5, 0.0, 0.8, 1])
     def test_bessel_second(self, arg_x):
         """Calculate Bessel function for path position."""
@@ -58,10 +55,7 @@ class TestTransects:
         assert all(isinstance(weight, float) for weight in test_weights)
         assert len(test_weights) == 10
 
-    @pytest.mark.dependency(
-        name="TestTransects::test_define_stability_not_implemented",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestTransects::test_define_stability_not_implemented")
     def test_define_stability_not_implemented(self):
         """Raise error for invalid stability conditions."""
 
@@ -165,6 +159,7 @@ class TestTransects:
             assert isinstance(value[1], np.floating)
             assert value[1] > value[0]  # for this test case
 
+    @pytest.mark.dependency(name="TestTransects::test_print_z_parameters")
     @pytest.mark.parametrize("arg_stability", ["stable", None])
     def test_print_z_parameters(self, capsys, arg_stability):
         """Print effective and mean path height."""

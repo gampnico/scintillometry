@@ -25,7 +25,7 @@ import scintillometry.backend.constants
 class TestBackendConstants:
     """Test class for AtmosConstants class."""
 
-    @pytest.mark.dependency(name="TestBackendConstants::test_init", scope="session")
+    @pytest.mark.dependency(name="TestBackendConstants::test_constants_init")
     def test_constants_init(self):
         test_class = scintillometry.backend.constants.AtmosConstants()
         attributes_dict = test_class.__dict__
@@ -36,7 +36,11 @@ class TestBackendConstants:
                     isinstance(value, (float, list)) for value in constant.values()
                 )
 
-    @pytest.mark.dependency(name="TestBackendConstants::test_get_error")
+    @pytest.mark.dependency(
+        name="TestBackendConstants::test_get_error",
+        depends=["TestBackendConstants::test_constants_init"],
+        scope="class",
+    )
     def test_get_error(self):
         """Raise AttributeError for missing attribute."""
 
@@ -49,7 +53,11 @@ class TestBackendConstants:
 
     @pytest.mark.dependency(
         name="TestBackendConstants::test_get",
-        depends=["TestBackendConstants::test_get_error"],
+        depends=[
+            "TestBackendConstants::test_constants_init",
+            "TestBackendConstants::test_get_error",
+        ],
+        scope="class",
     )
     def test_get(self):
         """Get attribute value."""
@@ -61,6 +69,11 @@ class TestBackendConstants:
         assert isinstance(compare_attribute, float)
         assert compare_attribute == pytest.approx(test_attribute[1])
 
+    @pytest.mark.dependency(
+        name="TestBackendConstants::test_overwrite",
+        depends=["TestBackendConstants::test_constants_init"],
+        scope="class",
+    )
     @pytest.mark.parametrize("arg_value", [-0.4, 0.5, 1])
     def test_overwrite(self, arg_value):
         """Overwrite attribute value."""

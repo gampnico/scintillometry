@@ -43,7 +43,7 @@ class TestBackendIterationMost:
 
     @pytest.mark.dependency(
         name="TestBackendIterationMost::test_most_iteration_init",
-        depends=["TestBackendConstants::test_init"],
+        depends=["TestBackendConstants::test_constants_init"],
         scope="session",
     )
     def test_most_iteration_init(self):
@@ -55,8 +55,7 @@ class TestBackendIterationMost:
         )
 
     @pytest.mark.dependency(
-        name="TestBackendIterationMost::test_momentum_stability_unstable",
-        scope="class",
+        name="TestBackendIterationMost::test_momentum_stability_unstable"
     )
     def test_momentum_stability_unstable(self):
         """Compute ISF for momentum, unstable conditions."""
@@ -67,8 +66,7 @@ class TestBackendIterationMost:
         assert test_momentum == pytest.approx(0.2836137)
 
     @pytest.mark.dependency(
-        name="TestBackendIterationMost::test_momentum_stability_stable",
-        scope="class",
+        name="TestBackendIterationMost::test_momentum_stability_stable"
     )
     def test_momentum_stability_stable(self):
         """Compute ISF for momentum, stable conditions."""
@@ -101,8 +99,7 @@ class TestBackendIterationMost:
             assert test_momentum < 0
 
     @pytest.mark.dependency(
-        name="TestBackendIterationMost::test_get_most_coefficients_error",
-        scope="class",
+        name="TestBackendIterationMost::test_get_most_coefficients_error"
     )
     def test_get_most_coefficients_error(self):
         """Raise errors for non-implemented MOST coefficients."""
@@ -137,10 +134,7 @@ class TestBackendIterationMost:
             assert all(isinstance(coeff, float) for coeff in coeffs)
         assert compare_coeffs == self.test_coeffs
 
-    @pytest.mark.dependency(
-        name="TestBackendIterationMost::test_similarity_function",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestBackendIterationMost::test_similarity_function")
     @pytest.mark.parametrize("arg_obukhov", [(-100, False), (0, True), (100, True)])
     def test_similarity_function(self, arg_obukhov):
         """Compute similarity function."""
@@ -152,10 +146,7 @@ class TestBackendIterationMost:
         assert isinstance(test_f_ct2, float)
         assert test_f_ct2 > 0
 
-    @pytest.mark.dependency(
-        name="TestBackendIterationMost::test_calc_theta_star",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestBackendIterationMost::test_calc_theta_star")
     @pytest.mark.parametrize("arg_params", [(1.9e-04, 5.6, True), (2e-03, 3.6, False)])
     def test_calc_theta_star(self, arg_params):
         """Calculate temperature scale."""
@@ -185,10 +176,7 @@ class TestBackendIterationMost:
         assert isinstance(test_velocity, mpmath.mpf)
         assert test_velocity > 0
 
-    @pytest.mark.dependency(
-        name="TestBackendIterationMost::test_calc_obukhov_length",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestBackendIterationMost::test_calc_obukhov_length")
     @pytest.mark.parametrize("arg_theta", [0.05, -0.05])
     def test_calc_obukhov_length(self, arg_theta):
         """Calculate Obukhov length."""
@@ -199,10 +187,7 @@ class TestBackendIterationMost:
         assert isinstance(compare_lob, mpmath.mpf)
         assert (compare_lob < 0) == (arg_theta < 0)  # obukhov and theta have same sign
 
-    @pytest.mark.dependency(
-        name="TestBackendIterationMost::test_check_signs",
-        scope="class",
-    )
+    @pytest.mark.dependency(name="TestBackendIterationMost::test_check_signs")
     @pytest.mark.filterwarnings("error")
     @pytest.mark.parametrize("arg_shf", [-150, 0, 150])
     @pytest.mark.parametrize("arg_obukhov", [-100, 0, 100])
@@ -229,6 +214,7 @@ class TestBackendIterationMost:
     @pytest.mark.dependency(
         name="TestBackendIterationMost::test_most_iteration",
         depends=[
+            "TestBackendIterationMost::test_most_iteration_init",
             "TestBackendIterationMost::test_similarity_function",
             "TestBackendIterationMost::test_calc_u_star",
             "TestBackendIterationMost::test_calc_theta_star",
@@ -238,10 +224,10 @@ class TestBackendIterationMost:
         scope="class",
     )
     @pytest.mark.parametrize("arg_stable", [(200, True), (-100, False)])
-    def test_most_iteration(self, conftest_create_test_merged, arg_stable):
+    def test_most_iteration(self, conftest_mock_merged_dataframe, arg_stable):
         """Iterate single row of dataframe using MOST."""
 
-        test_data = conftest_create_test_merged.merged_dataframe.iloc[0].copy(deep=True)
+        test_data = conftest_mock_merged_dataframe.iloc[0].copy(deep=True)
         test_data["obukhov"] = arg_stable[0]  # initial Obukhov Length
 
         compare_most = self.test_class.most_iteration(
@@ -270,10 +256,10 @@ class TestBackendIterationMost:
         scope="class",
     )
     @pytest.mark.parametrize("arg_stable", [(200, True), (-100, False)])
-    def test_most_iteration_nan(self, conftest_create_test_merged, arg_stable):
+    def test_most_iteration_nan(self, conftest_mock_merged_dataframe, arg_stable):
         """Iterate single row of dataframe using MOST with NaNs."""
 
-        test_data = conftest_create_test_merged.merged_dataframe.iloc[0].copy(deep=True)
+        test_data = conftest_mock_merged_dataframe.iloc[0].copy(deep=True)
         test_data["CT2"] = np.nan
         test_data["obukhov"] = arg_stable[0]  # initial Obukhov Length
 
@@ -302,10 +288,10 @@ class TestBackendIterationMost:
         scope="class",
     )
     @pytest.mark.parametrize("arg_stable", [["stable", True], ["unstable", False]])
-    def test_most_method(self, capsys, conftest_create_test_merged, arg_stable):
+    def test_most_method(self, capsys, conftest_mock_merged_dataframe, arg_stable):
         """Calculate Obukhov length and sensible heat fluxes."""
 
-        test_data = conftest_create_test_merged.merged_dataframe
+        test_data = conftest_mock_merged_dataframe
 
         compare_most = self.test_class.most_method(
             dataframe=test_data, eff_h=30, stability=arg_stable[0], coeff_id="an1988"
