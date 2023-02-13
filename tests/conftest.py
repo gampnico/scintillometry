@@ -19,6 +19,7 @@ Provides shared fixtures for tests.
 
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -30,6 +31,15 @@ def conftest_mock_check_file_exists():
     patcher = patch("os.path.exists")
     mock_exists = patcher.start()
     mock_exists.return_value = True
+
+
+@pytest.fixture(scope="function", autouse=False)
+def conftest_mock_save_figure():
+    """Stops figure being saved to disk."""
+
+    patcher = patch("scintillometry.visuals.plotting.save_figure")
+    mock_exists = patcher.start()
+    mock_exists.return_value = None
 
 
 @pytest.fixture(name="conftest_mnd_lines", scope="function", autouse=False)
@@ -243,9 +253,9 @@ def conftest_mock_iterated_dataframe():
     yield dataframe
 
 
-@pytest.fixture(scope="function", autouse=False)  # otherwise gets overwritten
-def conftest_mock_innflux_dataframe():
-    """Constructs mock dataframe with BLS and weather data."""
+@pytest.fixture(name="conftest_mock_innflux_dataframe", scope="function", autouse=False)
+def fixture_conftest_mock_innflux_dataframe():
+    """Constructs mock dataframe with raw InnFLUX data."""
 
     data = {
         "year": [2020, 2020],
@@ -260,5 +270,25 @@ def conftest_mock_innflux_dataframe():
     }
 
     dataframe = pd.DataFrame.from_dict(data)
+
+    yield dataframe
+
+
+@pytest.fixture(
+    name="conftest_mock_innflux_dataframe_tz", scope="function", autouse=False
+)
+def fixture_conftest_mock_innflux_dataframe_tz(conftest_mock_innflux_dataframe):
+    """Constructs mock dataframe with parsed InnFLUX data."""
+
+    dataframe = conftest_mock_innflux_dataframe.copy(deep=True)
+
+    t_cols = ["year", "month", "day", "hour", "minute", "second"]
+    dataframe.index = pd.to_datetime(dataframe[t_cols])
+    dataframe.index = dataframe.index + pd.DateOffset(hours=3)
+
+    dataframe = dataframe.drop(t_cols, axis=1)
+    dataframe = dataframe.replace(-999, np.nan)
+    dataframe = dataframe.fillna(method="ffill")
+    dataframe = dataframe.tz_localize("CET")
 
     yield dataframe
