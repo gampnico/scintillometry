@@ -161,3 +161,95 @@ def save_figure(
         suffix = f"_{suffix}"
 
     figure.savefig(fname=f"{output_dir}{plot_id}{suffix}.{img_format}")
+
+
+def setup_plot_data(df, names=None):
+    """Sets up data for plotting.
+
+    Args:
+        df (pd.DataFrame): Dataframe to plot.
+        names (list): Names of dependent variables.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, dict]: Deep copy of original
+        data, hourly mean of data, and dictionary with date and
+        timestamp metadata.
+    """
+
+    dataframe = df.copy(deep=True)  # don't overwrite outer scope
+    dataframe = dataframe.astype("float64", errors="ignore")
+    date_timezone = get_date_and_timezone(data=dataframe)
+    hourly_mean = dataframe.dropna().resample("H", origin="start_day").mean()
+
+    if names:
+        for key in names:
+            hourly_mean[key] = dataframe[key].resample("H", origin="start_day").mean()
+    hourly_mean.tz_convert(date_timezone["tzone"])
+
+    return dataframe, hourly_mean, date_timezone
+
+
+def plot_time_series(
+    series_data, series_mean=None, name="Time Series", line_colour="black", grey=False
+):
+    """Plots time series and mean.
+
+    Args:
+        series_data (pd.Series): Series with data to plot.
+        series_mean (pd.Series): Series with mean data to plot.
+            Default None.
+        name (str): Time series label. Default empty string.
+        line_colour (str): Line colour. Default "black".
+        grey (bool): If True, time series is greyed out. Default False.
+    """
+
+    if grey:
+        series_data.plot(color="grey", label=name, x_compat=True)
+    else:
+        series_data.plot(color=line_colour, label=name, x_compat=True)
+
+    if series_mean is not None:
+        if name and name != "Time Series":
+            mean_label = f"{name}, Hourly Mean"
+        else:
+            mean_label = "Hourly Mean"
+        series_mean.plot(
+            label=f"{mean_label}",
+            color=line_colour,
+            linestyle="dashed",
+            x_compat=True,
+        )
+
+
+def plot_generic(dataframe, name, site=""):
+    """Plots time series of variable with hourly mean.
+
+    Args:
+        dataframe (pd.DataFrame): Contains data for times series.
+        name (str): Name of dependent variable, must be key in
+            dataframe.
+        site (str): Location of data collection. Default empty string.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes]: Figure and axes of time series
+        plot.
+    """
+
+    plot_data, plot_mean, date_tzone = setup_plot_data(df=dataframe, names=[name])
+
+    fig = plt.figure(figsize=(26, 6))
+    plot_time_series(
+        series_data=plot_data[name],
+        series_mean=plot_mean[name],
+        line_colour="black",
+        name="Time Series",
+        grey=True,
+    )
+
+    title_name = label_selector(name)
+    title_string = f"{title_name[0]}"
+    title_plot(title=title_string, timestamp=date_tzone["date"], location=site)
+    axes = plt.gca()
+    set_xy_labels(ax=axes, timezone=date_tzone["tzone"], name=name)
+
+    return fig, axes

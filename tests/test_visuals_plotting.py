@@ -24,6 +24,7 @@ plots remain open in memory.
 import datetime
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import pytest
 import pytz
 
@@ -120,4 +121,107 @@ class TestVisualsFormatting:
             assert compare_name == arg_name.title()
         else:
             assert compare_name == r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]"
+        plt.close()
+
+
+class TestVisualsPlotting:
+    """Tests time series plots."""
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_setup_plot_data",
+        depends=["TestVisualsFormatting::test_get_date_and_timezone"],
+        scope="module",
+    )
+    @pytest.mark.parametrize("arg_names", [["H_convection"], None])
+    def test_setup_plot_data(self, conftest_mock_bls_dataframe_tz, arg_names):
+        """Setup data for plotting."""
+
+        test_data = conftest_mock_bls_dataframe_tz
+        assert conftest_mock_bls_dataframe_tz.index.tz.zone == "CET"
+
+        (
+            compare_data,
+            compare_mean,
+            compare_time,
+        ) = scintillometry.visuals.plotting.setup_plot_data(
+            df=test_data, names=arg_names
+        )
+
+        for dataframe in [compare_data, compare_mean]:
+            assert isinstance(dataframe, pd.DataFrame)
+            assert dataframe.index.tz.zone == "CET"
+            if arg_names:
+                assert all(name in dataframe.columns for name in arg_names)
+
+        assert isinstance(compare_time, dict)
+
+    @pytest.mark.dependency(name="TestVisualsPlotting::test_plot_time_series")
+    @pytest.mark.parametrize("arg_name", ["Time Series", "", "CT2"])
+    @pytest.mark.parametrize("arg_colour", ["black", "red"])
+    @pytest.mark.parametrize("arg_mean", [True, False])
+    @pytest.mark.parametrize("arg_grey", [True, False])
+    def test_plot_time_series(
+        self, conftest_mock_bls_dataframe_tz, arg_name, arg_mean, arg_colour, arg_grey
+    ):
+        """Plot time series and mean."""
+
+        test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
+        if arg_mean:
+            test_mean = test_data.dropna().resample("H", origin="start_day").mean()
+            test_mean["CT2"] = (
+                test_data["CT2"].dropna().resample("H", origin="start_day").mean()
+            )
+
+        else:
+            test_mean = None
+        test_fig = plt.figure(figsize=(6, 6))
+        assert isinstance(test_fig, plt.Figure)
+        scintillometry.visuals.plotting.plot_time_series(
+            series_data=test_data["CT2"],
+            series_mean=test_mean,
+            name=arg_name,
+            line_colour=arg_colour,
+            grey=arg_grey,
+        )
+        plt.legend()
+        compare_axes = test_fig.get_axes()
+        for ax in compare_axes:
+            assert ax.xaxis.label.get_text() == "time"
+            compare_legend = ax.get_legend()
+            for line in ax.get_lines():
+                if not arg_grey:
+                    assert line.get_color() == arg_colour
+                else:
+                    assert line.get_color() == "grey"
+                if compare_legend and arg_name:
+                    compare_idx = ax.get_lines().index(line)
+                    assert compare_idx == 0
+                    assert compare_legend.texts[0].get_text() == arg_name
+
+        plt.close()  # otherwise the plots are kept in memory
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_generic",
+        depends=[
+            "TestVisualsFormatting::test_title_plot",
+            "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsPlotting::test_setup_plot_data",
+            "TestVisualsPlotting::test_plot_time_series",
+        ],
+        scope="module",
+    )
+    def test_plot_generic(self, conftest_mock_bls_dataframe_tz):
+        """Plot time series of variable."""
+
+        test_data = conftest_mock_bls_dataframe_tz
+
+        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_generic(
+            dataframe=test_data, name="pressure", site="Test"
+        )
+
+        assert isinstance(compare_fig, plt.Figure)
+        assert isinstance(compare_ax, plt.Axes)
+        assert compare_ax.xaxis.label.get_text() == "Time, CET"
+        assert compare_ax.yaxis.label.get_text() == "Pressure, [mbar]"
+        assert compare_ax.get_title() == "Pressure at Test, 03 June 2020"
         plt.close()
