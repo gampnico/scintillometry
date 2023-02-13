@@ -357,3 +357,52 @@ class TestVisualsPlotting:
         )
         assert compare_ax.get_title() == "".join(test_title)
         plt.close()
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_innflux",
+        depends=[
+            "TestVisualsFormatting::test_label_selector",
+            "TestVisualsFormatting::test_title_plot",
+            "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsPlotting::test_setup_plot_data",
+        ],
+        scope="module",
+    )
+    @pytest.mark.parametrize("arg_name", ["obukhov", "shf"])
+    @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
+    def test_plot_innflux(
+        self,
+        conftest_mock_iterated_dataframe,
+        conftest_mock_innflux_dataframe_tz,
+        arg_name,
+        arg_site,
+    ):
+        """Plots comparison with InnFLUX data."""
+
+        test_iterated = conftest_mock_iterated_dataframe
+        test_innflux = conftest_mock_innflux_dataframe_tz
+
+        if arg_site:
+            test_site = f" at {arg_site}"
+        else:
+            test_site = ""
+        if arg_name == "obukhov":
+            test_name = "Obukhov Length"
+        else:
+            test_name = "Sensible Heat Flux"
+
+        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_innflux(
+            iter_data=test_iterated,
+            innflux_data=test_innflux,
+            name=arg_name,
+            site=arg_site,
+        )
+
+        assert isinstance(compare_fig, plt.Figure)
+        assert isinstance(compare_ax, plt.Axes)
+
+        test_title = (
+            f"{test_name} from Scintillometer and InnFLUX{test_site}, 03 June 2020"
+        )
+        assert compare_ax.get_title() == test_title
+        plt.close()

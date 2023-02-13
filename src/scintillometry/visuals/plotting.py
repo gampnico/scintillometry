@@ -382,3 +382,43 @@ def plot_iterated_fluxes(bls_data, iteration_data, time_id, location=""):
     save_figure(figure=fig_comp, timestamp=time_id, suffix="shf_comp")
 
     return fig_shf, fig_comp
+
+
+def plot_innflux(iter_data, innflux_data, name="obukhov", site=""):
+    """Plots comparison with InnFLUX data.
+
+    Args:
+        iter_data (pd.DataFrame): Iterated data from scintillometer.
+        innflux_data (pd.DataFrame): InnFLUX data.
+        name (str): Name of dependent variable, must be key in
+            dataframe.
+        site (str): Location of data collection. Default empty string.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes]: Figure and axes of time series
+        plot.
+    """
+
+    iter_data, _, iter_tzone = setup_plot_data(df=iter_data, names=[name])
+    iter_mean = iter_data.dropna().resample("15T", origin="start_day").mean()
+    iter_mean[name] = (
+        iter_data[name].dropna().resample("15T", origin="start_day").mean()
+    )
+    inn_data, _, _ = setup_plot_data(df=innflux_data, names=[name])
+
+    fig = plt.figure(figsize=(26, 8))
+    iter_data[name].plot(color="grey", label="Scintillometer")
+    iter_mean[name].plot(
+        color="black", linestyle="dashed", label="Scintillometer, half-hourly mean"
+    )
+    inn_data[name].plot(
+        color="red", linestyle="dashed", label="InnFLUX, half-hourly mean"
+    )
+
+    title_name = label_selector(name)
+    title_string = f"{title_name[0]} from Scintillometer and InnFLUX"
+    title_plot(title=title_string, timestamp=iter_tzone["date"], location=site)
+    axes = plt.gca()
+    set_xy_labels(ax=axes, timezone=iter_tzone["tzone"], name=name)
+
+    return fig, axes
