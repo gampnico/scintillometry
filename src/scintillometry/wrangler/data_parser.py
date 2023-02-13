@@ -21,7 +21,6 @@ import io
 import os
 import re
 
-import numpy as np
 import pandas as pd
 
 from scintillometry.backend.constants import AtmosConstants
@@ -49,9 +48,6 @@ def file_handler(filename):
 
     Returns:
         list: List of lines read from file.
-
-    Raises:
-        FileNotFoundError: No file found with path: <filename>.
     """
 
     check_file_exists(fname=filename)
@@ -87,10 +83,15 @@ def parse_mnd_lines(line_list):
     data_start_line = variables_start_line + variable_number + 1
 
     # fmt: off
-    header_parameters = [
-        line.strip() for line in line_list[5: (variables_start_line - 1)]
-    ]
+    raw_headers = []
+    for line in line_list[5: (variables_start_line - 1)]:
+        raw_headers.append(" ".join(line.strip().split()))
     # fmt: on
+
+    header_parameters = {}
+    for param in raw_headers:
+        key, _, value = param.partition(": ")
+        header_parameters[key] = value
 
     reg_match = r"\#(.+?)\#"  # find variable abbreviations in second column
     variable_names = []
@@ -211,7 +212,7 @@ def parse_scintillometer(file_path, timezone=None, calibration=None):
     )
 
     # Parse mixed-format timestamp
-    if "PT" in dataframe["time"][0]:
+    if "PT" in str(dataframe["time"][0]):
         dataframe["iso_duration"] = dataframe["time"].apply(parse_iso_date, date=False)
         dataframe["iso_duration"] = pd.to_timedelta(dataframe["iso_duration"])
         dataframe["time"] = dataframe["time"].apply(parse_iso_date, date=True)
@@ -221,6 +222,10 @@ def parse_scintillometer(file_path, timezone=None, calibration=None):
     if calibration:
         dataframe = calibrate_data(data=dataframe, path_lengths=calibration)
 
+    if "Station Code" in mnd_data["parameters"]:
+        caption = mnd_data["parameters"]["Station Code"]
+        dataframe.attrs["name"] = caption  # attrs is experimental
+
     return dataframe
 
 
@@ -228,9 +233,9 @@ def parse_transect(file_path):
     """Parses scintillometer path transect.
 
     Args:
-        file_path (str): Path to processed transect, formatted as
-            <path_height>, <normalised_path_position>. The normalised
-            path position maps to:
+        file_path (str): Path to processed transect. The data must be
+            formatted as <path_height>, <normalised_path_position>. The
+            normalised path position maps to:
             [0: receiver location, 1: transmitter location].
 
     Returns:
@@ -254,13 +259,13 @@ def parse_transect(file_path):
 
 
 def parse_zamg_data(
-    timestamp, station_id, data_dir="./ext/data/raw/ZAMG/", timezone=None
+    timestamp, klima_id, data_dir="./ext/data/raw/ZAMG/", timezone=None
 ):
     """Parses ZAMG climate records.
 
     Args:
         timestamp (pd.Timestamp): Start time of climate record.
-        station_id (int): ZAMG weather station ID (Klima-ID).
+        klima_id (str): ZAMG weather station ID (Klima-ID).
         data_dir (str): Location of ZAMG data files.
         timezone (str): Local timezone during the scintillometer's
             operation. Default None.
@@ -270,18 +275,18 @@ def parse_zamg_data(
     """
 
     date = timestamp.strftime("%Y%m%d")
-    file_name = (
-        f"{data_dir}{str(station_id)}_ZEHNMIN Datensatz_{date}T0000_{date}T2350.csv"
-    )
+    file_name = f"{data_dir}{klima_id}_ZEHNMIN Datensatz_{date}T0000_{date}T2350.csv"
     check_file_exists(file_name)
 
-    zamg_data = pd.read_csv(file_name, sep=",")
+    zamg_data = pd.read_csv(file_name, sep=",", dtype={"station": str})
     zamg_data = convert_time_index(data=zamg_data, tzone=timezone)
+    station_id = zamg_data["station"][0]
 
     # resample to 60s intervals
     oidx = zamg_data.index
     nidx = pd.date_range(oidx.min(), oidx.max(), freq="60s")
     zamg_data = zamg_data.reindex(oidx.union(nidx)).interpolate("index").reindex(nidx)
+    zamg_data["station"] = station_id  # str objects were converted to NaN
 
     zamg_names = {
         "DD": "wind_direction",
@@ -340,18 +345,16 @@ def merge_scintillometry_weather(scint_dataframe, weather_dataframe):
 
     Returns:
         pd.DataFrame: Merged dataframe containing both scintillometry
-            data, and interpolated weather conditions.
-
-    .. |Cn2| replace:: C :sub:`n`:sup:`2`
+        data, and interpolated weather conditions.
     """
 
     merged = scint_dataframe.filter(["Cn2", "H_convection"], axis=1)
     merged = merged.join(weather_dataframe)
 
     # adjust units
-    if (weather_dataframe["temperature_2m"] < 100).any():  # if True data in Celsius
+    if (weather_dataframe["temperature_2m"].lt(100)).any():  # if True data in Celsius
         merged["temperature_2m"] = merged["temperature_2m"] + AtmosConstants().kelvin
-    elif (weather_dataframe["pressure"] > 2000).any():  # if True data in Pa
+    if (weather_dataframe["pressure"].gt(2000)).any():  # if True data in Pa
         merged["pressure"] = merged["pressure"] / 100  # Pa -> hPa
 
     return merged
