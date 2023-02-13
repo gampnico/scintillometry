@@ -21,6 +21,7 @@ import io
 import os
 import re
 
+import numpy as np
 import pandas as pd
 
 from scintillometry.backend.constants import AtmosConstants
@@ -422,3 +423,56 @@ def wrangle_data(
     }
 
     return data_dict
+
+
+def parse_innflux(timestamp, data_dir="./ext/data/raw/InnFLUX/", tzone=None):
+    """Parses InnFLUX data.
+
+    Args:
+        timestamp (pd.Timestamp): Start time of scintillometer data
+            collection.
+        data_dir (str): Location of InnFLUX data files.
+        tzone (str): Local timezone during the scintillometer's
+            operation. Default None.
+
+    Returns:
+        pd.DataFrame: Parsed and localised InnFLUX data.
+    """
+
+    date = timestamp.strftime("%Y%m%d")
+    file_name = f"{data_dir}{date}_innflux.csv"
+    check_file_exists(file_name)
+
+    header_list = [
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minute",
+        "second",
+        "shf",
+        "wind_speed",
+        "obukhov",
+    ]
+    dataframe = pd.read_csv(
+        file_name, header=None, skiprows=1, index_col=None, names=header_list, sep=","
+    )
+
+    t_cols = ["year", "month", "day", "hour", "minute", "second"]
+    dataframe.index = pd.to_datetime(dataframe[t_cols])
+    dataframe.index = dataframe.index + pd.DateOffset(hours=3)
+
+    dataframe = dataframe.drop(t_cols, axis=1)
+    dataframe = dataframe.replace(-999, np.nan)
+    dataframe = dataframe.fillna(method="ffill")
+
+    oidx = dataframe.index
+    nidx = pd.date_range(oidx.min(), oidx.max(), freq="60s")
+    dataframe = dataframe.reindex(oidx.union(nidx)).interpolate("index").reindex(nidx)
+
+    if tzone:
+        dataframe = dataframe.tz_localize(tzone)
+    else:
+        dataframe = dataframe.tz_localize("UTC")
+
+    return dataframe
