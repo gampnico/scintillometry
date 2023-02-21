@@ -54,6 +54,32 @@ class TestBackendIterationMost:
             scintillometry.backend.constants.AtmosConstants,
         )
 
+    @pytest.mark.dependency(name="TestBackendIterationMost::test_get_switch_time_error")
+    def test_get_switch_time_error(self, conftest_mock_derived_dataframe):
+        """Raise error if no data available to calculate switch time."""
+
+        test_error = conftest_mock_derived_dataframe[["CT2", "temperature_2m"]]
+        with pytest.raises(
+            KeyError, match="No data to calculate switch time. Set manually."
+        ):
+            test_most_iteration = scintillometry.backend.iterations.IterationMost()
+            test_most_iteration.get_switch_time(dataframe=test_error, local_time=None)
+
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_get_switch_time",
+        depends=["TestBackendIterationMost::test_get_switch_time_error"],
+    )
+    @pytest.mark.parametrize("arg_local_time", ["05:20", None])
+    def test_get_switch_time(self, conftest_mock_derived_dataframe, arg_local_time):
+        """Get time where stability conditions change."""
+
+        test_most_iteration = scintillometry.backend.iterations.IterationMost()
+        compare_switch = test_most_iteration.get_switch_time(
+            dataframe=conftest_mock_derived_dataframe, local_time=arg_local_time
+        )
+        assert isinstance(compare_switch, str)
+        assert compare_switch == "05:20"
+
     @pytest.mark.dependency(
         name="TestBackendIterationMost::test_momentum_stability_unstable"
     )

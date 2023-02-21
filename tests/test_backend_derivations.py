@@ -42,34 +42,6 @@ class TestBackendDerivations:
 
     test_z_eff = np.float64(25.628)
 
-    @pytest.mark.dependency(name="TestBackendDerivations::test_get_switch_time_error")
-    def test_get_switch_time_error(self):
-        """Raise error if no data available to calculate switch time."""
-
-        test_switch = self.test_frame[["temperature_2m", "pressure"]].copy()
-        with pytest.raises(
-            KeyError, match="No data to calculate switch time. Set manually."
-        ):
-            scintillometry.backend.derivations.get_switch_time(
-                dataframe=test_switch, local_time=None
-            )
-
-    @pytest.mark.dependency(
-        name="TestBackendDerivations::test_get_switch_time",
-        depends=["TestBackendDerivations::test_get_switch_time_error"],
-    )
-    @pytest.mark.parametrize("arg_local_time", ["02:10", None])
-    def test_get_switch_time(self, arg_local_time):
-        """Get time where stability conditions change."""
-
-        test_switch = self.test_frame[["temperature_2m", "pressure"]].copy()
-        test_switch["global_irradiance"] = 23.0
-        compare_switch = scintillometry.backend.derivations.get_switch_time(
-            dataframe=test_switch, local_time=arg_local_time
-        )
-        assert isinstance(compare_switch, str)
-        assert compare_switch == "02:10"
-
     @pytest.mark.dependency(name="TestBackendDerivations::test_derive_ct2")
     def test_derive_ct2(self):
         """Derive CT2 from Cn2, temperature, pressure."""

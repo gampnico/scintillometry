@@ -70,6 +70,41 @@ class IterationMost(AtmosConstants):
         mpmath.pretty = True
         self.constants = AtmosConstants()
 
+    def get_switch_time(self, dataframe, local_time=None):
+        """Gets local time of switch between stability conditions.
+
+        This should be determined in order of priority::
+            * potential temperature profile (NotImplemented)
+            * eddy covariance methods (NotImplemented)
+            * global irradiance (i.e. sunrise)
+
+        Args:
+            dataframe (pd.DataFrame): Parsed and localised data,
+                containing data to construct a potential temperature
+                profile, or eddy covariance data, or pressure and
+                temperature.
+            local_time (str): Local time of switch between stability
+                conditions. Overrides calculations from <dataframe>.
+
+        Returns:
+            str: Local time of switch between stability conditions.
+
+        Raises:
+            KeyError: No data to calculate switch time. Set manually.
+        """
+
+        if not local_time:
+            # potential temperature profile
+            # eddy covariance
+
+            if "global_irradiance" in dataframe.keys():  # ~sunrise
+                local_time = dataframe[dataframe["global_irradiance"] > 20].index[0]
+                local_time = local_time.strftime("%H:%M")
+            else:
+                raise KeyError("No data to calculate switch time. Set manually.")
+
+        return local_time
+
     def momentum_stability_unstable(self, obukhov, z):
         """Integrated stability function for momentum, unstable.
 
