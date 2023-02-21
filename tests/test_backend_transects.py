@@ -24,10 +24,10 @@ import pytest
 import scintillometry.backend.transects
 
 
-class TestTransects:
+class TestBackendTransects:
     """Test class for path weighting functions."""
 
-    @pytest.mark.dependency(name="TestTransects::test_bessel_second")
+    @pytest.mark.dependency(name="TestBackendTransects::test_bessel_second")
     @pytest.mark.parametrize("arg_x", [0.5, 0.0, 0.8, 1])
     def test_bessel_second(self, arg_x):
         """Calculate Bessel function for path position."""
@@ -40,8 +40,8 @@ class TestTransects:
             assert isinstance(test_y, float)
 
     @pytest.mark.dependency(
-        name="TestTransects::test_path_weighting",
-        depends=["TestTransects::test_bessel_second"],
+        name="TestBackendTransects::test_path_weighting",
+        depends=["TestBackendTransects::test_bessel_second"],
         scope="class",
     )
     def test_path_weighting(self):
@@ -55,7 +55,9 @@ class TestTransects:
         assert all(isinstance(weight, float) for weight in test_weights)
         assert len(test_weights) == 10
 
-    @pytest.mark.dependency(name="TestTransects::test_define_stability_not_implemented")
+    @pytest.mark.dependency(
+        name="TestBackendTransects::test_define_stability_not_implemented"
+    )
     def test_define_stability_not_implemented(self):
         """Raise error for invalid stability conditions."""
 
@@ -67,8 +69,8 @@ class TestTransects:
             )
 
     @pytest.mark.dependency(
-        name="TestTransects::test_define_stability",
-        depends=["TestTransects::test_define_stability_not_implemented"],
+        name="TestBackendTransects::test_define_stability",
+        depends=["TestBackendTransects::test_define_stability_not_implemented"],
         scope="class",
     )
     @pytest.mark.parametrize("arg_stability", ["stable", "unstable", None])
@@ -86,10 +88,10 @@ class TestTransects:
             assert test_b == 1
 
     @pytest.mark.dependency(
-        name="TestTransects::test_compute_effective_z",
+        name="TestBackendTransects::test_compute_effective_z",
         depends=[
-            "TestTransects::test_path_weighting",
-            "TestTransects::test_define_stability",
+            "TestBackendTransects::test_path_weighting",
+            "TestBackendTransects::test_define_stability",
         ],
         scope="class",
     )
@@ -109,8 +111,8 @@ class TestTransects:
         assert isinstance(test_z_eff, float)
 
     @pytest.mark.dependency(
-        name="TestTransects::test_get_z_parameters",
-        depends=["TestTransects::test_compute_effective_z"],
+        name="TestBackendTransects::test_get_z_parameters",
+        depends=["TestBackendTransects::test_compute_effective_z"],
         scope="class",
     )
     def test_get_z_parameters(self):
@@ -132,8 +134,8 @@ class TestTransects:
         assert test_mean == pytest.approx(np.mean(test_transect["path_height"]))
 
     @pytest.mark.dependency(
-        name="TestTransects::test_get_all_z_parameters",
-        depends=["TestTransects::test_get_z_parameters"],
+        name="TestBackendTransects::test_get_all_z_parameters",
+        depends=["TestBackendTransects::test_get_z_parameters"],
         scope="class",
     )
     def test_get_all_z_parameters(self):
@@ -159,7 +161,7 @@ class TestTransects:
             assert isinstance(value[1], np.floating)
             assert value[1] > value[0]  # for this test case
 
-    @pytest.mark.dependency(name="TestTransects::test_print_z_parameters")
+    @pytest.mark.dependency(name="TestBackendTransects::test_print_z_parameters")
     @pytest.mark.parametrize("arg_stability", ["stable", None])
     def test_print_z_parameters(self, capsys, arg_stability):
         """Print effective and mean path height."""

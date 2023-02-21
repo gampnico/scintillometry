@@ -81,8 +81,7 @@ def define_stability(stability_name):
 
     if not stability_name:
         b_constant = 1
-        print("No height dependency selected.")
-    elif stability_name in stability_dict.keys():
+    elif stability_name.lower() in stability_dict.keys():
         b_constant = stability_dict[stability_name]
     else:
         error_msg = f"{stability_name} is not an implemented stability condition."
