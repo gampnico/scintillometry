@@ -20,10 +20,10 @@ Using the Tools
 Installation
 ------------
 
-Scintillometry-Tools supports installation as an editable with pip or conda.
+Scintillometry-Tools supports installation with conda, mamba, and pip.
 
-Install with Conda
-******************
+Install with Conda/Mamba
+************************
 
 Activate your preferred conda environment and run:
 
@@ -41,10 +41,12 @@ Install the package with optional dependencies:
    make install-all     # install with tests and build local documentation
    make install-dev     # install with dependencies for development
 
+Installation uses conda if mamba is unavailable. Micromamba may also work, but is not currently supported. Whilst dependencies are installed with conda/mamba, the scintillometry-tools package is installed as an editable with pip.
+
 Install with Pip
 ****************
 
-If conda is not your package manager, then run:
+If conda/mamba are not your package managers, then run:
 
 .. code-block:: bash
 
@@ -92,7 +94,8 @@ Optional arguments:
    -s, --stability <str>            Set default stability condition.
    -r, --regime-time <str>          Set local time of switch between stability
                                        regimes.
-   -w, --wavelength <int>           Transmitter beam wavelength, nm.
+   -k, --station-id <int>           ZAMG station ID (Klima-ID). Default 11803.
+   --beam-wavelength <int>          Transmitter beam wavelength, nm.
                                        Default 850 nm.
    --beam-error <int>               Transmitter beam wavelength error, nm.
                                        Default 20 nm.

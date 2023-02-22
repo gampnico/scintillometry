@@ -55,9 +55,11 @@ make install-all    # install with tests and build local documentation
 make install-dev    # install with dependencies for development
 ```
 
+Installation uses conda if mamba is unavailable. Micromamba may also work, but is not currently supported.
+
 ### Install with Pip
 
-If conda is not your package manager, then run:
+If conda/mamba are not your package managers, then run:
 
 ```bash
 git clone https://github.com/gampnico/scintillometry-tools.git
