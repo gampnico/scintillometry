@@ -353,12 +353,12 @@ def plot_comparison(df_01, df_02, keys, labels, site=""):
     return fig, axes
 
 
-def plot_iterated_fluxes(bls_data, iteration_data, time_id, location=""):
+def plot_iterated_fluxes(iteration_data, time_id, location=""):
     """Plots and saves iterated SHF as image.
 
     Args:
-        scint_series (pd.Series): Scintillometer data for SHF.
-        iter_series (pd.Series): Iterated data for SHF.
+        iteration_data (pd.DataFrame): TZ-aware with fluxes calculated
+            for free convection and MOST.
         time_id (pd.Timestamp): Local time of data collection.
         location (str): Location of data collection. Default empty
             string.
@@ -372,7 +372,7 @@ def plot_iterated_fluxes(bls_data, iteration_data, time_id, location=""):
     save_figure(figure=fig_shf, timestamp=time_id, suffix="shf")
 
     fig_comp, _ = plot_comparison(
-        df_01=bls_data,
+        df_01=iteration_data,
         df_02=iteration_data,
         keys=["H_free", "shf"],
         labels=["Free Convection", "Iterated Flux"],

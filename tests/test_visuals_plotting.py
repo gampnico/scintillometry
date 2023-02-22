@@ -338,7 +338,6 @@ class TestVisualsPlotting:
             compare_shf,
             compare_comp,
         ) = scintillometry.visuals.plotting.plot_iterated_fluxes(
-            bls_data=conftest_mock_iterated_dataframe,
             iteration_data=conftest_mock_iterated_dataframe,
             time_id=timestamp,
             location=arg_location,
