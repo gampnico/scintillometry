@@ -416,7 +416,7 @@ def wrangle_data(
 
     data_dict = {
         "bls": bls_data,
-        "zamg": zamg_data,
+        "weather": zamg_data,
         "transect": transect_data,
         "interpolated": interpolated_data,
         "timestamp": bls_time,

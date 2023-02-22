@@ -593,7 +593,7 @@ class TestDataParsingMerge:
         assert isinstance(compare_dict["timestamp"], pd.Timestamp)
         assert compare_dict["timestamp"].tz.zone == "CET"
 
-        test_keys = ["bls", "zamg", "interpolated", "transect"]
+        test_keys = ["bls", "weather", "interpolated", "transect"]
         for key in test_keys:
             assert key in compare_dict
             assert isinstance(compare_dict[key], pd.DataFrame)

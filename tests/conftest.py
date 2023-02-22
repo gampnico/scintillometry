@@ -214,6 +214,7 @@ def fixture_conftest_mock_merged_dataframe():
         "CT2": [1.9343e-04, 2.4764e-04, 2.6475e-04],
         "H_convection": [4.6, 5.5, 5.5],
         "wind_speed": [1.2, 0.9, 1.1],
+        "global_irradiance": [0.1, 23, 56],
         "pressure": [950.5, 950.2, 950.4],
         "rho_air": [1.166186, 1.166229, 1.166474],
         "temperature_2m": [10.8, 10.7, 10.7],
