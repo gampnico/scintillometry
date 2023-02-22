@@ -255,13 +255,15 @@ def plot_generic(dataframe, name, site=""):
     return fig, axes
 
 
-def plot_convection(dataframe, stability):
+def plot_convection(dataframe, stability, site=""):
     """Plots scintillometer convection and free convection.
 
     Args:
         dataframe (pd.DataFrame): Contains data for scintillometer and
             free convection.
         stability (str): Stability conditions.
+        site (str): Location of data collection. Default empty
+            string.
 
     Returns:
         tuple[plt.Figure, plt.Axes]: Figure and axes of plotted data.
@@ -294,7 +296,9 @@ def plot_convection(dataframe, stability):
         f"for Free Convection ({stability_suffix})",
     )
 
-    title_plot(title=" ".join(title_string), timestamp=date_tzone["date"])
+    title_plot(
+        title=" ".join(title_string), timestamp=date_tzone["date"], location=site
+    )
     axes = plt.gca()
     set_xy_labels(ax=axes, timezone=date_tzone["tzone"], name="shf")
 
@@ -354,7 +358,7 @@ def plot_comparison(df_01, df_02, keys, labels, site=""):
 
 
 def plot_iterated_fluxes(iteration_data, time_id, location=""):
-    """Plots and saves iterated SHF as image.
+    """Plots and saves iterated SHF and a comparison to free convection.
 
     Args:
         iteration_data (pd.DataFrame): TZ-aware with fluxes calculated

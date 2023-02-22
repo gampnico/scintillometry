@@ -17,7 +17,7 @@ limitations under the License.
 Tests path weighting module.
 
 Any test that creates a plot should be explicitly appended with
-`plt.close()` if the test scope is outside the function, otherwise the
+`plt.close("all")` if the test scope is outside the function, otherwise the
 plots remain open in memory.
 """
 
@@ -95,7 +95,7 @@ class TestVisualsFormatting:
         else:
             assert not arg_location
         assert test_fig.legend
-        plt.close()
+        plt.close("all")
 
     @pytest.mark.dependency(
         name="TestVisualsFormatting::test_set_xy_labels",
@@ -121,7 +121,7 @@ class TestVisualsFormatting:
             assert compare_name == arg_name.title()
         else:
             assert compare_name == r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]"
-        plt.close()
+        plt.close("all")
 
 
 class TestVisualsPlotting:
@@ -198,7 +198,7 @@ class TestVisualsPlotting:
                     assert compare_idx == 0
                     assert compare_legend.texts[0].get_text() == arg_name
 
-        plt.close()  # otherwise the plots are kept in memory
+        plt.close("all")  # otherwise the plots are kept in memory
 
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_plot_generic",
@@ -224,7 +224,7 @@ class TestVisualsPlotting:
         assert compare_ax.xaxis.label.get_text() == "Time, CET"
         assert compare_ax.yaxis.label.get_text() == "Pressure, [mbar]"
         assert compare_ax.get_title() == "Pressure at Test, 03 June 2020"
-        plt.close()
+        plt.close("all")
 
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_plot_convection",
@@ -263,7 +263,7 @@ class TestVisualsPlotting:
             f"for Free Convection ({compare_conditions}), 03 June 2020",
         )
         assert compare_ax.get_title() == " ".join(compare_title)
-        plt.close()
+        plt.close("all")
 
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_plot_comparison",
@@ -309,7 +309,7 @@ class TestVisualsPlotting:
             f"{test_title_label} from Test 01 and Test 02{test_site}, 03 June 2020"
         )
         assert compare_ax.get_title() == test_title
-        plt.close()
+        plt.close("all")
 
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_plot_iterated_fluxes",
@@ -349,13 +349,18 @@ class TestVisualsPlotting:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
-        compare_ax = plt.gca()
+        test_title = (
+            "Sensible Heat Flux",
+            f"{test_location}, 03 June 2020",
+        )
+        assert compare_shf.gca().get_title() == "".join(test_title)
+
         test_title = (
             "Sensible Heat Flux from Free Convection and Iterated Flux",
             f"{test_location}, 03 June 2020",
         )
-        assert compare_ax.get_title() == "".join(test_title)
-        plt.close()
+        assert compare_comp.gca().get_title() == "".join(test_title)
+        plt.close("all")
 
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_plot_innflux",
@@ -404,4 +409,4 @@ class TestVisualsPlotting:
             f"{test_name} from Scintillometer and InnFLUX{test_site}, 03 June 2020"
         )
         assert compare_ax.get_title() == test_title
-        plt.close()
+        plt.close("all")
