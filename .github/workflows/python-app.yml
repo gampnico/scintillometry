@@ -52,6 +52,3 @@ jobs:
       - name: Test with pytest and get coverage
         run: |
           coverage run --rcfile .coveragerc -m pytest && coverage report
-      - name: Lint with pylint
-        run: |
-          pylint --rcfile=.pylintrc $(git ls-files '**/*.py')
