@@ -23,10 +23,10 @@ from scintillometry.backend.constants import AtmosConstants
 def derive_ct2(dataframe, wavelength=880):
     """Derives the structure parameter of temperature |CT2|.
 
-    Derives |CT2| from measured structure parameter of temperature |Cn2|
-    and weather data. The equation to derive |CT2| is precise to |10^-5|
-    but doesn't account for humidity fluctuations - errors are within 3%
-    of inverse Bowen ratio (Moene 2003).
+    Derives |CT2| from measured structure parameter of refractive index
+    |Cn2| and weather data. The equation to derive |CT2| is precise to
+    |10^-5| but doesn't account for humidity fluctuations - errors are
+    within 3% of inverse Bowen ratio (Moene 2003).
 
     Typical transmission beam wavelengths::
 

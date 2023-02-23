@@ -59,6 +59,14 @@ Visualisation:
    - Produces regression plots between calculated parameters and external data
      sources.
 
+Currently implemented MOST functions:
+   - **an1988**: E.L. Andreas (1988), DOI: `10.1364/JOSAA.5.000481 <https://opg.optica.org/josaa/abstract.cfm?uri=josaa-5-4-481>`_
+   - **li2012**: D. Li et al. (2012), DOI: `10.1007/s10546-011-9660-y <https://link.springer.com/article/10.1007/s10546-011-9660-y>`_
+   - **wy1971**: Wyngaard et al. (1971), DOI: `10.1364/JOSA.61.001646 <https://opg.optica.org/josa/abstract.cfm?uri=josa-61-12-1646>`_
+   - **wy1973**: Wyngaard et al. (1973) in Kooijmans and  Hartogensis (2016), DOI: `10.1007/s10546-016-0152-y <https://link.springer.com/article/10.1007/s10546-016-0152-y>`_
+   - **ma2014**: Maronga et al. (2014), DOI: `10.1007/s10546-014-9955-x <https://link.springer.com/article/10.1007/s10546-014-9955-x>`_
+   - **br2014**: Braam et al. (2014), DOI: `10.1007/s10546-014-9938-y <https://link.springer.com/article/10.1007/s10546-014-9938-y>`_
+
 Footprint Climatology (Roadmap)
 *******************************
 

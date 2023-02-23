@@ -16,10 +16,13 @@ limitations under the License.
 
 Iterative methods to calculate heat fluxes.
 
-For IterationMost, the original code was a Python port of a method
-initially written in R by Dr. Helen Ward, but has since been modified.
+IterationMost is descended from an old Python port of a method initially
+written in R by Dr. Helen Ward (2019), but has been extensively modified
+- the implementations and features available are fundamentally different
+so the results from one should not be assumed identical to the other.
 
-The mathematical theory behind this iterative method is available in:
+The current method used by IterationMost is based on mathematical theory
+available in:
 
     - Scintec AG (2022). Scintec Scintillometers Theory Manual,
       Version 1.05. Scintec AG, Rottenburg, Germany.

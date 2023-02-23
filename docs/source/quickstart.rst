@@ -25,7 +25,7 @@ Scintillometry-Tools supports installation with conda, mamba, and pip.
 Install with Conda/Mamba
 ************************
 
-Activate your preferred conda environment and run:
+Create or activate your preferred conda environment then run:
 
 .. code-block:: bash
 
@@ -69,7 +69,8 @@ View all command-line arguments:
 
 .. code-block:: bash
 
-   make commands
+   python3 ./src/scintillometry/main.py -h
+   make commands  # if you prefer less typing
 
 Usage:
 
@@ -157,6 +158,8 @@ Available commands:
    :run:             Alias for `make commands`.
    :pkg:             Run test, build documentation, build package.
    :commit:          Format, test, then commit.
+   
+Some of these commands will only work if the optional dependencies were installed.
 
 Run Tests
 ---------

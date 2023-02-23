@@ -37,7 +37,7 @@ Scintillometry-Tools supports installation as an editable with pip or conda.
 
 ### Install with Conda/Mamba
 
-Activate your preferred conda environment and run:
+Create or activate your preferred conda environment and run:
 
 ```bash
 git clone https://github.com/gampnico/scintillometry-tools.git

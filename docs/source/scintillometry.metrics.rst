@@ -15,7 +15,20 @@
    =====
 
 Metrics
-==============================
+=======
+
+Submodules
+----------
+
+Calculations module
+-------------------
+
+In: scintillometry.metrics.calculations.py
+
+.. automodule:: scintillometry.metrics.calculations
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

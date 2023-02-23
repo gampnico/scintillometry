@@ -17,8 +17,8 @@
 API
 ===
 
-Submodules
-----------
+Main module
+-----------
 
 scintillometry.main module
 --------------------------
@@ -36,8 +36,9 @@ Subpackages
    :maxdepth: 4
 
    scintillometry.wrangler
-   scintillometry.backend
+   scintillometry.metrics
    scintillometry.visuals
+   scintillometry.backend
 
 Module contents
 ---------------
