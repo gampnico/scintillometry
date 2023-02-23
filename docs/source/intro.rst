@@ -94,7 +94,9 @@ scintillometer.
 **Scintillometer path coordinates must be accurate. Incorrectly generated
 topographical data leads to poor calibration and nonsense results!**
 
-List all available arguments with:
+To install, follow the instructions given :doc:`here </quickstart>`.
+
+Once installed, list all available arguments with:
 
 .. code-block:: bash
     

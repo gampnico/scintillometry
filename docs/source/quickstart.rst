@@ -132,13 +132,13 @@ These classes inherit from the AtmosConstants class:
 Make Things Simple
 ------------------
 
-The provided Makefile has many uses. View all the available commands:
+The provided Makefile adds shortcuts for more complex commands. View all the available shortcuts:
 
 .. code-block:: bash
 
    make help
 
-Available commands:
+Available shortcuts:
    :help:            Display this help screen.
    :install:         Install with conda.
    :install-tests:   Install with dependencies for tests.
@@ -159,7 +159,7 @@ Available commands:
    :pkg:             Run test, build documentation, build package.
    :commit:          Format, test, then commit.
    
-Some of these commands will only work if the optional dependencies were installed.
+Some of these shortcuts will only work if the optional dependencies were installed.
 
 Run Tests
 ---------
