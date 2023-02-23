@@ -24,6 +24,33 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
+def get_site_name(site_name, dataframe=None):
+    """Gets name of site from user string or from dataframe metadata.
+
+    Args:
+        site_name (str): Location of data collection.
+        dataframe (pd.DataFrame): Any collected dataset.
+
+    Returns:
+        str: Location of data collection. Returns empty string if no
+        user argument or metadata was found.
+    """
+
+    if site_name:
+        label = site_name
+    elif dataframe is None:
+        label = ""
+    elif dataframe.attrs and ("name" in dataframe.attrs):
+        label = dataframe.attrs["name"]
+    else:
+        label = ""
+
+    if not isinstance(label, str):
+        label = str(label)
+
+    return label
+
+
 def label_selector(dependent):
     """Constructs label parameters from dependent variable name.
 
@@ -248,7 +275,8 @@ def plot_generic(dataframe, name, site=""):
 
     title_name = label_selector(name)
     title_string = f"{title_name[0]}"
-    title_plot(title=title_string, timestamp=date_tzone["date"], location=site)
+    site_label = get_site_name(site_name=site, dataframe=plot_data)
+    title_plot(title=title_string, timestamp=date_tzone["date"], location=site_label)
     axes = plt.gca()
     set_xy_labels(ax=axes, timezone=date_tzone["tzone"], name=name)
 
@@ -295,9 +323,9 @@ def plot_convection(dataframe, stability, site=""):
         "Sensible Heat Fluxes from On-Board Software and",
         f"for Free Convection ({stability_suffix})",
     )
-
+    site_label = get_site_name(site_name=site, dataframe=plot_data)
     title_plot(
-        title=" ".join(title_string), timestamp=date_tzone["date"], location=site
+        title=" ".join(title_string), timestamp=date_tzone["date"], location=site_label
     )
     axes = plt.gca()
     set_xy_labels(ax=axes, timezone=date_tzone["tzone"], name="shf")
@@ -350,7 +378,8 @@ def plot_comparison(df_01, df_02, keys, labels, site=""):
         title_name = f"{label_01[0]} and {label_02[0]}"
 
     title_string = f"{title_name} from {labels[0]} and {labels[1]}"
-    title_plot(title=title_string, timestamp=plot_tzone["date"], location=site)
+    site_label = get_site_name(site_name=site, dataframe=plot_data_01)
+    title_plot(title=title_string, timestamp=plot_tzone["date"], location=site_label)
     axes = plt.gca()
     set_xy_labels(ax=axes, timezone=plot_tzone["tzone"], name=keys[1])
 
@@ -404,9 +433,9 @@ def plot_innflux(iter_data, innflux_data, name="obukhov", site=""):
     """
 
     iter_data, _, iter_tzone = setup_plot_data(df=iter_data, names=[name])
-    iter_mean = iter_data.dropna().resample("15T", origin="start_day").mean()
+    iter_mean = iter_data.dropna().resample("30T", origin="start_day").mean()
     iter_mean[name] = (
-        iter_data[name].dropna().resample("15T", origin="start_day").mean()
+        iter_data[name].dropna().resample("30T", origin="start_day").mean()
     )
     inn_data, _, _ = setup_plot_data(df=innflux_data, names=[name])
 
@@ -421,7 +450,8 @@ def plot_innflux(iter_data, innflux_data, name="obukhov", site=""):
 
     title_name = label_selector(name)
     title_string = f"{title_name[0]} from Scintillometer and InnFLUX"
-    title_plot(title=title_string, timestamp=iter_tzone["date"], location=site)
+    site_label = get_site_name(site_name=site, dataframe=iter_data)
+    title_plot(title=title_string, timestamp=iter_tzone["date"], location=site_label)
     axes = plt.gca()
     set_xy_labels(ax=axes, timezone=iter_tzone["tzone"], name=name)
 

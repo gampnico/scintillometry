@@ -34,6 +34,36 @@ import scintillometry.visuals.plotting
 class TestVisualsFormatting:
     """Tests figure and axis formatting."""
 
+    @pytest.mark.dependency(name="TestVisualsFormatting::test_get_site_name")
+    @pytest.mark.parametrize("arg_string", ["", 3, "Test Location"])
+    @pytest.mark.parametrize("arg_dataframe", [None, True, "name", "wrong_key"])
+    def test_get_site_name(
+        self, conftest_mock_bls_dataframe_tz, arg_string, arg_dataframe
+    ):
+        """Gets name of site from user string or metadata."""
+
+        if arg_dataframe:
+            test_frame = conftest_mock_bls_dataframe_tz.copy(deep=True)
+            if isinstance(arg_dataframe, str):
+                test_frame.attrs[arg_dataframe] = "Test Location"
+        else:
+            test_frame = None
+
+        compare_label = scintillometry.visuals.plotting.get_site_name(
+            site_name=arg_string, dataframe=test_frame
+        )
+        assert isinstance(compare_label, str)
+
+        if arg_string:
+            assert compare_label == str(arg_string)
+        elif isinstance(arg_dataframe, str):
+            if arg_dataframe == "name":
+                assert compare_label == "Test Location"
+            else:
+                assert compare_label == ""
+        else:
+            assert compare_label == ""
+
     @pytest.mark.dependency(name="TestVisualsFormatting::test_label_selector")
     @pytest.mark.parametrize(
         "arg_label",
@@ -205,6 +235,7 @@ class TestVisualsPlotting:
         depends=[
             "TestVisualsFormatting::test_title_plot",
             "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsFormatting::test_get_site_name",
             "TestVisualsPlotting::test_setup_plot_data",
             "TestVisualsPlotting::test_plot_time_series",
         ],
@@ -231,6 +262,7 @@ class TestVisualsPlotting:
         depends=[
             "TestVisualsFormatting::test_title_plot",
             "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsFormatting::test_get_site_name",
             "TestVisualsPlotting::test_setup_plot_data",
             "TestVisualsPlotting::test_plot_time_series",
         ],
@@ -270,6 +302,7 @@ class TestVisualsPlotting:
         depends=[
             "TestVisualsFormatting::test_title_plot",
             "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsFormatting::test_get_site_name",
             "TestVisualsPlotting::test_setup_plot_data",
             "TestVisualsPlotting::test_plot_time_series",
         ],
@@ -368,6 +401,7 @@ class TestVisualsPlotting:
             "TestVisualsFormatting::test_label_selector",
             "TestVisualsFormatting::test_title_plot",
             "TestVisualsFormatting::test_set_xy_labels",
+            "TestVisualsFormatting::test_get_site_name",
             "TestVisualsPlotting::test_setup_plot_data",
         ],
         scope="module",
