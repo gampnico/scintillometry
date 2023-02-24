@@ -318,10 +318,11 @@ class TestMetricsWorkflowClass:
             beam_wavelength=880,
             beam_error=20,
             most_name=arg_most_name,
+            location=arg_location,
         )
 
         compare_data = test_class.calculate_standard_metrics(
-            arguments=test_args, data=test_data, site=arg_location
+            arguments=test_args, data=test_data
         )
         plt.close("all")
 
@@ -329,3 +330,49 @@ class TestMetricsWorkflowClass:
         for key in ["derivation", "iteration"]:
             assert key in compare_data
             assert isinstance(compare_data[key], pd.DataFrame)
+
+    @pytest.mark.dependency(
+        name="TestMetricsWorkflow::test_compare_innflux",
+        depends=["TestMetricsWorkflowClass::test_metrics_workflow_init"],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_location", [None, "", "Test Location"])
+    def test_compare_innflux(
+        self,
+        conftest_mock_save_figure,
+        conftest_mock_innflux_dataframe_tz,
+        conftest_mock_iterated_dataframe,
+        arg_location,
+    ):
+        """Compares input data to InnFLUX data."""
+
+        _ = conftest_mock_save_figure
+        test_metrics = scintillometry.metrics.calculations.MetricsWorkflow()
+        test_args = argparse.Namespace(location=arg_location)
+        compare_obukhov, compare_shf = test_metrics.compare_innflux(
+            arguments=test_args,
+            innflux_data=conftest_mock_innflux_dataframe_tz,
+            comparison_data=conftest_mock_iterated_dataframe,
+        )
+
+        for fig in [compare_obukhov, compare_shf]:
+            assert isinstance(fig, plt.Figure)
+
+        if arg_location:
+            test_location = f" at {arg_location}"
+        else:
+            test_location = ""
+
+        test_iter_title = (
+            "Obukhov Length from Scintillometer and InnFLUX",
+            f"{test_location}, 03 June 2020",
+        )
+        assert compare_obukhov.gca().get_title() == "".join(test_iter_title)
+
+        test_comp_title = (
+            "Sensible Heat Flux from Scintillometer and InnFLUX",
+            f"{test_location}, 03 June 2020",
+        )
+        assert compare_shf.gca().get_title() == "".join(test_comp_title)
+
+        plt.close("all")

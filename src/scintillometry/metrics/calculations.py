@@ -194,13 +194,8 @@ class MetricsFlux:
             software.
         """
 
-        if iterated_data.attrs:
-            site_name = iterated_data.attrs["name"]
-        else:
-            site_name = site_location
-
         fig_iter, fig_comp = scintillometry.visuals.plotting.plot_iterated_fluxes(
-            iteration_data=iterated_data, time_id=time_stamp, location=site_name
+            iteration_data=iterated_data, time_id=time_stamp, location=site_location
         )
 
         return fig_iter, fig_comp
@@ -212,7 +207,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
     def __init__(self):
         super().__init__()
 
-    def calculate_standard_metrics(self, arguments, data, site=""):
+    def calculate_standard_metrics(self, arguments, data):
         """Calculates and plots metrics from wrangled data.
 
         This wrapper function:
@@ -267,7 +262,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
             user_args=arguments,
             derived_data=derived_dataframe,
             time_id=data_timestamp,
-            location=site,
+            location=arguments.location,
         )
 
         # Compute fluxes through iteration
@@ -279,10 +274,55 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         )
 
         self.plot_iterated_metrics(
-            iterated_data=iterated_dataframe, time_stamp=data_timestamp
+            iterated_data=iterated_dataframe,
+            time_stamp=data_timestamp,
+            site_location=arguments.location,
         )
 
         data["derivation"] = derived_dataframe
         data["iteration"] = iterated_dataframe
 
         return data
+
+    def compare_innflux(self, arguments, innflux_data, comparison_data):
+        """Compares data to InnFLUX.
+
+        This wrapper function:
+
+        - Plots time series comparing Obukhov Lengths and SHF between a
+          dataframe and InnFLUX.
+        - Saves plots to disk.
+
+        If this function is imported as a package, mock user arguments
+        with an argparse.Namespace object.
+
+        Args:
+            arguments (argparse.Namespace): User arguments.
+            innflux_data (pd.DataFrame): Eddy covariance data from
+                InnFLUX.
+            comparison_data (pd.DataFrame): Data to compare to InnFLUX.
+            location (str): Location of data collection. Default empty
+                string.
+        """
+
+        data_timestamp = comparison_data.index[0]
+        fig_obu, _ = scintillometry.visuals.plotting.plot_innflux(
+            iter_data=comparison_data,
+            innflux_data=innflux_data,
+            name="obukhov",
+            site=arguments.location,
+        )
+        scintillometry.visuals.plotting.save_figure(
+            figure=fig_obu, timestamp=data_timestamp, suffix="innflux_obukhov"
+        )
+        fig_shf, _ = scintillometry.visuals.plotting.plot_innflux(
+            iter_data=comparison_data,
+            innflux_data=innflux_data,
+            name="shf",
+            site=arguments.location,
+        )
+        scintillometry.visuals.plotting.save_figure(
+            figure=fig_shf, timestamp=data_timestamp, suffix="innflux_shf"
+        )
+
+        return fig_obu, fig_shf
