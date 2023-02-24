@@ -101,6 +101,7 @@ class IterationMost(AtmosConstants):
             # eddy covariance
 
             if "global_irradiance" in dataframe.keys():  # ~sunrise
+                print("Using global irradiance to calculate switch time.\n")
                 local_time = dataframe[dataframe["global_irradiance"] > 20].index[0]
                 local_time = local_time.strftime("%H:%M")
             else:
