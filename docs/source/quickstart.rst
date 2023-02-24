@@ -80,22 +80,26 @@ Usage:
 
 Required arguments:
    -i, --input <path>      Path to raw BLS data.
-   -p, --path <path>       Path to topographical path transect.
+   -t, --transect <path>       Path to topographical path transect.
 
 Optional switches:
    -h, --help                 Show this help message and exit.
-   -f, --flux                 Compare scintillometer data to InnFLUX data.
    -q, --specific-humidity    Derive fluxes from specific humidity.
    -z, --dry-run              Dry run of model.
    -v, --verbose              Verbose mode.
 
 Optional arguments:
+   -e, --eddy <str>                 Path to eddy covariance data (InnFLUX).
+   -p, --profile <str>              Path to temperature and humidity profiles
+                                       (HATPRO).
    -t, --timezone <str>             Convert to local timezone. Default "CET".
    -c, --calibrate <float float>    Recalibrate path lengths.
    -s, --stability <str>            Set default stability condition.
-   -r, --regime-time <str>          Set local time of switch between stability
-                                       regimes.
+   -s, --switch-time <str>          Override local time of switch between
+                                       stability regimes.
    -k, --station-id <int>           ZAMG station ID (Klima-ID). Default 11803.
+   --location <str>                 Location of experiment. Overrides any other
+                                       location metadata.
    --beam-wavelength <int>          Transmitter beam wavelength, nm.
                                        Default 850 nm.
    --beam-error <int>               Transmitter beam wavelength error, nm.

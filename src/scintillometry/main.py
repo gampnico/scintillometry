@@ -20,52 +20,84 @@ Usage: ``src/main.py [-h] [-i <input_data>] [-d] [...] [-v]``
 
 Options and arguments (and corresponding environment variables):
 
-Required arguments::
-    ``-i, --input <path>: Path to raw BLS450 data.``
-    ``-p, --path <path>: Path to topographical path transect.``
+Required arguments:
+    -i, --input <path>      Path to raw BLS450 data.
+    -t, --transect <path>       Path to topographical path transect.
 
-Optional switches::
-    ``-h, --help: Show this help message and exit.``
-    ``-z, --dry-run: Dry run of model.``
-    ``-v, --verbose: Verbose mode.``
+Optional switches:
+    -h, --help              Show this help message and exit.
+    -q, --specific-humidity     Derive fluxes from specific humidity.
+    -z, --dry-run           Dry run of model.
+    -v, --verbose           Verbose mode.
 
-Optional arguments::
-    ``-t, --timezone <str>: Convert to local timezone. Default "CET".``
-    ``-c, --calibrate <float> <float>: Recalibrate path lengths.``
-    ``-s, --stability <str>: Set stability condition.``
+Optional arguments:
+    -e, --eddy <str>            Path to eddy covariance data (InnFLUX).
+    -p, --profile <str>         Path to temperature and humidity
+                                    profiles (HATPRO).
+    -l, --local-timezone <str>      Convert to local timezone.
+                                        Default "CET".
+    -c, --calibrate <float float>       Recalibrate path lengths.
+    -r, --regime <str>          Set default stability condition.
+    -m, --most-name <str>       ID of MOST coefficients.
+                                    Default "an1988".
+    -s, --switch-time <str>     Override local time of switch between
+                                    stability regimes.
+    -k, --station-id <int>      ZAMG station ID (Klima-ID).
+                                    Default 11803.
+    --location <str>            Location of experiment. Overrides any
+                                    other location metadata.
+    --beam-wavelength <int>     Transmitter beam wavelength, nm.
+                                    Default 850 nm.
+    --beam-error <int>          Transmitter beam wavelength error, nm.
+                                    Default 20 nm.
 """
 
 import argparse
 
-import scintillometry.wrangler.data_parser
+import scintillometry.metrics.calculations as MetricsCalculations
+import scintillometry.wrangler.data_parser as DataParser
 
 
 def user_argumentation():
     """Parses user arguments when run as main.
 
-    Required arguments::
+    Required arguments:
+        -i, --input <path>      Path to raw BLS450 data.
+        -t, --transect <path>   Path to topographical path transect.
 
-        -i, --input <path>: Set path to input data file.
-        -p, --path <path>: Path to topographical path transect.
+    Optional switches:
+        -h, --help          Show this help message and exit.
+        -q, --specific-humidity    Derive fluxes from specific humidity.
+        -z, --dry-run       Dry run of model.
+        -v, --verbose       Verbose mode.
 
-    Optional switches::
-
-        -h, --help: Show this help message and exit.
-        -z, --dry-run: Dry run of model.
-        -v, --verbose: Verbose mode.
-
-    Optional arguments::
-
-        -t, --timezone <str>: Convert to local timezone. Default "CET".
-        -c, --calibrate <float> <float>: Recalibrate path lengths.
-        -s, --stability <str>: Set stability condition.
+    Optional arguments:
+        -e, --eddy <str>        Path to eddy covariance data (InnFLUX).
+        -p, --profile <str>     Path to temperature and humidity
+                                    profiles (HATPRO).
+        -l, --local-timezone <str>      Convert to local timezone.
+                                            Default "CET".
+        -c, --calibrate <float float>       Recalibrate path lengths.
+        -r, --regime <str>          Set default stability condition.
+        -m, --most-name <str>       ID of MOST coefficients.
+                                        Default "an1988".
+        -s, --switch-time <str>     Override local time of switch
+                                        between stability regimes.
+        -k, --station-id <int>      ZAMG station ID (Klima-ID).
+                                        Default 11803.
+        --location <str>            Location of experiment. Overrides
+                                        any other location metadata.
+        --beam-wavelength <int>     Transmitter beam wavelength, nm.
+                                        Default 850 nm.
+        --beam-error <int>          Transmitter beam wavelength error,
+                                        nm. Default 20 nm.
 
     Returns:
         argparse.Namespace: Namespace of user arguments.
     """
 
     tagline = "Analyse data & 2D flux footprints from Scintec's BLS scintillometers."
-    parser = argparse.ArgumentParser(description=tagline)
+    parser = argparse.ArgumentParser(prog="scintillometry-tools", description=tagline)
     # Required
     parser.add_argument(
         "-i",
@@ -78,16 +110,24 @@ def user_argumentation():
         help="path to raw BLS450 data",
     )
     parser.add_argument(
-        "-p",
-        "--path",
+        "-t",
+        "--transect",
         default=None,
-        dest="path_topography",
+        dest="transect_path",
         type=str,
         metavar="<path>",
         required=True,
         help="path to topographical path transect",
     )
     # Switches
+    parser.add_argument(
+        "-q",
+        "--specific-humidity",
+        action="store_true",
+        default=None,
+        dest="specific_humidity",
+        help="derive fluxes from specific humidity",
+    )
     parser.add_argument(
         "-z",
         "--dry-run",
@@ -105,9 +145,41 @@ def user_argumentation():
         help="verbose mode",
     )
     # Parameters
+    group = parser.add_mutually_exclusive_group()
+    # --profile and --switch-time are incompatible
+    group.add_argument(
+        "-p",
+        "--profile",
+        default=None,
+        dest="profile_path",
+        type=str,
+        metavar="<path>",
+        required=False,
+        help="path to temperature and humidity profiles (HATPRO)",
+    )
+    group.add_argument(
+        "-s",
+        "--switch-time",
+        dest="switch_time",
+        metavar="<str>",
+        type=str,
+        required=False,
+        default=None,
+        help="override local time of switch between stability regimes",
+    )
     parser.add_argument(
-        "-t",
-        "--timezone",
+        "-e",
+        "--eddy",
+        default=None,
+        dest="eddy_path",
+        type=str,
+        metavar="<path>",
+        required=False,
+        help="path to eddy covariance data (InnFLUX)",
+    )
+    parser.add_argument(
+        "-l",
+        "--local-timezone",
         dest="timezone",
         metavar="<str>",
         type=str,
@@ -119,22 +191,71 @@ def user_argumentation():
         "-c",
         "--calibrate",
         nargs=2,
-        dest="calibrate",
+        dest="calibration",
         required=False,
         metavar="<float>",
         default=None,
         help="recalibrate path lengths",
     )
     parser.add_argument(
-        "-s",
-        "--stability",
-        dest="stability",
+        "-r",
+        "--regime",
+        dest="regime",
         metavar="<str>",
         type=str,
         required=False,
         default=None,
         choices=["stable", "unstable", None],
-        help="set stability condition",
+        help="set default stability condition",
+    )
+    parser.add_argument(
+        "-m",
+        "--most-name",
+        dest="most_name",
+        metavar="<str>",
+        type=str,
+        required=False,
+        default="an1988",
+        choices=["an1988", "li2012", "wy1971", "wy1973", "ma2014", "br2014"],
+        help="ID of MOST coefficients. Default 'an1988'",
+    )
+
+    parser.add_argument(
+        "-k",
+        "--station-id",
+        dest="station_id",
+        metavar="<str>",
+        type=str,
+        required=False,
+        default=11803,
+        help="ZAMG station ID (Klima-ID). Default 11803",
+    )
+    parser.add_argument(
+        "--location",
+        dest="location",
+        metavar="<str>",
+        type=str,
+        required=False,
+        default="",
+        help="Location of experiment. Overrides any other location metadata.",
+    )
+    parser.add_argument(
+        "--beam-wavelength",
+        dest="beam_wavelength",
+        metavar="<int>",
+        type=int,
+        required=False,
+        default=880,
+        help="Transmitter beam wavelength, nm. Default 880 nm.",
+    )
+    parser.add_argument(
+        "--beam-error",
+        dest="beam_error",
+        metavar="<int>",
+        type=int,
+        required=False,
+        default=20,
+        help="Transmitter beam error, nm. Default 20 nm.",
     )
 
     arguments = parser.parse_args()
@@ -144,13 +265,35 @@ def user_argumentation():
 
 def main():
     args = user_argumentation()
-    user_input_file = args.input
+    print(args)
+    if args.specific_humidity:
+        raise NotImplementedError(
+            "Deriving fluxes from specific humidity is not yet implemented."
+        )
 
-    # Import raw BLS450 data
-    input_data = scintillometry.wrangler.data_parser.parse_scintillometer(
-        file_path=user_input_file, timezone=args.timezone, calibration=args.calibrate
+    # Import and parse BLS450, ZAMG, transect data
+    parsed_datasets = DataParser.wrangle_data(
+        bls_path=args.input,
+        transect_path=args.transect_path,
+        calibrate=args.calibration,
+        tzone=args.timezone,
+        station_id=args.station_id,
     )
-    print(input_data.head())
+    time_stamp = parsed_datasets["timestamp"]
+
+    metrics_class = MetricsCalculations.MetricsWorkflow()
+    metrics_data = metrics_class.calculate_standard_metrics(
+        arguments=args, data=parsed_datasets
+    )
+    if args.eddy_path:
+        innflux_frame = DataParser.parse_innflux(
+            timestamp=time_stamp, tzone=args.timezone
+        )
+        metrics_class.compare_innflux(
+            arguments=args,
+            innflux_data=innflux_frame,
+            comparison_data=metrics_data["iteration"],
+        )
 
 
 if __name__ == "__main__":
