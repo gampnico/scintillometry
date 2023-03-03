@@ -26,8 +26,8 @@ Meteorological data for weather stations at the University of Innsbruck and Inns
 
 Klima-ID (Synop ID): Location, altitude. \[Latitude °N, Longitude °E\]
 
-* 11803 (11320): INNSBRUCK-UNIV., 578m. \[11.384167, 47.259998\]
-* 11804 (11120): INNSBRUCK-FLUGPLATZ, 578m. \[11.356667, 47.259998\]
+* 11803 (11320): INNSBRUCK-UNIV., 578m. \[47.259998, 11.384167\]
+* 11804 (11120): INNSBRUCK-FLUGPLATZ, 578m. \[47.259998, 11.356667\]
 
 ## Source
 
