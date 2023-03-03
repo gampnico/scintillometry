@@ -45,20 +45,22 @@ class AtmosConstants(object):
             functions |f_CT2|, in format:
             [(unstable 01, unstable 02), (stable 01, stable 02)]
 
+        cp (float): Specific heat capacity of air at constant pressure,
+            |c_p| [J |K^-1| |kg^-1|].
+        g (float): Gravitational acceleration [|ms^-2|].
+        k (float): von Kármán's constant.
         kelvin (float): 0°C in kelvins.
+        latent_vapour (float): Latent heat of vapourisation at
+            20°C [J |kg^-1|].
         r_dry (float): Specific gas constant for dry air,
             |R_dry| [J |K^-1| |kg^-1|].
         r_vapour (float): Specific gas contstant for water vapour,
             |R_v| [J |K^-1| |kg^-1|].
         ratio_rmm (float): Ratio of molecular masses of water vapour and
-            dry air.
-        cp (float): Specific heat capacity of air at constant pressure,
-            |c_p| [J |K^-1| |kg^-1|].
-        latent_vapour (float): Latent heat of vapourisation at
-            20°C [J |kg^-1|].
+            dry air i.e. ratio of gas constants |epsilon|.
+        ref_pressure (int): Reference pressure (not SLP), |P_0| [Pa].
         rho (float): Density of air at STP, |rho| [kg |m^-3|].
-        k (float): von Kármán's constant.
-        g (float): Gravitational acceleration [|ms^-2|].
+
     """
 
     def __init__(self):
@@ -100,15 +102,16 @@ class AtmosConstants(object):
         }
 
         # Physical constants
+        self.cp = 1004.67
+        self.g = 9.81
         self.kelvin = 273.15
+        self.k = 0.4
+        self.latent_vapour = 2.45e6
         self.r_dry = 287.04
         self.r_vapour = 461.5
-        self.ratio_rmm = 0.622
-        self.cp = 1004.67
-        self.latent_vapour = 2.45e6
+        self.ratio_rmm = self.r_dry / self.r_vapour
+        self.ref_pressure = 100000  # 1000 hPa
         self.rho = 1.225
-        self.k = 0.4
-        self.g = 9.81
 
     def get(self, constant_name: str):
         return getattr(self, constant_name)

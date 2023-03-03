@@ -30,7 +30,7 @@ class TestBackendConstants:
         test_class = scintillometry.backend.constants.AtmosConstants()
         attributes_dict = test_class.__dict__
         for constant in attributes_dict.values():
-            assert isinstance(constant, (float, dict))
+            assert isinstance(constant, (float, int, dict))
             if isinstance(constant, dict):
                 assert all(
                     isinstance(value, (float, list)) for value in constant.values()
