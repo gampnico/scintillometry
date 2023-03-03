@@ -15,15 +15,28 @@ limitations under the License.
 =====
 
 Provides shared fixtures for tests.
+
+Data used in test fixtures was randomly generated - they are not real
+observational data.
+
+Metadata::
+    - Date: 03 June 2023
+    - Scintillometer data period: 03:23:00Z to 03:24:00Z
+    - Meteorological data period: 03:10:00Z to 03:30:00Z
+    - Location Name: "Test"
+    - Scintillometer model: BLS450
+    - ZAMG Klima-ID: "0000"
 """
 
 from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import pandas.api.types as ptypes
 import pytest
 
 
+# Function patches
 @pytest.fixture(scope="function", autouse=False)
 def conftest_mock_check_file_exists():
     """Override checks when mocking files."""
@@ -42,6 +55,7 @@ def conftest_mock_save_figure():
     mock_exists.return_value = None
 
 
+# Mock scintillometer data
 @pytest.fixture(name="conftest_mnd_lines", scope="function", autouse=False)
 def fixture_conftest_mock_mnd_lines():
     """Constructs mock list output from reading .mnd string object."""
@@ -122,6 +136,7 @@ def fixture_conftest_mock_bls_dataframe_tz(conftest_mock_bls_dataframe):
     yield dataframe
 
 
+# Mock topographical data
 @pytest.fixture(scope="function", autouse=False)  # otherwise gets overwritten
 def conftest_mock_transect_dataframe():
     """Constructs mock dataframe with transect data."""
@@ -135,6 +150,7 @@ def conftest_mock_transect_dataframe():
     yield dataframe
 
 
+# Mock meteorological data
 @pytest.fixture(name="conftest_mock_weather_raw", scope="function", autouse=False)
 def fixture_conftest_mock_weather_raw():
     """Constructs mock dataframe with unparsed weather data."""
@@ -185,7 +201,7 @@ def fixture_conftest_mock_weather_dataframe():
     yield dataframe
 
 
-@pytest.fixture(  # name required to avoid redefining parent in outer scope
+@pytest.fixture(
     name="conftest_mock_weather_dataframe_tz", scope="function", autouse=False
 )
 def fixture_conftest_mock_weather_dataframe_tz(conftest_mock_weather_dataframe):
@@ -200,74 +216,7 @@ def fixture_conftest_mock_weather_dataframe_tz(conftest_mock_weather_dataframe):
     yield dataframe
 
 
-@pytest.fixture(name="conftest_mock_merged_dataframe", scope="function", autouse=False)
-def fixture_conftest_mock_merged_dataframe():
-    """Constructs mock dataframe with BLS and weather data."""
-
-    data = {
-        "time": [
-            "2020-06-03T03:10:00Z",
-            "2020-06-03T03:20:00Z",
-            "2020-06-03T03:30:00Z",
-        ],
-        "Cn2": [1.9115e-16, 2.4472e-16, 2.6163e-16],
-        "CT2": [1.9343e-04, 2.4764e-04, 2.6475e-04],
-        "H_convection": [4.6, 5.5, 5.5],
-        "wind_speed": [1.2, 0.9, 1.1],
-        "global_irradiance": [0.1, 23, 56],
-        "pressure": [950.5, 950.2, 950.4],
-        "rho_air": [1.166186, 1.166229, 1.166474],
-        "temperature_2m": [10.8, 10.7, 10.7],
-    }
-    dataframe = pd.DataFrame.from_dict(data)
-    dataframe["time"] = pd.to_datetime(dataframe["time"])
-    dataframe = dataframe.set_index("time")
-    dataframe = dataframe.tz_convert("CET")
-    assert dataframe.index.name == "time"
-
-    yield dataframe
-
-
-@pytest.fixture(name="conftest_mock_derived_dataframe", scope="function", autouse=False)
-def fixture_conftest_mock_derived_dataframe(conftest_mock_merged_dataframe):
-    """Constructs mock dataframe with parsed InnFLUX data."""
-
-    dataframe = conftest_mock_merged_dataframe.copy(deep=True)
-    dataframe["H_free"] = [28.519535, 118.844056, 155.033711]
-    dataframe["global_irradiance"] = [0.1, 23, 56]
-
-    yield dataframe
-
-
-@pytest.fixture(scope="function", autouse=False)  # otherwise gets overwritten
-def conftest_mock_iterated_dataframe():
-    """Constructs mock dataframe with BLS and weather data."""
-
-    data = {
-        "time": [
-            "2020-06-03T03:23:00Z",
-            "2020-06-03T03:24:00Z",
-            "2020-06-03T03:25:00Z",
-        ],
-        "CT2": [1.9343e-04, 2.4764e-04, 2.6475e-04],
-        "wind_speed": [1.2, 0.9, 1.1],
-        "rho_air": [1.166186, 1.166229, 1.166474],
-        "temperature_2m": [10.8, 10.7, 10.7],
-        "obukhov": [-56.236228, -20.290260, -12.160410],
-        "shf": [33.852306, 128.717874, 164.173310],
-        "u_star": [0.282501, 0.314166, 0.287277],
-        "theta_star": [-0.102295, -0.363034, -0.508046],
-        "H_free": [28.519535, 118.844056, 155.033711],
-    }
-    dataframe = pd.DataFrame.from_dict(data)
-    dataframe["time"] = pd.to_datetime(dataframe["time"])
-    dataframe = dataframe.set_index("time")
-    dataframe = dataframe.tz_convert("CET")
-    assert dataframe.index.name == "time"
-
-    yield dataframe
-
-
+# Mock UIBK-specific data
 @pytest.fixture(name="conftest_mock_innflux_dataframe", scope="function", autouse=False)
 def fixture_conftest_mock_innflux_dataframe():
     """Constructs mock dataframe with raw InnFLUX data."""
@@ -305,5 +254,74 @@ def fixture_conftest_mock_innflux_dataframe_tz(conftest_mock_innflux_dataframe):
     dataframe = dataframe.replace(-999, np.nan)
     dataframe = dataframe.fillna(method="ffill")
     dataframe = dataframe.tz_localize("CET")
+
+    yield dataframe
+
+
+# Mock processed data
+@pytest.fixture(name="conftest_mock_merged_dataframe", scope="function", autouse=False)
+def fixture_conftest_mock_merged_dataframe():
+    """Constructs mock dataframe with BLS and weather data."""
+
+    data = {
+        "time": [
+            "2020-06-03T03:10:00Z",
+            "2020-06-03T03:20:00Z",
+            "2020-06-03T03:30:00Z",
+        ],
+        "Cn2": [1.9115e-16, 2.4472e-16, 2.6163e-16],
+        "CT2": [1.9343e-04, 2.4764e-04, 2.6475e-04],
+        "H_convection": [4.6, 5.5, 5.5],
+        "wind_speed": [1.2, 0.9, 1.1],
+        "global_irradiance": [0.1, 23, 56],
+        "pressure": [950.5, 950.2, 950.4],
+        "rho_air": [1.166186, 1.166229, 1.166474],
+        "temperature_2m": [10.8, 10.7, 10.7],
+    }
+    dataframe = pd.DataFrame.from_dict(data)
+    dataframe["time"] = pd.to_datetime(dataframe["time"])
+    dataframe = dataframe.set_index("time")
+    dataframe = dataframe.tz_convert("CET")
+    assert dataframe.index.name == "time"
+
+    yield dataframe
+
+
+@pytest.fixture(name="conftest_mock_derived_dataframe", scope="function", autouse=False)
+def fixture_conftest_mock_derived_dataframe(conftest_mock_merged_dataframe):
+    """Constructs mock dataframe with derived data."""
+
+    dataframe = conftest_mock_merged_dataframe.copy(deep=True)
+    dataframe["H_free"] = [28.519535, 118.844056, 155.033711]
+    dataframe["global_irradiance"] = [0.1, 23, 56]
+
+    yield dataframe
+
+
+@pytest.fixture(scope="function", autouse=False)  # otherwise gets overwritten
+def conftest_mock_iterated_dataframe():
+    """Constructs mock dataframe with BLS and weather data."""
+
+    data = {
+        "time": [
+            "2020-06-03T03:23:00Z",
+            "2020-06-03T03:24:00Z",
+            "2020-06-03T03:25:00Z",
+        ],
+        "CT2": [1.9343e-04, 2.4764e-04, 2.6475e-04],
+        "wind_speed": [1.2, 0.9, 1.1],
+        "rho_air": [1.166186, 1.166229, 1.166474],
+        "temperature_2m": [10.8, 10.7, 10.7],
+        "obukhov": [-56.236228, -20.290260, -12.160410],
+        "shf": [33.852306, 128.717874, 164.173310],
+        "u_star": [0.282501, 0.314166, 0.287277],
+        "theta_star": [-0.102295, -0.363034, -0.508046],
+        "H_free": [28.519535, 118.844056, 155.033711],
+    }
+    dataframe = pd.DataFrame.from_dict(data)
+    dataframe["time"] = pd.to_datetime(dataframe["time"])
+    dataframe = dataframe.set_index("time")
+    dataframe = dataframe.tz_convert("CET")
+    assert dataframe.index.name == "time"
 
     yield dataframe
