@@ -641,3 +641,174 @@ class TestDataParsingInnflux:
             assert dataframe.index.tz.zone == "UTC"
         else:
             assert dataframe.index.tz.zone == arg_timezone
+
+
+class TestDataParsingHatpro:
+    """Test class for parsing HATPRO data.
+
+    Attributes:
+        test_levels (list): Test measurement heights.
+    """
+
+    test_levels = [0, 10, 30]
+
+    @pytest.mark.dependency(
+        name="TestDataParsingHatpro::test_construct_hatpro_levels_error"
+    )
+    @pytest.mark.parametrize("arg_levels", [[(0, 1), (0)], [1.0, 30]])
+    def test_construct_hatpro_levels_error(self, arg_levels):
+        """Raise error for incorrectly formatted scanning levels."""
+
+        error_message = "Input levels must be a list or tuple of integers."
+        with pytest.raises(TypeError, match=error_message):
+            scintillometry.wrangler.data_parser.construct_hatpro_levels(
+                levels=arg_levels
+            )
+
+    @pytest.mark.dependency(
+        name="TestDataParsingHatpro::test_construct_hatpro_levels",
+        depends=["TestDataParsingHatpro::test_construct_hatpro_levels_error"],
+    )
+    @pytest.mark.parametrize("arg_levels", [None, (0, 10, 20), [0, 10, 20]])
+    def test_construct_hatpro_levels(self, arg_levels):
+        """Construct HATPRO scanning levels."""
+
+        compare_scan = scintillometry.wrangler.data_parser.construct_hatpro_levels(
+            levels=arg_levels
+        )
+        assert isinstance(compare_scan, (list))
+        assert all(isinstance(x, int) for x in compare_scan)
+
+    @pytest.mark.dependency(
+        name="TestDataParsingHatpro::test_load_hatpro",
+        depends=["TestDataParsingHatpro::test_construct_hatpro_levels"],
+    )
+    @pytest.mark.parametrize("arg_timezone", ["CET", "UTC", None])
+    @patch("builtins.open")
+    def test_load_hatpro(
+        self,
+        open_mock: Mock,
+        conftest_mock_hatpro_humidity_raw,
+        conftest_mock_check_file_exists,
+        arg_timezone,
+    ):
+        """Load raw HATPRO data into dataframe."""
+
+        _ = conftest_mock_check_file_exists
+        open_mock.return_value = io.StringIO(conftest_mock_hatpro_humidity_raw)
+
+        compare_data = scintillometry.wrangler.data_parser.load_hatpro(
+            file_name="/path/to/file", levels=self.test_levels, tzone=arg_timezone
+        )
+        open_mock.assert_called_once()
+
+        assert isinstance(compare_data, pd.DataFrame)
+        for key in self.test_levels:
+            assert key in compare_data.columns
+            assert ptypes.is_numeric_dtype(compare_data[key])
+        assert ptypes.is_datetime64_any_dtype(compare_data.index)
+
+        if not arg_timezone:
+            assert compare_data.index.tz.zone == "UTC"
+        else:
+            assert compare_data.index.tz.zone == arg_timezone
+
+    @pytest.mark.dependency(
+        name="TestDataParsingHatpro::test_parse_hatpro",
+        depends=["TestDataParsingHatpro::test_load_hatpro"],
+    )
+    @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
+    @patch("pandas.read_csv")
+    def test_parse_hatpro(
+        self,
+        read_csv_mock: Mock,
+        conftest_mock_hatpro_humidity_dataframe,
+        conftest_mock_hatpro_temperature_dataframe,
+        conftest_mock_check_file_exists,
+        arg_timezone,
+    ):
+        """Parse unformatted HATPRO data."""
+
+        _ = conftest_mock_check_file_exists
+        read_csv_mock.side_effect = [
+            conftest_mock_hatpro_humidity_dataframe,
+            conftest_mock_hatpro_temperature_dataframe,
+        ]
+
+        compare_data = scintillometry.wrangler.data_parser.parse_hatpro(
+            file_prefix="/path/to/file",
+            scan_heights=self.test_levels,
+            timezone=arg_timezone,
+        )
+
+        assert isinstance(compare_data, dict)
+        for frame_key, compare_frame in compare_data.items():
+            assert isinstance(compare_frame, pd.DataFrame)
+            assert frame_key in ["humidity", "temperature"]
+            for key in self.test_levels:
+                assert key in compare_frame.columns
+                assert ptypes.is_numeric_dtype(compare_frame[key])
+            assert compare_frame.index.name == "rawdate"
+            assert ptypes.is_datetime64_any_dtype(compare_frame.index)
+            if not arg_timezone:
+                assert compare_frame.index.tz.zone == "UTC"
+            else:
+                assert compare_frame.index.tz.zone == arg_timezone
+        assert all(compare_data["humidity"]) < 0.007  # should be in |kgm^-3|
+
+    @pytest.mark.dependency(name="TestDataParsingHatpro::test_parse_vertical_error")
+    @pytest.mark.parametrize("arg_device", ["wrong device", "wrong_DEVICE"])
+    def test_parse_vertical_error(self, arg_device):
+        """Raise error if vertical measurement device is unsupported."""
+
+        test_device = arg_device.title()
+        error_msg = f"{test_device} measurements are not supported. Use 'hatpro'."
+
+        with pytest.raises(NotImplementedError, match=error_msg):
+            scintillometry.wrangler.data_parser.parse_vertical(
+                file_path="/path/to/file",
+                device=arg_device,
+                levels=self.test_levels,
+                tzone=None,
+            )
+
+    @pytest.mark.dependency(
+        name="TestDataParsingHatpro::test_parse_vertical",
+        depends=[
+            "TestDataParsingHatpro::test_parse_hatpro",
+            "TestDataParsingHatpro::test_parse_vertical_error",
+        ],
+    )
+    @pytest.mark.parametrize("arg_timezone", ["CET", None])
+    @patch("pandas.read_csv")
+    def test_parse_vertical(
+        self,
+        read_csv_mock: Mock,
+        conftest_mock_hatpro_humidity_dataframe,
+        conftest_mock_hatpro_temperature_dataframe,
+        conftest_mock_check_file_exists,
+        arg_timezone,
+    ):
+        """Parse vertical measurements."""
+
+        _ = conftest_mock_check_file_exists
+        read_csv_mock.side_effect = [
+            conftest_mock_hatpro_humidity_dataframe,
+            conftest_mock_hatpro_temperature_dataframe,
+        ]
+
+        compare_data = scintillometry.wrangler.data_parser.parse_vertical(
+            file_path="/path/to/file",
+            device="hatpro",
+            levels=self.test_levels,
+            tzone=arg_timezone,
+        )
+
+        assert isinstance(compare_data, dict)
+        for frame_key, compare_frame in compare_data.items():
+            assert isinstance(compare_frame, pd.DataFrame)
+            assert frame_key in ["humidity", "temperature"]
+            if not arg_timezone:
+                assert compare_frame.index.tz.zone == "UTC"
+            else:
+                assert compare_frame.index.tz.zone == arg_timezone

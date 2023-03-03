@@ -258,6 +258,130 @@ def fixture_conftest_mock_innflux_dataframe_tz(conftest_mock_innflux_dataframe):
     yield dataframe
 
 
+@pytest.fixture(
+    name="conftest_mock_hatpro_humidity_data", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_humidity_data():
+    """Constructs mock list output for HATPRO humidity data."""
+
+    file_header = ["#Dataset: HATPRO UIBK Humidity - RAW"]
+    column_header = ["rawdate;v01;v02;v03"]
+    mock_data = [
+        "2020-06-03 03:10:00;6.45;6.36;6.26",
+        "2020-06-03 03:20:00;6.49;6.40;6.29",
+        "2020-06-03 03:30:00;6.52;6.43;6.32",
+    ]
+    data = []
+    for data_part in [file_header, column_header, mock_data]:
+        data.append("\n".join(data_part))
+    assert isinstance(data, list)
+
+    yield data
+
+
+@pytest.fixture(
+    name="conftest_mock_hatpro_humidity_raw", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_humidity_raw(conftest_mock_hatpro_humidity_data):
+    """Constructs mock string output from raw HATPRO humidity file."""
+
+    full_file = "\n".join(map(str, conftest_mock_hatpro_humidity_data))
+    assert isinstance(full_file, str)
+
+    yield full_file
+
+
+@pytest.fixture(
+    name="conftest_mock_hatpro_humidity_dataframe", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_humidity_dataframe():
+    """Constructs mock dataframe from HATPRO humidity data."""
+
+    data_index = pd.to_datetime(
+        ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
+    )
+    heights = [0, 10, 30]
+    data = {
+        0: [6.45, 6.36, 6.26],
+        10: [6.49, 6.40, 6.29],
+        30: [6.52, 6.43, 6.32],
+    }
+    dataframe = pd.DataFrame(data=data, columns=heights, index=data_index).copy(
+        deep=True
+    )
+    assert isinstance(dataframe, pd.DataFrame)
+    dataframe.index.name = "rawdate"
+    for key in heights:
+        assert key in dataframe.columns
+        assert ptypes.is_numeric_dtype(dataframe[key])
+    assert ptypes.is_datetime64_any_dtype(dataframe.index)
+    assert dataframe.index.name == "rawdate"
+
+    yield dataframe
+
+
+@pytest.fixture(
+    name="conftest_mock_hatpro_temperature_data", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_temperature_data():
+    """Constructs mock list output for HATPRO temperature data."""
+
+    file_header = ["#Dataset: HATPRO UIBK Temperature - RAW"]
+    column_header = ["rawdate;v01;v02;v03"]
+    mock_data = [
+        "2020-06-03 03:10:00;283.58;283.60;283.52",
+        "2020-06-03 03:20:00;283.38;283.43;283.42",
+        "2020-06-03 03:30:00;283.27;283.31;283.28",
+    ]
+    data = []
+    for data_part in [file_header, column_header, mock_data]:
+        data.append("\n".join(data_part))
+    assert isinstance(data, list)
+
+    yield data
+
+
+@pytest.fixture(
+    name="conftest_mock_hatpro_temperature_raw", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_temperature_raw(conftest_mock_hatpro_temperature_data):
+    """Constructs mock string output from raw HATPRO temperature file."""
+
+    full_file = "\n".join(map(str, conftest_mock_hatpro_temperature_data))
+    assert isinstance(full_file, str)
+
+    yield full_file
+
+
+@pytest.fixture(
+    name="conftest_mock_hatpro_temperature_dataframe", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_temperature_dataframe():
+    """Constructs mock dataframe from HATPRO temperature data."""
+
+    data_index = pd.to_datetime(
+        ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
+    )
+    heights = [0, 10, 30]
+    data = {
+        0: [283.58, 283.60, 283.52],
+        10: [283.38, 283.43, 283.42],
+        30: [283.27, 283.31, 283.28],
+    }
+    dataframe = pd.DataFrame(data=data, columns=heights, index=data_index).copy(
+        deep=True
+    )
+    assert isinstance(dataframe, pd.DataFrame)
+    dataframe.index.name = "rawdate"
+    for key in heights:
+        assert key in dataframe.columns
+        assert ptypes.is_numeric_dtype(dataframe[key])
+    assert ptypes.is_datetime64_any_dtype(dataframe.index)
+    assert dataframe.index.name == "rawdate"
+
+    yield dataframe
+
+
 # Mock processed data
 @pytest.fixture(name="conftest_mock_merged_dataframe", scope="function", autouse=False)
 def fixture_conftest_mock_merged_dataframe():

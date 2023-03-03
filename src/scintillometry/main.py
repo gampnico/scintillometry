@@ -32,8 +32,8 @@ Optional switches:
 
 Optional arguments:
     -e, --eddy <str>            Path to eddy covariance data (InnFLUX).
-    -p, --profile <str>         Path to temperature and humidity
-                                    profiles (HATPRO).
+    -p, --profile <str>         Path prefix to vertical temperature and
+                                    humidity measurements (HATPRO).
     -l, --local-timezone <str>      Convert to local timezone.
                                         Default "CET".
     -c, --calibrate <float float>       Recalibrate path lengths.
@@ -73,8 +73,8 @@ def user_argumentation():
 
     Optional arguments:
         -e, --eddy <str>        Path to eddy covariance data (InnFLUX).
-        -p, --profile <str>     Path to temperature and humidity
-                                    profiles (HATPRO).
+        -p, --profile <str>     Path prefix to vertical temperature and
+                                    humidity measurements (HATPRO).
         -l, --local-timezone <str>      Convert to local timezone.
                                             Default "CET".
         -c, --calibrate <float float>       Recalibrate path lengths.
@@ -151,11 +151,11 @@ def user_argumentation():
         "-p",
         "--profile",
         default=None,
-        dest="profile_path",
+        dest="profile_prefix",
         type=str,
         metavar="<path>",
         required=False,
-        help="path to temperature and humidity profiles (HATPRO)",
+        help="path prefix to vertical temperature and humidity measurements (HATPRO)",
     )
     group.add_argument(
         "-s",
@@ -280,6 +280,15 @@ def main():
         station_id=args.station_id,
     )
     time_stamp = parsed_datasets["timestamp"]
+
+    # Parse vertical measurements
+    if args.profile_prefix:
+        parsed_datasets["vertical"] = DataParser.parse_vertical(
+            file_path=args.profile_prefix,
+            device="hatpro",
+            levels=None,
+            tzone=args.timezone,
+        )
 
     metrics_class = MetricsCalculations.MetricsWorkflow()
     metrics_data = metrics_class.calculate_standard_metrics(

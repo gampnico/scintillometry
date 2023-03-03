@@ -40,3 +40,23 @@ Zentralanstalt für Meteorologie und Geodynamik (2020). Retrieved via the [GeoSp
 
 Zentralanstalt für Meteorologie und Geodynamik (2020-2023).
 This work is licensed under a Creative Commons Attribution 4.0 License.
+
+# HATPRO folder
+
+Vertical temperature and humidity measurements from the RPG-HATPRO operated by ACInn at the University of Innsbruck .
+
+Station ID (Station Name): Location, altitude. \[Latitude °N, Longitude °E\]
+
+*  201 (HATPRO UIBK Met): University of Innsbruck, 612m. \[47.2643, 11.3853\]
+
+## Source
+
+Data source: ACInn - https://acinn-data.uibk.ac.at
+
+Department of Atmospheric and Cryospheric Sciences (2012-2023). Retrieved via [ACINN Weather Stations](https://acinn-data.uibk.ac.at/pages/hatpro-uibk-met.html).
+
+## License
+
+This data is available under the terms of the Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+M. Rotach; I. Stiperski; O. Fuhrer; B.Goger; A. Gohm; F.Obleitner; G. Rau; E. Sfyri; J. Vergeiner Investigating Exchange Processes over Complex Topography: The Innsbruck Box (i-Box) DOI [10.1175/BAMS-D-15-00246.1](https://journals.ametsoc.org/view/journals/bams/98/4/bams-d-15-00246.1.xml)

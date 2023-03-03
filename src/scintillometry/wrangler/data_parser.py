@@ -476,3 +476,156 @@ def parse_innflux(timestamp, data_dir="./ext/data/raw/InnFLUX/", tzone=None):
         dataframe = dataframe.tz_localize("UTC")
 
     return dataframe
+
+
+def construct_hatpro_levels(levels=None):
+    """Construct HATPRO scanning levels.
+
+    Hardcoded scan levels specifically for HATPRO Retrieval data from
+    HATPRO UIBK Met.
+
+    Args:
+        levels (list[int]): HATPRO scan height in metres, [m].
+
+    Returns:
+        list: Heights of each HATPRO scanning level.
+
+    Raises:
+        TypeError: Input levels must be a list or tuple of integers.
+    """
+
+    if not levels:  # structured for readability
+        levels = [
+            (0, 10, 30),
+            (50, 75, 100, 125),
+            (150, 200, 250),
+            (325, 400, 475, 550, 625),
+            (700, 800, 900),
+            (1000, 1150, 1300, 1450),
+            (1600, 1800, 2000),
+            (2200, 2500, 2800),
+            (3100, 3500, 3900),
+            (4400, 5000, 5600, 6200),
+            (7000, 8000, 9000, 10000),
+        ]
+        scan = [i for heights in levels for i in heights]
+    elif all(isinstance(height, int) for height in levels):
+        scan = [heights for heights in levels]
+    else:
+        raise TypeError("Input levels must be a list or tuple of integers.")
+
+    return scan
+
+
+def load_hatpro(file_name, levels, tzone):
+    """Load raw HATPRO data into dataframe.
+
+    Args:
+        file_name (str): Path to raw HATPRO data.
+        levels (list[int]): HATPRO scan height in metres, [m].
+        tzone (str): Local timezone during the scintillometer's
+            operation. Default None.
+    Returns:
+        pd.DataFrame: Contains unprocessed HATPRO data.
+
+    Raises:
+        FileNotFoundError: No file found with path: <fname>.
+    """
+
+    check_file_exists(file_name)
+    data = pd.read_csv(
+        file_name,
+        sep=";",
+        comment="#",
+        header=0,
+        names=levels,
+        index_col=0,
+        date_parser=pd.to_datetime,
+    )
+    if tzone:
+        data = data.tz_localize(tzone)
+    else:
+        data = data.tz_localize("UTC")
+
+    return data
+
+
+def parse_hatpro(file_prefix, scan_heights=None, timezone=None):
+    """Parses HATPRO Retrieval data.
+
+    Args:
+        file_prefix (str): Path prefix for HATPRO Retrieval data. There
+            should be two HATPRO files ending with "humidity" and
+            "temp". The path prefix should be identical for both files,
+            e.g.::
+
+                ./path/to/file_humidity.csv
+                ./path/to/file_temp.csv
+
+            would require `file_prefix = "./path/to/file_"`.
+        scan_heights (list[int]): HATPRO scan height in metres, [m].
+        timezone (str): Local timezone during HATPRO operation.
+            Default None.
+
+    Returns:
+        dict[pd.DataFrame, pd.DataFrame]: Vertical measurements from
+        HATPRO for temperature and humidity.
+    """
+
+    humidity_path = f"{file_prefix}humidity.csv"
+    temperature_path = f"{file_prefix}temp.csv"
+
+    scan_levels = construct_hatpro_levels(levels=scan_heights)
+    humidity_data = (10 ** (-3)) * load_hatpro(
+        file_name=humidity_path, levels=scan_levels, tzone=timezone
+    )
+    temperature_data = load_hatpro(
+        file_name=temperature_path, levels=scan_levels, tzone=timezone
+    )
+
+    data = {}
+    data["humidity"] = humidity_data
+    data["temperature"] = temperature_data
+
+    return data
+
+
+def parse_vertical(file_path, device="hatpro", levels=None, tzone=None):
+    """Parses vertical measurements.
+
+    Currently only supports HATPRO.
+
+    Args:
+        file_path (str): Path to vertical measurements. For HATPRO
+            Retrieval data there should be two HATPRO files ending with
+            "humidity" and "temp". The path should be identical for both
+            files, e.g.::
+
+                ./path/to/file_humidity.csv
+                ./path/to/file_temp.csv
+
+            would require `file_path = "./path/to/file_"`.
+        device (str): Instrument used for vertical measurements. Only
+            supports HATPRO. Default "hatpro".
+        levels (list[int]): Measurement heights in metres, [m].
+        tzone (str): Local timezone during the radiometer's operation.
+            Default None.
+
+    Returns:
+        dict[pd.DataFrame, pd.DataFrame]: Vertical measurements for
+        temperature and humidity.
+
+    Raises:
+        NotImplementedError: <device> measurements are not supported.
+            Use "hatpro".
+    """
+
+    if not device.lower() == "hatpro":
+        error_msg = f"{device.title()} measurements are not supported. Use 'hatpro'."
+        raise NotImplementedError(error_msg)
+    else:
+        vert_data = parse_hatpro(
+            file_prefix=file_path, scan_heights=levels, timezone=tzone
+        )
+
+    return vert_data
