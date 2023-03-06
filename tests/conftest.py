@@ -321,6 +321,22 @@ def fixture_conftest_mock_hatpro_humidity_dataframe():
 
 
 @pytest.fixture(
+    name="conftest_mock_hatpro_humidity_dataframe_tz", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_humidity_dataframe_tz(
+    conftest_mock_hatpro_humidity_dataframe,
+):
+    """Localises TZ-aware mock dataframe from HATPRO humidity data."""
+
+    dataframe = conftest_mock_hatpro_humidity_dataframe
+    dataframe = dataframe.tz_localize("UTC")
+    dataframe = dataframe.tz_convert("CET")
+    assert dataframe.index.tz.zone == "CET"
+
+    yield dataframe
+
+
+@pytest.fixture(
     name="conftest_mock_hatpro_temperature_data", scope="function", autouse=False
 )
 def fixture_conftest_mock_hatpro_temperature_data():
@@ -378,6 +394,24 @@ def fixture_conftest_mock_hatpro_temperature_dataframe():
         assert ptypes.is_numeric_dtype(dataframe[key])
     assert ptypes.is_datetime64_any_dtype(dataframe.index)
     assert dataframe.index.name == "rawdate"
+
+    yield dataframe
+
+
+@pytest.fixture(
+    name="conftest_mock_hatpro_temperature_dataframe_tz",
+    scope="function",
+    autouse=False,
+)
+def fixture_conftest_mock_hatpro_temperature_dataframe_tz(
+    conftest_mock_hatpro_temperature_dataframe,
+):
+    """Localises TZ-aware mock dataframe from HATPRO humidity data."""
+
+    dataframe = conftest_mock_hatpro_temperature_dataframe
+    dataframe = dataframe.tz_localize("UTC")
+    dataframe = dataframe.tz_convert("CET")
+    assert dataframe.index.tz.zone == "CET"
 
     yield dataframe
 
