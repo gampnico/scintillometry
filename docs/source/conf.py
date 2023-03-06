@@ -32,7 +32,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.16.a4"
+release = "0.17.a0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -78,6 +78,7 @@ rst_prolog = f"""
 .. |lamda| replace:: :math:`\\lambda`
 .. |LOb| replace:: :math:`L_{{Ob}}`
 .. |P_0| replace:: :math:`P_{{0}}`
+.. |P_MSLP| replace:: :math:`P_{{MSLP}}`
 .. |Psi_m| replace:: :math:`\\Psi_{{m}}`
 .. |R_dry| replace:: R :sub:`dry`
 .. |R_v| replace:: R :sub:`v`

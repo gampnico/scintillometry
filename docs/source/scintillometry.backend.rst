@@ -50,6 +50,16 @@ In: scintillometry.backend.derivations.py
    :undoc-members:
    :show-inheritance:
 
+Constructions module
+-----------------
+
+In: scintillometry.backend.constructions.py
+
+.. automodule:: scintillometry.backend.constructions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Iterations module
 -----------------
 
