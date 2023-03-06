@@ -45,9 +45,9 @@ This work is licensed under a Creative Commons Attribution 4.0 License.
 
 Vertical temperature and humidity measurements from the RPG-HATPRO operated by ACInn at the University of Innsbruck .
 
-Station ID (Station Name): Location, altitude. \[Latitude °N, Longitude °E\]
+Station IDs (Station Name): Location, altitude. \[Latitude °N, Longitude °E\]
 
-*  201 (HATPRO UIBK Met): University of Innsbruck, 612m. \[47.2643, 11.3853\]
+*  200 & 201 (HATPRO UIBK Met): University of Innsbruck, 612m. \[47.2643, 11.3853\]
 
 ## Source
 
