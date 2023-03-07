@@ -15,6 +15,14 @@ limitations under the License.
 =====
 
 Constructs profiles from vertical measurements.
+
+These definitions avoid confusion with interchangeable terms:
+
+- **Elevation**: Vertical distance between mean sea-level and station.
+- **Height**: Vertical distance between station elevation and
+  measurement point.
+- **Altitude**: Vertical distance between mean sea-level and measurement
+  point.
 """
 
 import numpy as np
@@ -46,38 +54,42 @@ class ProfileConstructor(AtmosConstants):
 
         return wvp
 
-    def get_air_pressure(self, pressure, ref_z, alt_z, air_temp):
-        """Derive air pressure at specific altitude.
+    def get_air_pressure(self, pressure, air_temperature, z_target, z_ref=0):
+        """Derive air pressure at specific height.
 
-        Uses hypsometric equation.
+        Uses hypsometric equation. By default, heights are relative to
+        the station elevation, i.e. <z_target> - <z_ref> = <z_target>,
+        <z_ref> = 0.
 
         Args:
-            pressure (pd.Series): Base air pressure, |P_0| [Pa].
-            ref_z (int): Base measurement altitude, |z_0| [m].
-            alt_z (int): Desired measurement altitude, |z| [m].
-            air_temp (pd.Series): Air temperature at desired measurement
-                altitude, |T_z| [K].
+            pressure (pd.Series): Air pressure at reference measurement
+                height, |P_0| [Pa].
+            air_temperature (pd.Series): Air temperatures at target
+                measurement height, |T_z| [K].
+            z_target (int): Target measurement height, |z| [m].
+            z_ref (int): Reference measurement height, |z_0| [m].
+                Default 0.
 
         Returns:
-            pd.Series: Air pressure at desired altitude, |P_z| [Pa].
+            pd.Series: Air pressure at target heights, |P_z| [Pa].
         """
 
         alt_pressure = pressure * np.exp(
-            -self.g * (alt_z - ref_z) / (self.r_dry * air_temp)
+            -self.g * (z_target - z_ref) / (self.r_dry * air_temperature)
         )
 
         return alt_pressure
 
     def extrapolate_air_pressure(self, surface_pressure, temperature):
-        """Extrapolates base pressure measurements to scan levels.
+        """Extrapolates reference pressure measurements to scan levels.
 
         Input dataframes must have matching indices. Converts hPa to Pa.
 
         Args:
             surface_pressure (pd.Series): Air pressure measurements at
-                base altitude, |P_0| [hPa].
-            temperature (pd.DataFrame): Vertical measurements for air
-                temperature at target altitudes, |T| [K].
+                reference measurement height, |P_0| [hPa].
+            temperature (pd.DataFrame): Vertical measurements, air
+                temperature at target heights, |T| [K].
 
         Returns:
             pd.DataFrame: Derived vertical measurements for pressure,
@@ -92,9 +104,9 @@ class ProfileConstructor(AtmosConstants):
         for col_idx in target_cols:
             air_pressure[col_idx] = self.get_air_pressure(
                 pressure=air_pressure[0],
-                ref_z=0,
-                alt_z=col_idx,
-                air_temp=temperature[col_idx],
+                air_temperature=temperature[col_idx],
+                z_target=col_idx,
+                z_ref=0,
             )
 
         return air_pressure
@@ -141,14 +153,16 @@ class ProfileConstructor(AtmosConstants):
         """Reduce station pressure to mean sea-level pressure.
 
         Args:
-            station_pressure (pd.DataFrame): Pressure at station
-                elevation, |P_0| [Pa].
-            virtual_temperature (pd.DataFrame): Virtual temperature at
-                station elevation, |T_v| [K].
-            elevation (float): Altitude above sea level, |z| [m].
+            station_pressure (pd.DataFrame): Vertical measurements,
+                pressure relative to station elevation, |P_z| [Pa].
+            virtual_temperature (pd.DataFrame): Vertical measurements,
+                virtual temperature, |T_v| [K].
+            elevation (float): Station elevation above sea level,
+                |z| [m].
 
         Returns:
-            pd.DataDrame: Mean sea-level pressure, |P_MSL| [Pa].
+            pd.DataDrame: Derived vertical measurements for mean
+            sea-level pressure, |P_MSL| [Pa].
         """
 
         mslp = station_pressure.multiply(
@@ -165,8 +179,8 @@ class ProfileConstructor(AtmosConstants):
         """Calculates potential temperature.
 
         Args:
-            virtual_temperature (pd.DataFrame): Vertical measurements, virtual
-                temperature measurements, |T_v| [K].
+            virtual_temperature (pd.DataFrame): Vertical measurements,
+                virtual temperature, |T_v| [K].
             pressure (pd.DataFrame): Vertical measurements, mean
                 sea-level pressure, |P_MSL| [Pa].
 

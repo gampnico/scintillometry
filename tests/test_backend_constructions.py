@@ -97,7 +97,7 @@ class TestBackendProfileConstructor:
         conftest_mock_weather_dataframe_tz,
         conftest_mock_hatpro_temperature_dataframe_tz,
     ):
-        """Calculate air pressure at specific altitude."""
+        """Calculate air pressure at specific height."""
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_idx = self.test_levels[-1]
@@ -105,9 +105,9 @@ class TestBackendProfileConstructor:
 
         compare_pressure = self.test_class.get_air_pressure(
             pressure=test_pressure,
-            ref_z=0,
-            alt_z=test_idx,
-            air_temp=test_temperature[test_idx],
+            air_temperature=test_temperature[test_idx],
+            z_target=test_idx,
+            z_ref=0,
         )
         assert isinstance(compare_pressure, pd.Series)
         assert compare_pressure.index.equals(test_temperature.index)
@@ -279,7 +279,7 @@ class TestBackendProfileConstructor:
         assert isinstance(test_potential, pd.DataFrame)
 
         compare_potential = self.test_class.get_potential_temperature(
-            pressure=test_pressure, temperature=test_temperature
+            virtual_temperature=test_temperature, pressure=test_pressure
         )
         assert isinstance(compare_potential, pd.DataFrame)
         assert np.allclose(compare_potential, test_potential)

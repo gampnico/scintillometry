@@ -482,13 +482,14 @@ def construct_hatpro_levels(levels=None):
     """Construct HATPRO scanning levels.
 
     Hardcoded scan levels specifically for HATPRO Retrieval data from
-    HATPRO UIBK Met.
+    HATPRO UIBK Met. Scan levels are integer measurement heights
+    relative to the station's elevation.
 
     Args:
         levels (list[int]): HATPRO measurement heights, |z_scan| [m].
 
     Returns:
-        list: Heights of each HATPRO scanning level, |z_scan| [m].
+        list: HATPRO measurement heights, |z_scan| [m].
 
     Raises:
         TypeError: Input levels must be a list or tuple of integers.
@@ -522,7 +523,7 @@ def load_hatpro(file_name, levels, tzone):
 
     Args:
         file_name (str): Path to raw HATPRO data.
-        levels (list[int]): HATPRO scan height in metres, |z_scan| [m].
+        levels (list[int]): Height of HATPRO scan level, |z_scan| [m].
         tzone (str): Local timezone during the scintillometer's
             operation. Default None.
     Returns:
@@ -563,7 +564,8 @@ def parse_hatpro(file_prefix, scan_heights=None, timezone=None):
                 ./path/to/file_temp.csv
 
             would require `file_prefix = "./path/to/file_"`.
-        scan_heights (list[int]): HATPRO scan heights, |z_scan| [m].
+        scan_heights (list[int]): Heights of HATPRO measurement levels,
+            |z_scan| [m].
         timezone (str): Local timezone during HATPRO operation.
             Default None.
 
@@ -608,7 +610,8 @@ def parse_vertical(file_path, device="hatpro", levels=None, tzone=None):
             would require `file_path = "./path/to/file_"`.
         device (str): Instrument used for vertical measurements. Only
             supports HATPRO. Default "hatpro".
-        levels (list[int]): Measurement heights in metres, [m].
+        levels (list[int]): Heights of HATPRO measurements,
+            |z_scan| [m].
         tzone (str): Local timezone during the radiometer's operation.
             Default None.
 
