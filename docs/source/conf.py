@@ -32,7 +32,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.17.a0"
+release = "0.17.a1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -56,41 +56,59 @@ html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
 rst_prolog = f"""
+.. |gm^-3| replace:: g :math:`\\cdot` m :sup:`-3`
+.. |Jkg^-1| replace:: J :math:`\\cdot` kg :sup:`-1`
+.. |JK^-1| replace:: J :math:`\\cdot` K :sup:`-1`
 .. |K^-1| replace:: K :sup:`-1`
+.. |K^2m^-2/3| replace:: K :math:`^{{2}}\\cdot` m :math:`^{{-2/3}}`
+.. |Kms^-1| replace:: K :math:`\\cdot` ms :sup:`-1`
 .. |kg^-1| replace:: kg :sup:`-1`
-.. |kgkg^-1| replace:: :math:`kg\\cdotkg^{{-1}}`
-.. |kgm^-3| replace:: kgm :sup:`-3`
+.. |kgkg^-1| replace:: kg :math:`\\cdot` kg :sup:`-1`
+.. |kgm^-3| replace:: kg :math:`\\cdot` m :sup:`-3`
 .. |m^(7/3)| replace:: m :sup:`7/3`
 .. |m^-3| replace:: m :sup:`-3`
+.. |ms^-1| replace:: ms :sup:`-1`
 .. |ms^-2| replace:: ms :sup:`-2`
 .. |s^-1| replace:: s :sup:`-1`
+.. |Wm^-2| replace:: W :math:`\\cdot` m :sup:`-2`
 .. |10^-5| replace:: 10 :sup:`-5`
 .. |a_11| replace:: :math:`\\alpha_{{11}}`
 .. |a_12| replace:: :math:`\\alpha_{{12}}`
-.. |AT| replace:: A :sub:`T`
-.. |Aq| replace:: A :sub:`q`
-.. |c_p| replace:: c :sub:`p`
+.. |A_T| replace:: :math:`A_{{T}}`
+.. |A_q| replace:: :math:`A_{{q}}`
+.. |c_p| replace:: :math:`c_{{p}}`
 .. |Cn2| replace:: :math:`C_{{n}}^{{2}}`
 .. |CT2| replace:: :math:`C_{{T}}^{{2}}`
 .. |e| replace:: :math:`e`
 .. |epsilon| replace:: :math:`\\epsilon`
 .. |f_CT2| replace:: :math:`f_{{C_{{T}}^{{2}}}}`
+.. |H| replace:: :math:`H`
+.. |H_free| replace:: :math:`H_{{free}}`
 .. |lamda| replace:: :math:`\\lambda`
 .. |LOb| replace:: :math:`L_{{Ob}}`
+.. |P| replace:: :math:`P`
 .. |P_0| replace:: :math:`P_{{0}}`
+.. |P_dry| replace:: :math:`P_{{dry}}`
 .. |P_MSLP| replace:: :math:`P_{{MSLP}}`
+.. |P_z| replace:: :math:`P_{{z}}`
 .. |Psi_m| replace:: :math:`\\Psi_{{m}}`
-.. |R_dry| replace:: R :sub:`dry`
-.. |R_v| replace:: R :sub:`v`
+.. |Q_0| replace:: :math:`Q_{{0}}`
+.. |r| replace:: :math:`r`
+.. |R_dry| replace:: :math:`R_{{dry}}`
+.. |R_v| replace:: :math:`R_{{v}}`
 .. |rho| replace:: :math:`\\rho`
 .. |rho_v| replace:: :math:`\\rho_{{v}}`
-.. |T_v| replace:: T :sub:`v`
+.. |T| replace:: :math:`T`
+.. |T_v| replace:: :math:`T_{{v}}`
+.. |T_z| replace:: :math:`T_{{z}}`
 .. |theta| replace:: :math:`\\theta`
 .. |theta*| replace:: :math:`\\theta^{{*}}`
 .. |u| replace:: :math:`u`
 .. |u*| replace:: :math:`u^{{*}}`
-.. |z_eff| replace:: z :sub:`eff`
+.. |z| replace:: :math:`z`
+.. |z_eff| replace:: :math:`z_{{eff}}`
 .. |z_mean| replace:: :math:`\\bar{{z}}`
-.. |z_u| replace:: z :sub:`u`
-.. |z_0| replace:: z :sub:`0`
+.. |z_scan| replace:: :math:`z_{{scan}}`
+.. |z_u| replace:: :math:`z_{{u}}`
+.. |z_0| replace:: :math:`z_{{0}}`
 """

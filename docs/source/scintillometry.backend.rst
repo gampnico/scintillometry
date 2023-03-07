@@ -51,7 +51,7 @@ In: scintillometry.backend.derivations.py
    :show-inheritance:
 
 Constructions module
------------------
+--------------------
 
 In: scintillometry.backend.constructions.py
 

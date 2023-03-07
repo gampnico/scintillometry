@@ -29,15 +29,17 @@ class ProfileConstructor(AtmosConstants):
         self.constants = AtmosConstants()
 
     def get_water_vapour_pressure(self, abs_humidity, temperature):
-        """Calculate water vapour pressure.
+        """Derive water vapour pressure from vertical measurements.
 
         Args:
-            abs_humidity (pd.DataFrame): Absolute humidity,
-                |rho_v| [kgm^-3].
-            temperature (pd.DataFrame): Temperature, [K].
+            abs_humidity (pd.DataFrame): Vertical measurements, absolute
+                humidity, |rho_v| [|kgm^-3|].
+            temperature (pd.DataFrame): Vertical measurements,
+                temperature, |T| [K].
 
         Returns:
-            pd.DataFrame: Water vapour pressure, |e| [Pa].
+            pd.DataFrame: Derived vertical measurements for water vapour
+            pressure, |e| [Pa].
         """
 
         wvp = abs_humidity.multiply(temperature).multiply(self.r_vapour)
@@ -45,18 +47,19 @@ class ProfileConstructor(AtmosConstants):
         return wvp
 
     def get_air_pressure(self, pressure, ref_z, alt_z, air_temp):
-        """Calculate air pressure at specific altitude.
+        """Derive air pressure at specific altitude.
 
         Uses hypsometric equation.
 
         Args:
-            pressure (pd.Series): Base pressure, |P_0| [Pa].
+            pressure (pd.Series): Base air pressure, |P_0| [Pa].
             ref_z (int): Base measurement altitude, |z_0| [m].
-            alt_z (int): Desired altitude, |z| [m].
-            air_temp (pd.Series): Air temperature, [K].
+            alt_z (int): Desired measurement altitude, |z| [m].
+            air_temp (pd.Series): Air temperature at desired measurement
+                altitude, |T_z| [K].
 
         Returns:
-            pd.Series: Air pressure at desired altitude, |P| [Pa].
+            pd.Series: Air pressure at desired altitude, |P_z| [Pa].
         """
 
         alt_pressure = pressure * np.exp(
@@ -66,16 +69,19 @@ class ProfileConstructor(AtmosConstants):
         return alt_pressure
 
     def extrapolate_air_pressure(self, surface_pressure, temperature):
-        """Extrapolates pressure measurements to scan levels.
+        """Extrapolates base pressure measurements to scan levels.
 
-        Input dataframes should have matching indices.
+        Input dataframes must have matching indices. Converts hPa to Pa.
 
         Args:
-            surface_pressure (pd.Series): Surface pressure, |P_0| [hPa].
-            temperature (pd.DataFrame): Temperature at target altitudes.
+            surface_pressure (pd.Series): Air pressure measurements at
+                base altitude, |P_0| [hPa].
+            temperature (pd.DataFrame): Vertical measurements for air
+                temperature at target altitudes, |T| [K].
 
         Returns:
-            pd.DataFrame: Air pressure for each target altitude.
+            pd.DataFrame: Derived vertical measurements for pressure,
+            |P| [Pa].
         """
 
         air_pressure = pd.DataFrame(
@@ -97,11 +103,14 @@ class ProfileConstructor(AtmosConstants):
         """Calculate mixing ratio for dry air pressure.
 
         Args:
-            wv_pressure (pd.DataFrame): Water vapour pressure, |e| [Pa].
-            d_pressure (pd.DataFrame): Dry air pressure, [Pa].
+            wv_pressure (pd.DataFrame): Vertical measurements, water
+                vapour pressure, |e| [Pa].
+            d_pressure (pd.DataFrame): Vertical measurements, dry air
+                pressure, |P_dry| [Pa].
 
         Returns:
-            pd.DataFrame: Mixing ratio, r |kgkg^-1|.
+            pd.DataFrame: Derived vertical measurements for mixing
+            ratio, |r| [|kgkg^-1|].
         """
 
         m_ratio = (wv_pressure.multiply(self.r_dry)).divide(
@@ -111,14 +120,17 @@ class ProfileConstructor(AtmosConstants):
         return m_ratio
 
     def get_virtual_temperature(self, temperature, mixing_ratio):
-        """Calculate virtual temperature.
+        """Derive virtual temperature from vertical measurements.
 
         Args:
-            temperature (pd.DataFrame): Air temperature, [K].
-            d_pressure (pd.DataFrame): Dry air pressure, [Pa].
+            temperature (pd.DataFrame): Vertical measurements, air
+                temperature, |T| [K].
+            d_pressure (pd.DataFrame): Vertical measurements, dry air
+                pressure, |P_dry| [Pa].
 
         Returns:
-            pd.DataFrame: Virtual temperature, |Tv| [K].
+            pd.DataFrame: Derived vertical measurements for virtual
+            temperature, |T_v| [K].
         """
 
         v_temp = temperature * (1 + 0.61 * mixing_ratio)
@@ -133,7 +145,7 @@ class ProfileConstructor(AtmosConstants):
                 elevation, |P_0| [Pa].
             virtual_temperature (pd.DataFrame): Virtual temperature at
                 station elevation, |T_v| [K].
-            elevation (float): Altitude above sea level, [m].
+            elevation (float): Altitude above sea level, |z| [m].
 
         Returns:
             pd.DataDrame: Mean sea-level pressure, |P_MSLP| [Pa].

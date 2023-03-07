@@ -21,7 +21,7 @@ from scintillometry.backend.constants import AtmosConstants
 
 
 def derive_ct2(dataframe, wavelength=880):
-    """Derives the structure parameter of temperature |CT2|.
+    """Derives the structure parameter of temperature, |CT2|.
 
     Derives |CT2| from measured structure parameter of refractive index
     |Cn2| and weather data. The equation to derive |CT2| is precise to
@@ -40,10 +40,11 @@ def derive_ct2(dataframe, wavelength=880):
         dataframe (pd.DataFrame): Parsed and localised data, containing
             at least |Cn2|, temperature, and pressure.
         wavelength (int): Wavelength of transmitter beam, in
-            nanometres. Default 880.
+            nanometres. Default 880 nm.
 
     Returns:
-        pd.DataFrame: Input dataframe with updated |CT2| values.
+        pd.DataFrame: Input dataframe with updated values for the
+        structure parameter of temperature, |CT2| [|K^2m^-2/3|].
     """
 
     transmit_lambda = wavelength
@@ -68,11 +69,11 @@ def kinematic_shf(dataframe, z_eff):
     Args:
         dataframe (pd.DataFrame): Must contain at least |CT2| and
             temperature data.
-        z_eff (float): Effective path height, in metres.
+        z_eff (float): Effective path height, |z_eff| [m].
 
     Returns:
         pd.DataFrame: Dataframe with new column for kinematic sensible
-        heat flux.
+        heat flux |Q_0| [|Kms^-1|].
     """
 
     constants = AtmosConstants()
@@ -91,12 +92,13 @@ def free_convection_shf(dataframe):
     """Calculates surface sensible heat flux under free convection.
 
     Args:
-        dataframe (pd.DataFrame): Must contain at least kinematic SHF,
-            pressure, and temperature data.
+        dataframe (pd.DataFrame): Must contain at least kinematic
+            sensible heat flux, pressure, and temperature data.
 
     Returns:
         pd.DataFrame: Dataframe with new columns for air density and
-        surface sensible heat flux under free convection.
+        surface sensible heat flux under free convection,
+        |H_free| [|Wm^-2|].
     """
 
     constants = AtmosConstants()
@@ -115,19 +117,21 @@ def free_convection_shf(dataframe):
 def compute_fluxes(input_data, effective_height, beam_params=None):
     """Compute kinematic and surface sensible heat fluxes.
 
-    The surface sensible heat flux H_free is calculated under free
+    The surface sensible heat flux |H_free| is calculated under free
     convection (little wind shear, high instability).
 
     Args:
         input_data (pd.DataFrame): Parsed and localised scintillometry
             and weather data. This must contain at least |Cn2|,
             temperature, and pressure.
-        effective_height (np.floating): Effective path height, in metres.
+        effective_height (np.floating): Effective path height,
+            |z_eff| [m].
         beam_params (tuple[int, int]): Wavelength and wavelength error
             interval in nanometres. For BLS this is typically (850, 20).
 
     Returns:
-        pd.DataFrame: Updated dataframe containing derived |CT2|.
+        pd.DataFrame: Updated dataframe containing derived values for
+        |CT2|, [|K^2m^-2/3|].
     """
 
     constants = AtmosConstants()

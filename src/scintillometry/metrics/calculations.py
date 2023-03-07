@@ -34,10 +34,10 @@ class MetricsTopography:
     def get_z_params(self, user_args, transect):
         """Get effective and mean path heights of transect.
 
-        Computes effective and mean path heights of transect under stable
-        and unstable conditions, and with no height dependency. Prints the
-        effective and mean path height for the user-selected stability
-        conditions.
+        Computes effective and mean path heights of transect under
+        stable and unstable conditions, and with no height dependency.
+        Prints the effective and mean path height for the user-selected
+        stability conditions.
 
         Select the stability conditions using ``--r, --regime <str>``.
 
@@ -46,8 +46,8 @@ class MetricsTopography:
             transect (pd.DataFrame): Parsed path transect data.
 
         Returns:
-            dict[float, float]: Tuples of effective and mean path height,
-            with stability conditions as keys.
+            dict[float, float]: Tuples of effective and mean path height
+            |z_eff| and |z_mean| [m], with stability conditions as keys.
         """
 
         z_params = scintillometry.backend.transects.get_all_z_parameters(
@@ -72,24 +72,24 @@ class MetricsFlux:
     def construct_flux_dataframe(self, user_args, interpolated_data, z_eff):
         """Compute sensible heat flux for free convection.
 
-        Computes sensible heat flux for free convection, plots a comparison
-        between the computed flux and the flux recorded by the
-        scintillometer, and saves the figure to disk.
+        Computes sensible heat flux for free convection, plots a
+        comparison between the computed flux and the flux recorded by
+        the scintillometer, and saves the figure to disk.
 
         Warning: this will overwrite existing values for |CT2| in
         <interpolated_data>.
 
         Args:
             user_args (argparse.Namespace): Namespace of user arguments.
-            interpolated_data (pd.DataFrame): Dataframe containing parsed
-                and localised weather and scintillometer data with matching
-                temporal resolution.
-            z_eff (np.floating): Effective path height, [m].
+            interpolated_data (pd.DataFrame): Dataframe containing
+                parsed and localised weather and scintillometer data
+                with matching temporal resolution.
+            z_eff (np.floating): Effective path height, z_eff| [m].
 
         Returns:
-            pd.DataFrame: Interpolated dataframe with additional column for
-            sensible heat flux under free convection, and overwritten
-            collected |CT2| values with derived values.
+            pd.DataFrame: Interpolated dataframe with additional column
+            for sensible heat flux under free convection, and derived
+            values for  |CT2| [|K^2m^-2/3|].
         """
 
         flux_data = scintillometry.backend.derivations.compute_fluxes(
@@ -108,15 +108,16 @@ class MetricsFlux:
         Args:
             user_args (argparse.Namespace): Namespace of user arguments.
             z_parameters (dict[float, float]): Tuples of effective and
-                mean path height, with stability conditions as keys.
+                mean path height |z_eff| and |z_mean| [m], with
+                stability conditions as keys.
             interpolated_data (pd.DataFrame): Parsed, tz-aware dataframe
                 containing at least |CT2|, wind speed, air density, and
                 temperature.
 
         Returns:
             pd.DataFrame: Interpolated data with additional columns for
-            Obukhov length, sensible heat flux, frictional velocity, and
-            temperature scale.
+            Obukhov length |LOb|, sensible heat flux |H|, friction
+            velocity |u*|, and temperature scale |theta*|.
         """
 
         # Get time where stability conditions change
@@ -214,12 +215,13 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
 
         - Calculates effective path heights for all stability
           conditions.
-        - Derives |CT2| and SHF for free convection.
+        - Derives |CT2| and sensible heat flux for free convection.
         - Estimates the time where stability conditions change.
-        - Calculates SHF using MOST.
-        - Plots time series comparing SHF with free convection to
-          on-board software, time series of SHF calculated with MOST,
-          and a comparison to free convection.
+        - Calculates sensible heat flux using MOST.
+        - Plots time series comparing sensible heat flux for free
+          convection |H_free| to on-board software, time series of
+          sensible heat flux calculated with MOST |H|, and a comparison
+          to sensible heat flux for free convection.
         - Saves plots to disk.
 
         If this function is imported as a package, mock user arguments
@@ -289,8 +291,8 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
 
         This wrapper function:
 
-        - Plots time series comparing Obukhov Lengths and SHF between a
-          dataframe and InnFLUX.
+        - Plots time series comparing Obukhov lengths and sensible heat
+          fluxes between an input dataframe and InnFLUX measurements.
         - Saves plots to disk.
 
         If this function is imported as a package, mock user arguments

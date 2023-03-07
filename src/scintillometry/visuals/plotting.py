@@ -287,8 +287,8 @@ def plot_convection(dataframe, stability, site=""):
     """Plots scintillometer convection and free convection.
 
     Args:
-        dataframe (pd.DataFrame): Contains data for scintillometer and
-            free convection.
+        dataframe (pd.DataFrame): Contains sensible heat fluxes from
+            on-board software and for free convection |H_free|.
         stability (str): Stability conditions.
         site (str): Location of data collection. Default empty
             string.
@@ -390,8 +390,8 @@ def plot_iterated_fluxes(iteration_data, time_id, location=""):
     """Plots and saves iterated SHF and a comparison to free convection.
 
     Args:
-        iteration_data (pd.DataFrame): TZ-aware with fluxes calculated
-            for free convection and MOST.
+        iteration_data (pd.DataFrame): TZ-aware with sensible heat
+            fluxes calculated for free convection |H_free|, and MOST |H|.
         time_id (pd.Timestamp): Local time of data collection.
         location (str): Location of data collection. Default empty
             string.

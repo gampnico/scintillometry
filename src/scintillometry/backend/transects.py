@@ -98,7 +98,7 @@ def compute_effective_z(path_heights, path_positions, stability):
     normalised positions.
 
     Args:
-        path_heights (pd.Series): Actual path heights, in metres.
+        path_heights (pd.Series): Actual path heights, |z| [m].
         path_positions (pd.Series): Normalised positions along transect.
         stability (str): Stability conditions. Can be stable, unstable,
             or None for no height dependency.
@@ -132,7 +132,7 @@ def get_z_parameters(transect_data, stability_condition):
 
     Returns:
         tuple[np.floating, np.floating]: Effective and mean path height
-        of transect.
+        of transect, |z_eff| and |z_mean| [m].
     """
 
     effective_path_height = compute_effective_z(
@@ -153,7 +153,8 @@ def get_all_z_parameters(path_transect):
 
     Returns:
         dict[tuple[np.floating, np.floating]]: Effective and mean path
-        heights of transect, with each stability condition as key.
+        heights of transect |z_eff| and |z_mean| [m], with each
+        stability condition as key.
     """
 
     path_heights_dict = {}

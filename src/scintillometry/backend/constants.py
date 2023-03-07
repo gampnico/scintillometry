@@ -33,12 +33,12 @@ class AtmosConstants(object):
             BLS type.
         lamda (float): BLS wavelength, |lamda| [nm].
         lamda_error (float): BLS wavelength error, [nm].
-        m1_opt (float): Needed for |AT| and |Aq|, from Owens (1967).
-        m2_opt (float): Needed for |AT| and |Aq|, from Owens (1967).
+        m1_opt (float): Needed for |A_T| and |A_q|, from Owens (1967).
+        m2_opt (float): Needed for |A_T| and |A_q|, from Owens (1967).
 
-        at_opt (float): |AT| coefficient for 880 nm & typical
+        at_opt (float): |A_T| coefficient for 880 nm & typical
             atmospheric conditions.
-        aq_opt (float): |Aq| coefficient for 880 nm & typical
+        aq_opt (float): |A_q| coefficient for 880 nm & typical
             atmospheric conditions.
 
         most_coeffs_ft (dict[list[tuple, tuple]]): Coefficients for MOST
@@ -46,20 +46,20 @@ class AtmosConstants(object):
             [(unstable 01, unstable 02), (stable 01, stable 02)]
 
         cp (float): Specific heat capacity of air at constant pressure,
-            |c_p| [J |K^-1| |kg^-1|].
+            |c_p| [|JK^-1| |kg^-1|].
         g (float): Gravitational acceleration [|ms^-2|].
         k (float): von Kármán's constant.
         kelvin (float): 0°C in kelvins.
         latent_vapour (float): Latent heat of vapourisation at
-            20°C [J |kg^-1|].
+            20°C [|Jkg^-1|].
         r_dry (float): Specific gas constant for dry air,
-            |R_dry| [J |K^-1| |kg^-1|].
+            |R_dry| [|JK^-1| |kg^-1|].
         r_vapour (float): Specific gas contstant for water vapour,
-            |R_v| [J |K^-1| |kg^-1|].
+            |R_v| [|JK^-1| |kg^-1|].
         ratio_rmm (float): Ratio of molecular masses of water vapour and
             dry air i.e. ratio of gas constants |epsilon|.
         ref_pressure (int): Reference pressure (not SLP), |P_0| [Pa].
-        rho (float): Density of air at STP, |rho| [kg |m^-3|].
+        rho (float): Density of air at STP, |rho| [|kgm^-3|].
 
     """
 
