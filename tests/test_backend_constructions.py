@@ -215,11 +215,11 @@ class TestBackendProfileConstructor:
         assert not np.allclose(compare_temperature, test_temperature)
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_potential_temperature",
+        name="TestBackendConstructProfile::test_get_reduced_temperature",
         depends=["TestBackendConstructProfile::test_constructor_init"],
     )
     def test_get_reduced_pressure(self, conftest_mock_weather_dataframe_tz):
-        """Reduce station pressure to MSLP."""
+        """Reduce station pressure to mean sea-level pressure."""
 
         test_pressure = pd.DataFrame(
             data={10: conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)},
@@ -252,3 +252,34 @@ class TestBackendProfileConstructor:
         )
         assert isinstance(compare_mslp, pd.DataFrame)
         assert np.allclose(compare_mslp, test_mslp)
+
+    @pytest.mark.dependency(
+        name="TestBackendConstructProfile::test_get_potential_temperature",
+        depends=["TestBackendConstructProfile::test_constructor_init"],
+    )
+    def test_get_potential_temperature(self, conftest_mock_weather_dataframe_tz):
+        """Calculate potential temperature."""
+
+        test_pressure = pd.DataFrame(
+            data={10: conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)},
+            columns=[10],
+            index=conftest_mock_weather_dataframe_tz.index,
+        )
+        test_temperature = pd.DataFrame(
+            data={
+                10: conftest_mock_weather_dataframe_tz["temperature_2m"].copy(deep=True)
+            },
+            columns=[10],
+            index=conftest_mock_weather_dataframe_tz.index,
+        )
+        assert isinstance(test_temperature, pd.DataFrame)
+        test_potential = test_temperature * (
+            self.test_class.constants.ref_pressure / test_pressure
+        ) ** (self.test_class.constants.r_dry / self.test_class.constants.cp)
+        assert isinstance(test_potential, pd.DataFrame)
+
+        compare_potential = self.test_class.get_potential_temperature(
+            pressure=test_pressure, temperature=test_temperature
+        )
+        assert isinstance(compare_potential, pd.DataFrame)
+        assert np.allclose(compare_potential, test_potential)

@@ -148,7 +148,7 @@ class ProfileConstructor(AtmosConstants):
             elevation (float): Altitude above sea level, |z| [m].
 
         Returns:
-            pd.DataDrame: Mean sea-level pressure, |P_MSLP| [Pa].
+            pd.DataDrame: Mean sea-level pressure, |P_MSL| [Pa].
         """
 
         mslp = station_pressure.multiply(
@@ -160,3 +160,23 @@ class ProfileConstructor(AtmosConstants):
         )
 
         return mslp
+
+    def get_potential_temperature(self, virtual_temperature, pressure):
+        """Calculates potential temperature.
+
+        Args:
+            virtual_temperature (pd.DataFrame): Vertical measurements, virtual
+                temperature measurements, |T_v| [K].
+            pressure (pd.DataFrame): Vertical measurements, mean
+                sea-level pressure, |P_MSL| [Pa].
+
+        Returns:
+            pd.DataFrame: Derived vertical measurements for potential
+            temperature, |theta| [K].
+        """
+
+        potential_temperature = virtual_temperature.multiply(
+            (pressure.rdiv(self.ref_pressure)).pow((self.r_dry / self.cp))
+        )
+
+        return potential_temperature
