@@ -289,3 +289,123 @@ class TestBackendProfileConstructor:
         )
         assert isinstance(compare_potential, pd.DataFrame)
         assert np.allclose(compare_potential, test_potential)
+
+    @pytest.mark.dependency(
+        name="TestBackendConstructProfile::test_non_uniform_differencing"
+    )
+    def test_non_uniform_differencing(
+        self,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_scan_levels,
+    ):
+        """Compute centred-differencing scheme for non-uniform data."""
+
+        test_dataframe = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
+        test_cols = test_dataframe.columns
+        test_diff = test_cols.to_series().diff()
+        assert isinstance(test_diff, pd.Series)
+        assert np.isnan(test_diff[0])
+        assert not test_diff[1:].isnull().all()
+
+        test_gradient = test_dataframe.copy(deep=True)
+        for i in range(1, len(test_cols)):
+            test_gradient.iloc[:, i] = (
+                test_dataframe.iloc[:, i] - test_dataframe.iloc[:, i - 1]
+            ) / test_diff.iloc[i]
+        test_gradient.isetitem(0, 0)
+        test_gradient.isetitem(
+            -1,
+            (test_dataframe[test_cols[-1]] - test_dataframe[test_cols[-2]])
+            / test_diff.iloc[-1],
+        )
+
+        compare_gradient = self.test_class.non_uniform_differencing(
+            dataframe=test_dataframe
+        )
+        assert isinstance(compare_gradient, pd.DataFrame)
+        for key in conftest_mock_hatpro_scan_levels:
+            assert key in compare_gradient.columns
+            assert ptypes.is_numeric_dtype(compare_gradient[key])
+        assert ptypes.is_datetime64_any_dtype(compare_gradient.index)
+        assert compare_gradient.index.name == "rawdate"
+
+        # Test boundary conditions
+        assert (compare_gradient[compare_gradient.columns[0]] == 0).all()
+        assert np.allclose(
+            compare_gradient[compare_gradient.columns[-1]],
+            test_gradient[test_gradient.columns[-1]],
+        )
+
+        assert not all(
+            compare_gradient[compare_gradient.columns.difference([0])].isnull().any()
+        )
+        assert all(np.sign(compare_gradient)) == all(np.sign(test_gradient))
+
+    @pytest.mark.dependency(name="TestBackendConstructProfile::test_get_gradient_error")
+    def test_get_gradient_error(self, conftest_mock_hatpro_temperature_dataframe_tz):
+        """Raise error for missing finite-differencing scheme."""
+
+        test_error = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
+        error_msg = (
+            "'missing scheme' is not an implemented differencing scheme.",
+            "Use 'uneven' or 'backward'.",
+        )
+        with pytest.raises(NotImplementedError, match=" ".join(error_msg)):
+            self.test_class.get_gradient(data=test_error, method="missing scheme")
+
+    @pytest.mark.dependency(
+        name="TestBackendConstructProfile::test_get_gradient",
+        depends=[
+            "TestBackendConstructProfile::test_get_gradient_error",
+            "TestBackendConstructProfile::test_non_uniform_differencing",
+        ],
+    )
+    @pytest.mark.parametrize("arg_method", ["backward", "uneven"])
+    def test_get_gradient(
+        self,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_scan_levels,
+        arg_method,
+    ):
+        """Calculate spatial gradient."""
+
+        test_dataframe = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
+        test_cols = test_dataframe.columns
+        test_diff = test_cols.to_series().diff()
+        assert isinstance(test_diff, pd.Series)
+        assert np.isnan(test_diff[0])
+        assert not test_diff[1:].isnull().all()
+
+        test_gradient = test_dataframe.copy(deep=True)
+        for i in range(1, len(test_cols)):
+            test_gradient.iloc[:, i] = (
+                test_dataframe.iloc[:, i] - test_dataframe.iloc[:, i - 1]
+            ) / test_diff.iloc[i]
+        test_gradient.isetitem(0, 0)
+
+        compare_gradient = self.test_class.get_gradient(
+            data=test_dataframe, method=arg_method
+        )
+        assert isinstance(compare_gradient, pd.DataFrame)
+        for key in conftest_mock_hatpro_scan_levels:
+            assert key in compare_gradient.columns
+            assert ptypes.is_numeric_dtype(compare_gradient[key])
+        assert ptypes.is_datetime64_any_dtype(compare_gradient.index)
+        assert compare_gradient.index.name == "rawdate"
+
+        assert not all(
+            compare_gradient[compare_gradient.columns.difference([0])].isnull().any()
+        )
+        assert (compare_gradient[test_cols[0]] == 0).all()
+
+        if arg_method == "backward":
+            assert np.allclose(compare_gradient, test_gradient)
+        elif arg_method == "uneven":
+            test_gradient.isetitem(
+                -1,
+                (test_dataframe[test_cols[-1]] - test_dataframe[test_cols[-2]])
+                / test_diff.iloc[-1],
+            )
+            assert np.allclose(
+                compare_gradient[test_cols[-1]], test_gradient[test_cols[-1]]
+            )

@@ -194,3 +194,125 @@ class ProfileConstructor(AtmosConstants):
         )
 
         return potential_temperature
+
+    def non_uniform_differencing(self, dataframe):
+        """Computes gradient of data from a non-uniform mesh.
+
+        The gradient is calculated using a 1-D centred-differencing
+        scheme for a non-uniform mesh. For the boundary conditions:
+        :math:`y_{{(x=0)}} = 0`, and :math:`y_{{(x=\\max(x))}}` is
+        calculated by backwards-differencing - i.e. no open boundaries.
+
+        If the size of :math:`\\Delta x_{{i}}` is very different to
+        :math:`\\Delta x_{{i\\pm 1}}`, then accuracy deteriorates from
+        :math:`O((\\Delta x)^{{2}})` to :math:`O(\\Delta x)`.
+
+        The scheme is as follows:
+
+        .. math::
+
+            \\left.\\frac{{dy}}{{dx}} \\right |_{{0}} = 0 \\\\
+
+        .. math::
+
+            \\left.\\frac{{dy}}{{dx}} \\right |_{{i=\\max(i)}}
+                = \\frac{{
+                    y_{{i}} - y_{{i-1}}
+                }}{{
+                    \\Delta x_{{i}}
+                }}
+
+        .. math::
+
+            \\left.\\frac{{dy}}{{dx}} \\right |_{{i>0, i <\\max(i)}}
+                = \\frac{{
+                    y_{{i+1}} (\\Delta x_{{i-1}})^{{2}}
+                    - y_{{i-1}} (\\Delta x_{{i}})^{{2}}
+                    + y_{{i}} \\left [
+                        (\\Delta x_{{i-1}})^{{2}}
+                        - (\\Delta x_{{i}})^{{2}}
+                        \\right ]
+                }}{{
+                    (\\Delta x_{{i-1}})
+                    (\\Delta x_{{i}})
+                    (\\Delta x_{{i-1}} + \\Delta x_{{i-1}})
+                    + O(\\Delta x_{{i}})^{{2}}
+                }}
+
+        Args:
+            dataframe (pd.DataFrame): Non-uniformly spaced measurements for
+                single variable.
+
+        Returns:
+            pd.DataFrame: Derivative of variable with respect to
+            non-uniform intervals.
+        """
+
+        array = dataframe.copy(deep=True)
+        delta_x = dataframe.columns.to_series().diff()
+        delta_x[0] = dataframe.columns[1]
+        derivative = pd.DataFrame(columns=dataframe.columns, index=dataframe.index)
+
+        # Set boundary conditions
+        derivative.isetitem(0, 0)  # y_0 = 0
+        derivative.isetitem(  # y_max(x) from backwards-differencing
+            -1, (array[array.columns[-1]] - array[array.columns[-2]]) / delta_x.iloc[-1]
+        )
+
+        for i in np.arange(1, len(array.columns) - 1):
+            derivative[derivative.columns[i]] = (
+                array.iloc[:, i + 1].multiply(delta_x.iloc[i - 1] ** 2)
+                - array.iloc[:, i - 1].multiply(delta_x.iloc[i] ** 2)
+                + array.iloc[:, i].multiply(
+                    ((delta_x.iloc[i - 1] ** 2) - (delta_x.iloc[i] ** 2))
+                )
+            ).divide(
+                delta_x.iloc[i - 1]
+                * delta_x.iloc[i]
+                * (delta_x.iloc[i - 1] + delta_x.iloc[i])
+            )
+
+        return derivative
+
+    def get_gradient(self, data, method="uneven"):
+        """Computes spatial gradient of a set of vertical measurements.
+
+        Calculates |dy/dx| at each value of independent variable x for
+        each time step t(n): e.g. an input dataframe of temperatures |T|
+        for heights |z| with time index t, returns a dataframe of
+        :math:`\\partial T/\\partial z` for heights |z| with time
+        index t.
+
+        By default the gradient is calculated using a 1-D
+        centred-differencing scheme for non-uniform meshes, since
+        vertical measurements are rarely made at uniform intervals.
+
+        Args:
+            data (pd.DataFrame): Vertical measurements for a single
+                variable.
+            method (str): Finite differencing method. Supports "uneven"
+                for centred-differencing over a non-uniform mesh, and
+                "backward" for backward-differencing. Default "uneven".
+
+        Returns:
+            pd.DataFrame: Derived spatial gradients |dy/dx| for each
+            value x at each time step.
+
+        Raises:
+            NotImplementedError: '<method>' is not an implemented
+                differencing scheme. Use 'uneven' or 'backward'.
+        """
+
+        if method.lower() == "backward":
+            gradients = data.diff(periods=1, axis=1) / data.columns.to_series().diff()
+            gradients[0] = 0  # set boundary condition
+        elif method.lower() == "uneven":
+            gradients = self.non_uniform_differencing(dataframe=data)
+        else:
+            error_msg = (
+                f"'{method}' is not an implemented differencing scheme.",
+                "Use 'uneven' or 'backward'.",
+            )
+            raise NotImplementedError(" ".join(error_msg))
+
+        return gradients
