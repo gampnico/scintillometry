@@ -39,7 +39,7 @@ class TestBackendProfileConstructor:
     """
 
     test_class = scintillometry.backend.constructions.ProfileConstructor()
-    test_levels = [0, 10, 30]
+    test_levels = [0, 10, 30, 50, 75, 100]
     test_index = pd.to_datetime(
         ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
     )
@@ -65,6 +65,7 @@ class TestBackendProfileConstructor:
         self,
         conftest_mock_hatpro_humidity_dataframe,
         conftest_mock_hatpro_temperature_dataframe,
+        conftest_mock_hatpro_scan_levels,
     ):
         """Calculate water vapour pressure."""
 
@@ -80,7 +81,7 @@ class TestBackendProfileConstructor:
         )
 
         assert isinstance(compare_wvp, pd.DataFrame)
-        for key in self.test_levels:
+        for key in conftest_mock_hatpro_scan_levels:
             assert key in compare_wvp.columns
             assert ptypes.is_numeric_dtype(compare_wvp[key])
         assert ptypes.is_datetime64_any_dtype(compare_wvp.index)
@@ -96,11 +97,12 @@ class TestBackendProfileConstructor:
         self,
         conftest_mock_weather_dataframe_tz,
         conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_scan_levels,
     ):
         """Calculate air pressure at specific height."""
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
-        test_idx = self.test_levels[-1]
+        test_idx = conftest_mock_hatpro_scan_levels[-1]
         test_pressure = conftest_mock_weather_dataframe_tz["pressure"] * 100  # to Pa
 
         compare_pressure = self.test_class.get_air_pressure(
@@ -130,7 +132,7 @@ class TestBackendProfileConstructor:
         """Extrapolate air pressure across all scan heights."""
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
-        test_pressure = conftest_mock_weather_dataframe_tz["pressure"]
+        test_pressure = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
 
         compare_pressure = self.test_class.extrapolate_air_pressure(
             surface_pressure=test_pressure, temperature=test_temperature
@@ -138,12 +140,16 @@ class TestBackendProfileConstructor:
 
         assert isinstance(compare_pressure, pd.DataFrame)
         assert compare_pressure.index.equals(test_temperature.index)
-        assert np.allclose(compare_pressure[0], test_pressure * 100)
-        assert ((compare_pressure.ge(1000)).all()).all()
-        assert not np.allclose(test_pressure, compare_pressure)
+        assert np.allclose(
+            compare_pressure[compare_pressure.columns[0]], test_pressure * 100
+        )
+        for col in compare_pressure.columns.difference([0]):
+            assert not np.allclose(test_pressure * 100, compare_pressure[col])
         assert not (test_pressure.isna()).any()
-        assert not compare_pressure[compare_pressure.columns[-1]].equals(
-            compare_pressure[0]  # Int64 index doesn't support indexing directly with -1
+        assert ((compare_pressure.ge(1000)).all()).all()
+        assert not np.allclose(
+            compare_pressure[compare_pressure.columns[-1]],
+            compare_pressure[compare_pressure.columns[0]],
         )
 
     @pytest.mark.dependency(

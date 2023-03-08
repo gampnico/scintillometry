@@ -259,17 +259,28 @@ def fixture_conftest_mock_innflux_dataframe_tz(conftest_mock_innflux_dataframe):
 
 
 @pytest.fixture(
+    name="conftest_mock_hatpro_scan_levels", scope="function", autouse=False
+)
+def fixture_conftest_mock_hatpro_scan_levels():
+    """Constructs mock list of HATPRO measurement heights."""
+
+    levels = [0, 10, 30, 50, 75, 100]
+
+    yield levels
+
+
+@pytest.fixture(
     name="conftest_mock_hatpro_humidity_data", scope="function", autouse=False
 )
 def fixture_conftest_mock_hatpro_humidity_data():
     """Constructs mock list output for HATPRO humidity data."""
 
     file_header = ["#Dataset: HATPRO UIBK Humidity - RAW"]
-    column_header = ["rawdate;v01;v02;v03"]
+    column_header = ["rawdate;v01;v02;v03;v04;v05;v06"]
     mock_data = [
-        "2020-06-03 03:10:00;6.45;6.36;6.26",
-        "2020-06-03 03:20:00;6.49;6.40;6.29",
-        "2020-06-03 03:30:00;6.52;6.43;6.32",
+        "2020-06-03 03:10:00;7.45;7.37;7.28;7.23;7.16;7.10",
+        "2020-06-03 03:20:00;7.44;7.36;7.26;7.21;7.14;7.08",
+        "2020-06-03 03:30:00;7.47;7.39;7.30;7.25;7.19;7.12",
     ]
     data = []
     for data_part in [file_header, column_header, mock_data]:
@@ -300,11 +311,14 @@ def fixture_conftest_mock_hatpro_humidity_dataframe():
     data_index = pd.to_datetime(
         ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
     )
-    heights = [0, 10, 30]
+    heights = [0, 10, 30, 50, 75, 100]
     data = {
-        0: [6.45, 6.36, 6.26],
-        10: [6.49, 6.40, 6.29],
-        30: [6.52, 6.43, 6.32],
+        0: [7.45, 7.44, 7.47],
+        10: [7.37, 7.36, 7.39],
+        30: [7.28, 7.26, 7.30],
+        50: [7.23, 7.21, 7.25],
+        75: [7.16, 7.14, 7.19],
+        100: [7.10, 7.08, 7.12],
     }
     dataframe = pd.DataFrame(data=data, columns=heights, index=data_index).copy(
         deep=True
@@ -343,11 +357,11 @@ def fixture_conftest_mock_hatpro_temperature_data():
     """Constructs mock list output for HATPRO temperature data."""
 
     file_header = ["#Dataset: HATPRO UIBK Temperature - RAW"]
-    column_header = ["rawdate;v01;v02;v03"]
+    column_header = ["rawdate;v01;v02;v03;v04;v05;v06"]
     mock_data = [
-        "2020-06-03 03:10:00;283.58;283.60;283.52",
-        "2020-06-03 03:20:00;283.38;283.43;283.42",
-        "2020-06-03 03:30:00;283.27;283.31;283.28",
+        "2020-06-03 03:10:00;283.66;283.60;283.40;283.20;282.97;282.73",
+        "2020-06-03 03:20:00;283.44;283.41;283.29;283.14;282.94;282.71",
+        "2020-06-03 03:30:00;283.36;283.32;283.18;283.03;282.83;282.63",
     ]
     data = []
     for data_part in [file_header, column_header, mock_data]:
@@ -378,11 +392,14 @@ def fixture_conftest_mock_hatpro_temperature_dataframe():
     data_index = pd.to_datetime(
         ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
     )
-    heights = [0, 10, 30]
+    heights = [0, 10, 30, 50, 75, 100]
     data = {
-        0: [283.58, 283.60, 283.52],
-        10: [283.38, 283.43, 283.42],
-        30: [283.27, 283.31, 283.28],
+        0: [283.66, 283.44, 283.36],
+        10: [283.60, 283.41, 283.32],
+        30: [283.40, 283.29, 283.18],
+        50: [283.20, 283.14, 283.03],
+        75: [282.97, 282.94, 282.83],
+        100: [282.73, 282.71, 282.63],
     }
     dataframe = pd.DataFrame(data=data, columns=heights, index=data_index).copy(
         deep=True

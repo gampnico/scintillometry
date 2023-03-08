@@ -644,13 +644,7 @@ class TestDataParsingInnflux:
 
 
 class TestDataParsingHatpro:
-    """Test class for parsing HATPRO data.
-
-    Attributes:
-        test_levels (list): Test measurement heights.
-    """
-
-    test_levels = [0, 10, 30]
+    """Test class for parsing HATPRO data."""
 
     @pytest.mark.dependency(
         name="TestDataParsingHatpro::test_construct_hatpro_levels_error"
@@ -690,20 +684,24 @@ class TestDataParsingHatpro:
         open_mock: Mock,
         conftest_mock_hatpro_humidity_raw,
         conftest_mock_check_file_exists,
+        conftest_mock_hatpro_scan_levels,
         arg_timezone,
     ):
         """Load raw HATPRO data into dataframe."""
 
         _ = conftest_mock_check_file_exists
+        test_levels = conftest_mock_hatpro_scan_levels
         open_mock.return_value = io.StringIO(conftest_mock_hatpro_humidity_raw)
 
         compare_data = scintillometry.wrangler.data_parser.load_hatpro(
-            file_name="/path/to/file", levels=self.test_levels, tzone=arg_timezone
+            file_name="/path/to/file",
+            levels=test_levels,
+            tzone=arg_timezone,
         )
         open_mock.assert_called_once()
 
         assert isinstance(compare_data, pd.DataFrame)
-        for key in self.test_levels:
+        for key in test_levels:
             assert key in compare_data.columns
             assert ptypes.is_numeric_dtype(compare_data[key])
         assert ptypes.is_datetime64_any_dtype(compare_data.index)
@@ -724,12 +722,14 @@ class TestDataParsingHatpro:
         read_csv_mock: Mock,
         conftest_mock_hatpro_humidity_dataframe,
         conftest_mock_hatpro_temperature_dataframe,
+        conftest_mock_hatpro_scan_levels,
         conftest_mock_check_file_exists,
         arg_timezone,
     ):
         """Parse unformatted HATPRO data."""
 
         _ = conftest_mock_check_file_exists
+        test_levels = conftest_mock_hatpro_scan_levels
         read_csv_mock.side_effect = [
             conftest_mock_hatpro_humidity_dataframe,
             conftest_mock_hatpro_temperature_dataframe,
@@ -737,7 +737,7 @@ class TestDataParsingHatpro:
 
         compare_data = scintillometry.wrangler.data_parser.parse_hatpro(
             file_prefix="/path/to/file",
-            scan_heights=self.test_levels,
+            scan_heights=test_levels,
             timezone=arg_timezone,
         )
 
@@ -745,7 +745,7 @@ class TestDataParsingHatpro:
         for frame_key, compare_frame in compare_data.items():
             assert isinstance(compare_frame, pd.DataFrame)
             assert frame_key in ["humidity", "temperature"]
-            for key in self.test_levels:
+            for key in test_levels:
                 assert key in compare_frame.columns
                 assert ptypes.is_numeric_dtype(compare_frame[key])
             assert compare_frame.index.name == "rawdate"
@@ -758,17 +758,18 @@ class TestDataParsingHatpro:
 
     @pytest.mark.dependency(name="TestDataParsingHatpro::test_parse_vertical_error")
     @pytest.mark.parametrize("arg_device", ["wrong device", "wrong_DEVICE"])
-    def test_parse_vertical_error(self, arg_device):
+    def test_parse_vertical_error(self, conftest_mock_hatpro_scan_levels, arg_device):
         """Raise error if vertical measurement device is unsupported."""
 
         test_device = arg_device.title()
+        test_levels = conftest_mock_hatpro_scan_levels
         error_msg = f"{test_device} measurements are not supported. Use 'hatpro'."
 
         with pytest.raises(NotImplementedError, match=error_msg):
             scintillometry.wrangler.data_parser.parse_vertical(
                 file_path="/path/to/file",
                 device=arg_device,
-                levels=self.test_levels,
+                levels=test_levels,
                 tzone=None,
             )
 
@@ -786,12 +787,14 @@ class TestDataParsingHatpro:
         read_csv_mock: Mock,
         conftest_mock_hatpro_humidity_dataframe,
         conftest_mock_hatpro_temperature_dataframe,
+        conftest_mock_hatpro_scan_levels,
         conftest_mock_check_file_exists,
         arg_timezone,
     ):
         """Parse vertical measurements."""
 
         _ = conftest_mock_check_file_exists
+        test_levels = conftest_mock_hatpro_scan_levels
         read_csv_mock.side_effect = [
             conftest_mock_hatpro_humidity_dataframe,
             conftest_mock_hatpro_temperature_dataframe,
@@ -800,7 +803,7 @@ class TestDataParsingHatpro:
         compare_data = scintillometry.wrangler.data_parser.parse_vertical(
             file_path="/path/to/file",
             device="hatpro",
-            levels=self.test_levels,
+            levels=test_levels,
             tzone=arg_timezone,
         )
 
