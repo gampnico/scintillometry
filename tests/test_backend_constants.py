@@ -14,16 +14,25 @@ limitations under the License.
 
 =====
 
-Tests path weighting module.
+Tests constants.
 """
 
+import numpy as np
+import pandas as pd
 import pytest
+from numpy.random import default_rng
 
 import scintillometry.backend.constants
 
 
 class TestBackendConstants:
-    """Test class for AtmosConstants class."""
+    """Test class for AtmosConstants class.
+
+    Attributes:
+        test_rng (np.random.Generator): Random number generator.
+    """
+
+    test_rng = default_rng()
 
     @pytest.mark.dependency(name="TestBackendConstants::test_constants_init")
     def test_constants_init(self):
@@ -83,3 +92,85 @@ class TestBackendConstants:
 
         assert isinstance(test_class.k, (float, int))
         assert test_class.k == pytest.approx(arg_value)
+
+    @pytest.mark.dependency(
+        name="TestBackendConstants::test_convert_pressure",
+        depends=["TestBackendConstants::test_constants_init"],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_type", ["series", "frame"])
+    @pytest.mark.parametrize("arg_units", [1, 1000, 100000])
+    @pytest.mark.parametrize("arg_base", [True, False])
+    def test_convert_pressure(self, arg_type, arg_units, arg_base):
+        """Convert pressure to Pa or hPa."""
+
+        test_class = scintillometry.backend.constants.AtmosConstants()
+        test_ref = pd.Series(
+            self.test_rng.uniform(low=0.8, high=1.2, size=100), name="pressure"
+        )
+        assert isinstance(test_ref, pd.Series)
+
+        if arg_type == "series":
+            test_pressure = test_ref.multiply(arg_units)
+            compare_pressure = test_class.convert_pressure(
+                pressure=test_pressure, base=arg_base
+            )
+            assert isinstance(compare_pressure, pd.Series)
+        else:
+            test_data = {0: test_ref, 10: test_ref}
+            test_ref = pd.DataFrame(data=test_data, columns=[0, 10])
+            assert isinstance(test_ref, pd.DataFrame)
+
+            test_pressure = test_ref.multiply(arg_units)
+            compare_pressure = test_class.convert_pressure(
+                pressure=test_pressure, base=arg_base
+            )
+            assert isinstance(compare_pressure, pd.DataFrame)
+
+        if not arg_base:
+            assert np.allclose(compare_pressure, test_ref * 1000)
+        else:
+            assert np.allclose(compare_pressure, test_ref * 100000)
+
+    @pytest.mark.dependency(
+        name="TestBackendConstants::test_convert_temperature",
+        depends=["TestBackendConstants::test_constants_init"],
+        scope="class",
+    )
+    @pytest.mark.parametrize("arg_type", ["series", "frame"])
+    @pytest.mark.parametrize("arg_units", [0, 1])
+    @pytest.mark.parametrize("arg_base", [True, False])
+    def test_convert_temperature(self, arg_type, arg_units, arg_base):
+        """Convert temperature to kelvins or Celsius."""
+
+        test_class = scintillometry.backend.constants.AtmosConstants()
+        test_ref = pd.Series(
+            self.test_rng.uniform(low=200.0, high=400.0, size=100), name="temperature"
+        )
+        assert isinstance(test_ref, pd.Series)
+
+        if arg_type == "series":
+            test_temperature = test_ref.subtract(test_class.kelvin * arg_units)
+            compare_temperature = test_class.convert_temperature(
+                temperature=test_temperature, base=arg_base
+            )
+            assert isinstance(compare_temperature, pd.Series)
+        else:
+            test_data = {0: test_ref, 10: test_ref}
+            test_ref = pd.DataFrame(data=test_data, columns=[0, 10])
+            assert isinstance(test_ref, pd.DataFrame)
+
+            test_temperature = test_ref.subtract(test_class.kelvin * arg_units)
+            compare_temperature = test_class.convert_temperature(
+                temperature=test_temperature, base=arg_base
+            )
+            assert isinstance(compare_temperature, pd.DataFrame)
+
+        if not arg_base:  # output is celsius
+            assert np.allclose(
+                compare_temperature, test_ref.subtract(test_class.kelvin)
+            )
+            assert compare_temperature.lt(130).all().all()
+        else:
+            assert np.allclose(compare_temperature, test_ref)
+            assert compare_temperature.gt(130).all().all()

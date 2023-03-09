@@ -64,6 +64,8 @@ class AtmosConstants(object):
     """
 
     def __init__(self):
+        """Initialise hardcoded constants."""
+
         super().__init__()
 
         self.alpha11 = {
@@ -88,10 +90,10 @@ class AtmosConstants(object):
         self.lamda_error = 20e-9
 
         # From Ward et al., (2012)
-        self.at_opt = -270e-6  # AT coefficient for 880 nm & typical atmos conditions
-        self.aq_opt = -0.685e-6  # Aq coefficient for 880 nm & typical atmos conditions
+        self.at_opt = -270e-6  # A_T coefficient for 880 nm & typical atmos conditions
+        self.aq_opt = -0.685e-6  # A_q coefficient for 880 nm & typical atmos conditions
 
-        # MOST coefficients for f_T
+        # MOST coefficients for similarity function
         self.most_coeffs_ft = {  # [(unstable, unstable), (stable, stable)]
             "an1988": [(4.9, 6.1), (4.9, 2.2)],  # Andreas (1998)
             "li2012": [(6.7, 14.9), (4.5, 1.3)],  # Li et al. (2012)
@@ -110,7 +112,7 @@ class AtmosConstants(object):
         self.r_dry = 287.04
         self.r_vapour = 461.5
         self.ratio_rmm = self.r_dry / self.r_vapour
-        self.ref_pressure = 100000  # 1000 hPa
+        self.ref_pressure = 100000  # Pa
         self.rho = 1.225
 
     def get(self, constant_name: str):
@@ -118,3 +120,85 @@ class AtmosConstants(object):
 
     def overwrite(self, constant_name: str, value: float):
         return setattr(self, constant_name, value)
+
+    def convert_pressure(self, pressure, base=True):
+        """Converts pressure data to pascals [Pa] or hectopascals [hPa].
+
+        The input dataframe or series is copied, as this function may be
+        called before the processing of the original data has finished.
+
+        This method handles 0 and NaN values, but only converts
+        correctly for pressure values in these intervals:
+
+        - |P| [bar] < 2 bar
+        - 2 hPa < |P| [hPa] < 2000 hPa
+        - |P| [Pa] > 2000 Pa
+
+        This method should therefore only be used on pre-processed data
+        as a *convenience*. By default, converts to pascals.
+
+        Args:
+            pressure (Union[pd.DataFrame, pd.Series]): Pressure
+                measurements |P| in pascals [Pa], hectopascals [hPa], or
+                bars [bar].
+            base (bool): If True, converts to pascals [Pa]. Otherwise
+                converts to hectopascals [hPa]. Default True.
+
+        Returns:
+            Union[pd.DataFrame, pd.Series]: Pressure measurements |P| in
+            either pascals [Pa] or hectopascals [hPa].
+        """
+
+        convert = pressure.copy(deep=True)
+        check = convert[convert.gt(0)].dropna()  # NaN and 0 fail check
+
+        if not base:
+            if (check.lt(2)).any().any():  # P in bar
+                convert = convert.multiply(1000)
+            elif not (check.lt(2000)).any().any():  # P in Pa
+                convert = convert.divide(100)
+        else:
+            if (check.lt(2)).any().any():  # P in bar
+                convert = convert.multiply(100000)
+            elif (check.lt(2000)).any().any():  # P in hPa/mbar
+                convert = convert.multiply(100)
+
+        return convert
+
+    def convert_temperature(self, temperature, base=True):
+        """Converts temperature to Celsius [°C] or kelvins [K].
+
+        The input dataframe or series is copied, as this function may be
+        called before the processing of the original data has finished.
+
+        This method handles 0 and NaN values, but only converts
+        correctly for temperature values in these intervals:
+
+        - T [K] > 130 K
+        - T [°C] < 130 °C
+
+        This method should therefore only be used on pre-processed data
+        as a *convenience*. By default converts to kelvins.
+
+        Args:
+            temperature (Union[pd.DataFrame, pd.Series]): Temperature
+                measurements |T| in kelvins [K] or Celsius [°C].
+            base (bool): If True, converts to kelvins [K]. Otherwise
+                converts to Celsius [°C]. Default True.
+
+        Returns:
+            Union[pd.DataFrame, pd.Series]: Temperature measurements |T|
+            in either kelvins [K] or Celsius [°C].
+        """
+
+        convert = temperature.copy(deep=True)
+        check = convert[convert.gt(0)].dropna()  # NaN and 0 fail check
+
+        if (not base) and ((check.gt(130)).any().any()):  # convert to Celsius
+            convert = convert - AtmosConstants().kelvin
+        elif base and (check.lt(130)).any().any():  # convert to Kelvins
+            convert = convert + AtmosConstants().kelvin
+        else:
+            pass
+
+        return convert
