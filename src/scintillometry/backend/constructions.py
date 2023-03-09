@@ -83,11 +83,11 @@ class ProfileConstructor(AtmosConstants):
     def extrapolate_air_pressure(self, surface_pressure, temperature):
         """Extrapolates reference pressure measurements to scan levels.
 
-        Input dataframes must have matching indices. Converts hPa to Pa.
+        Input series and dataframe must have matching indices.
 
         Args:
             surface_pressure (pd.Series): Air pressure measurements at
-                reference measurement height, |P_0| [hPa].
+                reference measurement height, |P_0| [Pa].
             temperature (pd.DataFrame): Vertical measurements, air
                 temperature at target heights, |T| [K].
 
@@ -99,7 +99,7 @@ class ProfileConstructor(AtmosConstants):
         air_pressure = pd.DataFrame(
             index=temperature.index, columns=temperature.columns
         )
-        air_pressure[0] = surface_pressure * 100  # convert hPa to Pa
+        air_pressure.isetitem(0, surface_pressure)
         target_cols = air_pressure.columns.difference([0])
         for col_idx in target_cols:
             air_pressure[col_idx] = self.get_air_pressure(

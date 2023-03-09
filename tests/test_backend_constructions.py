@@ -15,6 +15,9 @@ limitations under the License.
 =====
 
 Tests profile construction from vertical measurements.
+
+Methods in ProfileConstructor use pascals and kelvins, whereas fixtures
+for meteorological data are in hectopascals and Celsius.
 """
 
 import numpy as np
@@ -103,7 +106,7 @@ class TestBackendProfileConstructor:
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_idx = conftest_mock_hatpro_scan_levels[-1]
-        test_pressure = conftest_mock_weather_dataframe_tz["pressure"] * 100  # to Pa
+        test_pressure = conftest_mock_weather_dataframe_tz["pressure"].multiply(100)
 
         compare_pressure = self.test_class.get_air_pressure(
             pressure=test_pressure,
@@ -133,6 +136,7 @@ class TestBackendProfileConstructor:
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_pressure = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
+        test_pressure = test_pressure.multiply(100)  # hPa -> Pa
 
         compare_pressure = self.test_class.extrapolate_air_pressure(
             surface_pressure=test_pressure, temperature=test_temperature
@@ -140,11 +144,9 @@ class TestBackendProfileConstructor:
 
         assert isinstance(compare_pressure, pd.DataFrame)
         assert compare_pressure.index.equals(test_temperature.index)
-        assert np.allclose(
-            compare_pressure[compare_pressure.columns[0]], test_pressure * 100
-        )
+        assert np.allclose(compare_pressure[compare_pressure.columns[0]], test_pressure)
         for col in compare_pressure.columns.difference([0]):
-            assert not np.allclose(test_pressure * 100, compare_pressure[col])
+            assert not np.allclose(test_pressure, compare_pressure[col])
         assert not (test_pressure.isna()).any()
         assert ((compare_pressure.ge(1000)).all()).all()
         assert not np.allclose(
@@ -169,8 +171,8 @@ class TestBackendProfileConstructor:
         test_wvp = conftest_mock_hatpro_humidity_dataframe_tz.multiply(
             conftest_mock_hatpro_temperature_dataframe_tz
         ).multiply(self.test_class.constants.r_vapour)
-        test_pressure = 100 * conftest_mock_weather_dataframe_tz["pressure"].copy(
-            deep=True
+        test_pressure = (
+            conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True).multiply(100)
         )
         test_data = {}
         for level in test_wvp.columns:
@@ -201,8 +203,8 @@ class TestBackendProfileConstructor:
         """Calculate virtual temperature."""
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
-        test_pressure = 100 * conftest_mock_weather_dataframe_tz["pressure"].copy(
-            deep=True
+        test_pressure = (
+            conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True).multiply(100)
         )
         test_data = {}
         for level in test_temperature.columns:  # placeholder values for mixing ratio
@@ -398,9 +400,7 @@ class TestBackendProfileConstructor:
         )
         assert (compare_gradient[test_cols[0]] == 0).all()
 
-        if arg_method == "backward":
-            assert np.allclose(compare_gradient, test_gradient)
-        elif arg_method == "uneven":
+        if arg_method == "uneven":
             test_gradient.isetitem(
                 -1,
                 (test_dataframe[test_cols[-1]] - test_dataframe[test_cols[-2]])
@@ -409,3 +409,5 @@ class TestBackendProfileConstructor:
             assert np.allclose(
                 compare_gradient[test_cols[-1]], test_gradient[test_cols[-1]]
             )
+        else:
+            assert np.allclose(compare_gradient, test_gradient)
