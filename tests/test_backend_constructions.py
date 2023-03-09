@@ -33,7 +33,7 @@ class TestBackendProfileConstructor:
     """Test class for profile construction objects.
 
     Attributes:
-        test_class (ProfileConstructor): An initialised
+        TestProfile (ProfileConstructor): An initialised
             ProfileConstructor object.
         test_levels (list): Test measurement heights.
         test_index (pd.DatetimeIndex): TZ-naive datetime index for
@@ -41,7 +41,7 @@ class TestBackendProfileConstructor:
         test_constants (AtmosConstants): Various atmospheric constants.
     """
 
-    test_class = scintillometry.backend.constructions.ProfileConstructor()
+    TestProfile = scintillometry.backend.constructions.ProfileConstructor()
     test_levels = [0, 10, 30, 50, 75, 100]
     test_index = pd.to_datetime(
         ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
@@ -49,11 +49,13 @@ class TestBackendProfileConstructor:
     test_constants = scintillometry.backend.constants.AtmosConstants()
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_constructor_init",
+        name="TestBackendProfileConstructor::test_constructor_init",
         depends=["TestBackendConstants::test_constants_init"],
         scope="session",
     )
     def test_profile_constructor_init(self):
+        """Initialise constants as class attributes."""
+
         test_profile = scintillometry.backend.constructions.ProfileConstructor()
         assert test_profile.constants
         assert isinstance(
@@ -61,8 +63,8 @@ class TestBackendProfileConstructor:
         )
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_water_vapour_pressure",
-        depends=["TestBackendConstructProfile::test_constructor_init"],
+        name="TestBackendProfileConstructor::test_get_water_vapour_pressure",
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_water_vapour_pressure(
         self,
@@ -72,13 +74,13 @@ class TestBackendProfileConstructor:
     ):
         """Calculate water vapour pressure."""
 
-        assert isinstance(self.test_class.constants.r_vapour, (float, int))
+        assert isinstance(self.TestProfile.constants.r_vapour, (float, int))
         test_wvp = (
             conftest_mock_hatpro_humidity_dataframe
             * conftest_mock_hatpro_temperature_dataframe
-            * self.test_class.constants.r_vapour
+            * self.TestProfile.constants.r_vapour
         )
-        compare_wvp = self.test_class.get_water_vapour_pressure(
+        compare_wvp = self.TestProfile.get_water_vapour_pressure(
             abs_humidity=conftest_mock_hatpro_humidity_dataframe,
             temperature=conftest_mock_hatpro_temperature_dataframe,
         )
@@ -93,8 +95,8 @@ class TestBackendProfileConstructor:
         assert np.allclose(compare_wvp, test_wvp)
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_air_pressure",
-        depends=["TestBackendConstructProfile::test_constructor_init"],
+        name="TestBackendProfileConstructor::test_get_air_pressure",
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_air_pressure(
         self,
@@ -108,7 +110,7 @@ class TestBackendProfileConstructor:
         test_idx = conftest_mock_hatpro_scan_levels[-1]
         test_pressure = conftest_mock_weather_dataframe_tz["pressure"].multiply(100)
 
-        compare_pressure = self.test_class.get_air_pressure(
+        compare_pressure = self.TestProfile.get_air_pressure(
             pressure=test_pressure,
             air_temperature=test_temperature[test_idx],
             z_target=test_idx,
@@ -121,10 +123,10 @@ class TestBackendProfileConstructor:
         assert (compare_pressure > 1000).all()
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_extrapolate_air_pressure",
+        name="TestBackendProfileConstructor::test_extrapolate_air_pressure",
         depends=[
-            "TestBackendConstructProfile::test_constructor_init",
-            "TestBackendConstructProfile::test_get_air_pressure",
+            "TestBackendProfileConstructor::test_constructor_init",
+            "TestBackendProfileConstructor::test_get_air_pressure",
         ],
     )
     def test_extrapolate_air_pressure(
@@ -138,7 +140,7 @@ class TestBackendProfileConstructor:
         test_pressure = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
         test_pressure = test_pressure.multiply(100)  # hPa -> Pa
 
-        compare_pressure = self.test_class.extrapolate_air_pressure(
+        compare_pressure = self.TestProfile.extrapolate_air_pressure(
             surface_pressure=test_pressure, temperature=test_temperature
         )
 
@@ -155,9 +157,9 @@ class TestBackendProfileConstructor:
         )
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_mixing_ratio",
+        name="TestBackendProfileConstructor::test_get_mixing_ratio",
         depends=[
-            "TestBackendConstructProfile::test_constructor_init",
+            "TestBackendProfileConstructor::test_constructor_init",
         ],
     )
     def test_get_mixing_ratio(
@@ -170,7 +172,7 @@ class TestBackendProfileConstructor:
 
         test_wvp = conftest_mock_hatpro_humidity_dataframe_tz.multiply(
             conftest_mock_hatpro_temperature_dataframe_tz
-        ).multiply(self.test_class.constants.r_vapour)
+        ).multiply(self.TestProfile.constants.r_vapour)
         test_pressure = (
             conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True).multiply(100)
         )
@@ -180,11 +182,11 @@ class TestBackendProfileConstructor:
         test_pressure = pd.DataFrame(
             data=test_data, columns=test_wvp.columns, index=test_wvp.index
         )
-        test_ratio = (self.test_class.constants.r_dry * test_wvp) / (
-            self.test_class.constants.r_vapour * test_pressure
+        test_ratio = (self.TestProfile.constants.r_dry * test_wvp) / (
+            self.TestProfile.constants.r_vapour * test_pressure
         )
 
-        compare_ratio = self.test_class.get_mixing_ratio(
+        compare_ratio = self.TestProfile.get_mixing_ratio(
             wv_pressure=test_wvp, d_pressure=test_pressure
         )
 
@@ -193,7 +195,7 @@ class TestBackendProfileConstructor:
         assert np.allclose(compare_ratio, test_ratio)
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_virtual_temperature"
+        name="TestBackendProfileConstructor::test_get_virtual_temperature"
     )
     def test_get_virtual_temperature(
         self,
@@ -215,7 +217,7 @@ class TestBackendProfileConstructor:
             index=test_temperature.index,
         )
 
-        compare_temperature = self.test_class.get_virtual_temperature(
+        compare_temperature = self.TestProfile.get_virtual_temperature(
             temperature=test_temperature, mixing_ratio=test_ratio
         )
         assert isinstance(compare_temperature, pd.DataFrame)
@@ -223,8 +225,8 @@ class TestBackendProfileConstructor:
         assert not np.allclose(compare_temperature, test_temperature)
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_reduced_temperature",
-        depends=["TestBackendConstructProfile::test_constructor_init"],
+        name="TestBackendProfileConstructor::test_get_reduced_pressure",
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_reduced_pressure(self, conftest_mock_weather_dataframe_tz):
         """Reduce station pressure to mean sea-level pressure."""
@@ -244,8 +246,8 @@ class TestBackendProfileConstructor:
         assert isinstance(test_temperature, pd.DataFrame)
         test_elevation = 600
         test_station = test_elevation / (
-            self.test_class.constants.r_dry
-            / (test_temperature * np.abs(self.test_class.constants.g))
+            self.TestProfile.constants.r_dry
+            / (test_temperature * np.abs(self.TestProfile.constants.g))
         )
         test_exp = np.exp(test_station)
         assert isinstance(test_exp, pd.DataFrame)
@@ -253,7 +255,7 @@ class TestBackendProfileConstructor:
         test_mslp = test_pressure * test_exp
         assert isinstance(test_mslp, pd.DataFrame)
 
-        compare_mslp = self.test_class.get_reduced_pressure(
+        compare_mslp = self.TestProfile.get_reduced_pressure(
             station_pressure=test_pressure,
             virtual_temperature=test_temperature,
             elevation=test_elevation,
@@ -262,8 +264,8 @@ class TestBackendProfileConstructor:
         assert np.allclose(compare_mslp, test_mslp)
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_potential_temperature",
-        depends=["TestBackendConstructProfile::test_constructor_init"],
+        name="TestBackendProfileConstructor::test_get_potential_temperature",
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_potential_temperature(self, conftest_mock_weather_dataframe_tz):
         """Calculate potential temperature."""
@@ -282,18 +284,18 @@ class TestBackendProfileConstructor:
         )
         assert isinstance(test_temperature, pd.DataFrame)
         test_potential = test_temperature * (
-            self.test_class.constants.ref_pressure / test_pressure
-        ) ** (self.test_class.constants.r_dry / self.test_class.constants.cp)
+            self.TestProfile.constants.ref_pressure / test_pressure
+        ) ** (self.TestProfile.constants.r_dry / self.TestProfile.constants.cp)
         assert isinstance(test_potential, pd.DataFrame)
 
-        compare_potential = self.test_class.get_potential_temperature(
+        compare_potential = self.TestProfile.get_potential_temperature(
             virtual_temperature=test_temperature, pressure=test_pressure
         )
         assert isinstance(compare_potential, pd.DataFrame)
         assert np.allclose(compare_potential, test_potential)
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_non_uniform_differencing"
+        name="TestBackendProfileConstructor::test_non_uniform_differencing"
     )
     def test_non_uniform_differencing(
         self,
@@ -321,7 +323,7 @@ class TestBackendProfileConstructor:
             / test_diff.iloc[-1],
         )
 
-        compare_gradient = self.test_class.non_uniform_differencing(
+        compare_gradient = self.TestProfile.non_uniform_differencing(
             dataframe=test_dataframe
         )
         assert isinstance(compare_gradient, pd.DataFrame)
@@ -343,7 +345,9 @@ class TestBackendProfileConstructor:
         )
         assert all(np.sign(compare_gradient)) == all(np.sign(test_gradient))
 
-    @pytest.mark.dependency(name="TestBackendConstructProfile::test_get_gradient_error")
+    @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_gradient_error"
+    )
     def test_get_gradient_error(self, conftest_mock_hatpro_temperature_dataframe_tz):
         """Raise error for missing finite-differencing scheme."""
 
@@ -353,13 +357,13 @@ class TestBackendProfileConstructor:
             "Use 'uneven' or 'backward'.",
         )
         with pytest.raises(NotImplementedError, match=" ".join(error_msg)):
-            self.test_class.get_gradient(data=test_error, method="missing scheme")
+            self.TestProfile.get_gradient(data=test_error, method="missing scheme")
 
     @pytest.mark.dependency(
-        name="TestBackendConstructProfile::test_get_gradient",
+        name="TestBackendProfileConstructor::test_get_gradient",
         depends=[
-            "TestBackendConstructProfile::test_get_gradient_error",
-            "TestBackendConstructProfile::test_non_uniform_differencing",
+            "TestBackendProfileConstructor::test_get_gradient_error",
+            "TestBackendProfileConstructor::test_non_uniform_differencing",
         ],
     )
     @pytest.mark.parametrize("arg_method", ["backward", "uneven"])
@@ -385,7 +389,7 @@ class TestBackendProfileConstructor:
             ) / test_diff.iloc[i]
         test_gradient.isetitem(0, 0)
 
-        compare_gradient = self.test_class.get_gradient(
+        compare_gradient = self.TestProfile.get_gradient(
             data=test_dataframe, method=arg_method
         )
         assert isinstance(compare_gradient, pd.DataFrame)
@@ -411,3 +415,27 @@ class TestBackendProfileConstructor:
             )
         else:
             assert np.allclose(compare_gradient, test_gradient)
+
+    @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_static_stability",
+        depends=[
+            "TestBackendProfileConstructor::test_constructor_init",
+            "TestBackendProfileConstructor::test_get_water_vapour_pressure",
+            "TestBackendProfileConstructor::test_extrapolate_air_pressure",
+            "TestBackendProfileConstructor::test_get_mixing_ratio",
+            "TestBackendProfileConstructor::test_get_reduced_pressure",
+            "TestBackendProfileConstructor::test_get_virtual_temperature",
+            "TestBackendProfileConstructor::test_get_potential_temperature",
+            "TestBackendProfileConstructor::test_get_gradient",
+        ],
+    )
+    @pytest.mark.parametrize("arg_method", ["backward", "uneven"])
+    def test_get_static_stability(
+        self,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_scan_levels,
+        arg_method,
+    ):
+        """Calculate spatial gradient."""
+
+        assert True
