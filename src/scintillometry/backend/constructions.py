@@ -313,3 +313,56 @@ class ProfileConstructor(AtmosConstants):
             raise NotImplementedError(" ".join(error_msg))
 
         return gradients
+
+    def get_static_stability(
+        self, vertical_data, meteo_data, station_elevation, scheme="uneven"
+    ):
+        """Determines static stability of atmosphere.
+
+        Args:
+            vertical_data (dict): Contains vertical measurements for
+                absolute humidity and temperature.
+            meteo_data (pd.DataFrame): Meteorological data from surface
+                measurements.
+            station_elevation (float): Elevation of the weather station
+                taking vertical measurements, not the scintillometer.
+            scheme (str): Finite differencing method. Supports "uneven"
+                for centred-differencing over a non-uniform mesh, and
+                "backward" for backward-differencing. Default "uneven".
+
+        Returns:
+            pd.DataFrame: Derived vertical measurements for static
+            stability.
+        """
+
+        vertical_data["temperature"] = self.constants.convert_temperature(
+            temperature=vertical_data["temperature"], base=True
+        )
+        meteo_pressure = self.constants.convert_pressure(
+            meteo_data["pressure"], base=True
+        )
+        wvp = self.get_water_vapour_pressure(
+            abs_humidity=vertical_data["humidity"],
+            temperature=vertical_data["temperature"],
+        )
+        z_pressure = self.extrapolate_air_pressure(
+            surface_pressure=meteo_pressure,
+            temperature=vertical_data["temperature"],
+        )
+        m_ratio = self.get_mixing_ratio(wv_pressure=wvp, d_pressure=z_pressure)
+        v_temperature = self.get_virtual_temperature(
+            temperature=vertical_data["temperature"], mixing_ratio=m_ratio
+        )
+        reduced_pressure = self.get_reduced_pressure(
+            station_pressure=z_pressure,
+            virtual_temperature=v_temperature,
+            elevation=station_elevation,
+        )
+        potential_temperature = self.get_potential_temperature(
+            temperature=vertical_data["temperature"], pressure=reduced_pressure
+        )
+        grad_potential_temperature = self.get_gradient(
+            data=potential_temperature, method=scheme
+        )
+
+        return grad_potential_temperature

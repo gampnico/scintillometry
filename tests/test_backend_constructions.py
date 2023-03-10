@@ -522,3 +522,52 @@ class TestBackendProfileConstructor:
             )
         else:
             assert np.allclose(compare_gradient, test_gradient)
+
+    @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_static_stability",
+        depends=[
+            "TestBackendProfileConstructor::test_constructor_init",
+            "TestBackendProfileConstructor::test_get_water_vapour_pressure",
+            "TestBackendProfileConstructor::test_extrapolate_air_pressure",
+            "TestBackendProfileConstructor::test_get_mixing_ratio",
+            "TestBackendProfileConstructor::test_get_reduced_pressure",
+            "TestBackendProfileConstructor::test_get_virtual_temperature",
+            "TestBackendProfileConstructor::test_get_potential_temperature",
+            "TestBackendProfileConstructor::test_get_gradient",
+        ],
+    )
+    @pytest.mark.parametrize("arg_method", ["backward", "uneven"])
+    def test_get_static_stability(
+        self,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_humidity_dataframe_tz,
+        conftest_mock_weather_dataframe_tz,
+        conftest_mock_hatpro_scan_levels,
+        arg_method,
+    ):
+        """Calculate static stability."""
+
+        test_hatpro = {
+            "temperature": conftest_mock_hatpro_temperature_dataframe_tz.copy(
+                deep=True
+            ),
+            "humidity": conftest_mock_hatpro_humidity_dataframe_tz.copy(deep=True),
+        }
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        assert isinstance(test_hatpro, dict)
+        for frame in test_hatpro.values():
+            self.check_dataframe(dataframe=frame)
+            assert frame.index.equals(test_weather.index)
+
+        compare_stability = self.test_profile.get_static_stability(
+            vertical_data=test_hatpro,
+            meteo_data=test_weather,
+            station_elevation=self.test_elevation,
+            scheme=arg_method,
+        )
+
+        self.check_dataframe(dataframe=compare_stability)
+        assert all(
+            key in compare_stability.columns for key in conftest_mock_hatpro_scan_levels
+        )
+        assert np.allclose(compare_stability[compare_stability.columns[0]], 0)
