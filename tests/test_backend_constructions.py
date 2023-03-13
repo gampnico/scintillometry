@@ -18,6 +18,20 @@ Tests profile construction from vertical measurements.
 
 Methods in ProfileConstructor use pascals and kelvins, whereas fixtures
 for meteorological data are in hectopascals and Celsius.
+
+Do not use pandas' vectorisation when applying test formulas to objects
+that are compared to the output of a module's function::
+
+    test_foobar = test_foo.multiply(test_bar)
+    compare_foobar = self.get_foobar(foo=test_foo, bar=test_bar)
+
+should be written as::
+
+    test_foobar = test_foo * test_bar
+    compare_foobar = self.get_foobar(foo=test_foo, bar=test_bar)
+
+The module being tested uses these pandas methods, so duplicating them
+in tests makes comparisons pointless.
 """
 
 from typing import Any
@@ -571,3 +585,36 @@ class TestBackendProfileConstructor:
             key in compare_stability.columns for key in conftest_mock_hatpro_scan_levels
         )
         assert np.allclose(compare_stability[compare_stability.columns[0]], 0)
+
+    @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_bulk_richardson",
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
+    )
+    # @pytest.mark.parametrize("arg_method", ["backward", "uneven"])
+    def test_get_bulk_richardson(
+        self,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_weather_dataframe_tz,
+    ):
+        """Calculate bulk Richardson number."""
+
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
+
+        cols = test_temperature.columns
+        delta_theta = test_temperature[cols[-1]] - test_temperature[cols[0]]
+        numerator = self.test_profile.constants.g * delta_theta * (cols[-1] - cols[0])
+        denominator = test_temperature.mean(axis=1, skipna=True) * (
+            test_weather["wind_speed"] ** 2
+        )
+        test_bulk = numerator / denominator
+
+        compare_bulk = self.test_profile.get_bulk_richardson(
+            potential_temperature=test_temperature, meteo_data=test_weather
+        )
+
+        assert isinstance(compare_bulk, pd.Series)
+        assert compare_bulk.index.equals(test_temperature.index)
+        assert not compare_bulk.isnull().values.any()
+        assert not np.isinf(compare_bulk).values.any()
+        assert np.allclose(compare_bulk, test_bulk)

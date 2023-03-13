@@ -366,3 +366,35 @@ class ProfileConstructor(AtmosConstants):
         )
 
         return grad_potential_temperature
+
+    def get_bulk_richardson(self, potential_temperature, meteo_data):
+        """Calculate bulk Richardson number.
+
+        .. math::
+
+            Ri_{{b}} = \\frac{{g}}{{\\bar{{\\theta}}}}
+            \\frac{{\\Delta \\theta \\Delta z}}{{(\\Delta u)^{{2}}}}
+
+        Args:
+            potential_temperature (pd.DataFrame): Vertical measurements,
+                potential temperature |theta| [K].
+            meteo_data (pd.DataFrame): Meteorological data.
+        """
+
+        heights = potential_temperature.columns
+
+        # (g * D(potential_temperature) * D(heights)) / (
+        #     (wind_speed**2) * mean(potential_temperature)
+        # )
+        g_theta = potential_temperature.mean(axis=1, skipna=True).rdiv(self.g)
+        dtheta_dz = (
+            potential_temperature[heights[-1]].subtract(
+                potential_temperature[heights[0]]
+            )
+        ).multiply(heights[-1] - heights[0])
+
+        bulk_ri = (dtheta_dz.divide((meteo_data["wind_speed"].pow(2)))).multiply(
+            g_theta
+        )
+
+        return bulk_ri

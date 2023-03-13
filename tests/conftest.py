@@ -324,12 +324,15 @@ def fixture_conftest_mock_hatpro_humidity_dataframe():
         deep=True
     )
     assert isinstance(dataframe, pd.DataFrame)
+    dataframe.attrs["elevation"] = 600.0
     dataframe.index.name = "rawdate"
     for key in heights:
         assert key in dataframe.columns
         assert ptypes.is_numeric_dtype(dataframe[key])
     assert ptypes.is_datetime64_any_dtype(dataframe.index)
     assert dataframe.index.name == "rawdate"
+    assert "elevation" in dataframe.attrs
+    assert np.isclose(dataframe.attrs["elevation"], 600.0)
 
     yield dataframe
 
@@ -405,12 +408,15 @@ def fixture_conftest_mock_hatpro_temperature_dataframe():
         deep=True
     )
     assert isinstance(dataframe, pd.DataFrame)
+    dataframe.attrs["elevation"] = 600.0
     dataframe.index.name = "rawdate"
     for key in heights:
         assert key in dataframe.columns
         assert ptypes.is_numeric_dtype(dataframe[key])
     assert ptypes.is_datetime64_any_dtype(dataframe.index)
     assert dataframe.index.name == "rawdate"
+    assert "elevation" in dataframe.attrs
+    assert np.isclose(dataframe.attrs["elevation"], 600.0)
 
     yield dataframe
 
