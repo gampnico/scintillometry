@@ -23,6 +23,9 @@ These definitions avoid confusion with interchangeable terms:
   measurement point.
 - **Altitude**: Vertical distance between mean sea-level and measurement
   point.
+
+Functions are written for performance. More legible versions are
+included as inline comments, and are used for tests.
 """
 
 import numpy as np
@@ -39,6 +42,10 @@ class ProfileConstructor(AtmosConstants):
     def get_water_vapour_pressure(self, abs_humidity, temperature):
         """Derive water vapour pressure from vertical measurements.
 
+        .. math::
+
+            e = \\mathfrak{{R}}_{{v}} \\cdot \\rho_{{v}} T
+
         Args:
             abs_humidity (pd.DataFrame): Vertical measurements, absolute
                 humidity, |rho_v| [|kgm^-3|].
@@ -50,6 +57,7 @@ class ProfileConstructor(AtmosConstants):
             pressure, |e| [Pa].
         """
 
+        # abs_humidity * temperature * self.r_vapour
         wvp = abs_humidity.multiply(temperature).multiply(self.r_vapour)
 
         return wvp
@@ -60,6 +68,15 @@ class ProfileConstructor(AtmosConstants):
         Uses hypsometric equation. By default, heights are relative to
         the station elevation, i.e. <z_target> - <z_ref> = <z_target>,
         <z_ref> = 0.
+
+        .. math::
+
+            P_{{z}} = P_{{0}} \\cdot \\exp{{
+                \\left (
+                \\frac{{-g}}{{\\mathfrak{{R}}_{{d}}}}
+                \\frac{{\\Delta z}}{{T_{{z}}}}
+                \\right )
+                }}
 
         Args:
             pressure (pd.Series): Air pressure at reference measurement
@@ -74,8 +91,12 @@ class ProfileConstructor(AtmosConstants):
             pd.Series: Air pressure at target heights, |P_z| [Pa].
         """
 
-        alt_pressure = pressure * np.exp(
-            -self.g * (z_target - z_ref) / (self.r_dry * air_temperature)
+        # pressure * np.exp(
+        #     (-self.g * (z_target - z_ref)) / (air_temperature * self.r_dry)
+        # )
+        gdz = -self.g * (z_target - z_ref)
+        alt_pressure = pressure.multiply(
+            np.exp((air_temperature.multiply(self.r_dry)).rdiv(gdz))
         )
 
         return alt_pressure
@@ -114,6 +135,11 @@ class ProfileConstructor(AtmosConstants):
     def get_mixing_ratio(self, wv_pressure, d_pressure):
         """Calculate mixing ratio for dry air pressure.
 
+        .. math::
+
+            r = \\frac{{\\mathfrak{{R}}_{{d}}}}{{\\mathfrak{{R}}_{{v}}}}
+                \\frac{{e}}{{P_{{dry}}}}
+
         Args:
             wv_pressure (pd.DataFrame): Vertical measurements, water
                 vapour pressure, |e| [Pa].
@@ -125,6 +151,7 @@ class ProfileConstructor(AtmosConstants):
             ratio, |r| [|kgkg^-1|].
         """
 
+        # (wv_pressure * self.r_dry) / (d_pressure * self.r_vapour)
         m_ratio = (wv_pressure.multiply(self.r_dry)).divide(
             (d_pressure).multiply(self.r_vapour)
         )
@@ -134,37 +161,51 @@ class ProfileConstructor(AtmosConstants):
     def get_virtual_temperature(self, temperature, mixing_ratio):
         """Derive virtual temperature from vertical measurements.
 
+        .. math::
+
+            T_{{v}} = T(1 + 0.61r)
+
         Args:
             temperature (pd.DataFrame): Vertical measurements, air
                 temperature, |T| [K].
-            d_pressure (pd.DataFrame): Vertical measurements, dry air
-                pressure, |P_dry| [Pa].
+            mixing_ratio (pd.DataFrame): Vertical measurements, mixing
+                ratio, |r| [|kgkg^-1|].
 
         Returns:
             pd.DataFrame: Derived vertical measurements for virtual
             temperature, |T_v| [K].
         """
 
-        v_temp = temperature * (1 + 0.61 * mixing_ratio)
+        # temperature * (1 + 0.61 * mixing_ratio)
+        v_temp = temperature.multiply((mixing_ratio.multiply(0.61)).radd(1))
 
         return v_temp
 
     def get_reduced_pressure(self, station_pressure, virtual_temperature, elevation):
         """Reduce station pressure to mean sea-level pressure.
 
+        .. math::
+
+            P_{{MSL}} = P_{{z}} \\cdot \\exp \\left (
+                \\frac{{|g|}}{{\\mathfrak{{R}}_{{d}}}}
+                \\frac{{z_{{stn}}}}{{T_{{v}}}}
+            \\right )
+
         Args:
             station_pressure (pd.DataFrame): Vertical measurements,
                 pressure relative to station elevation, |P_z| [Pa].
             virtual_temperature (pd.DataFrame): Vertical measurements,
                 virtual temperature, |T_v| [K].
-            elevation (float): Station elevation above sea level,
-                |z| [m].
+            elevation (float): Station elevation, |z_stn| [m].
 
         Returns:
             pd.DataDrame: Derived vertical measurements for mean
             sea-level pressure, |P_MSL| [Pa].
         """
 
+        # station_pressure * np.exp(
+        #     elevation / (virtual_temperature * (self.r_dry / np.abs(self.g)))
+        # )
         alpha = self.r_dry / np.abs(self.g)
         mslp = station_pressure.multiply(
             (np.exp(virtual_temperature.multiply(alpha).rdiv(elevation)))
@@ -174,6 +215,11 @@ class ProfileConstructor(AtmosConstants):
 
     def get_potential_temperature(self, temperature, pressure):
         """Calculates potential temperature.
+
+        .. math::
+
+            \\theta = T \\left ( \\frac{{P_{{b}}}}{{P}}
+                \\right ) ^{{(\\mathfrak{{R}}_{{d}}/c_{{p}})}}
 
         Args:
             temperature (pd.DataFrame): Vertical measurements,
@@ -186,8 +232,10 @@ class ProfileConstructor(AtmosConstants):
             temperature, |theta| [K].
         """
 
+        # temperature * (self.ref_pressure / pressure) ** (self.r_dry / self.cp)
+        factor = self.r_dry / self.cp
         potential_temperature = temperature.multiply(
-            (pressure.rdiv(self.ref_pressure)).pow(self.r_dry / self.cp)
+            (pressure.rdiv(self.ref_pressure)).pow(factor)
         )
 
         return potential_temperature
@@ -252,16 +300,31 @@ class ProfileConstructor(AtmosConstants):
 
         # Set boundary conditions
         derivative.isetitem(0, 0)  # y_0 = 0
+        # (array[array.columns[-1]] - array[array.columns[-2]]) / delta_x.iloc[-1]
         derivative.isetitem(  # y_max(x) from backwards-differencing
-            -1, (array[array.columns[-1]] - array[array.columns[-2]]) / delta_x.iloc[-1]
+            -1,
+            (array[array.columns[-1]].subtract(array[array.columns[-2]])).divide(
+                delta_x.iloc[-1]
+            ),
         )
+
+        # In pseudo-code:
+        # for i in np.arange(1, len(array.columns) - 1):
+        #     derivative[i] = (
+        #         (array[i + 1] * delta_x[i - 1] ** 2)
+        #         - (array[i - 1] * delta_x[i] ** 2)
+        #         + (array[i] * ((delta_x[i - 1] ** 2) - (delta_x[i] ** 2)))
+        #     ) / (delta_x[i - 1] * delta_x[i] * (delta_x[i - 1] + delta_x[i]))
 
         for i in np.arange(1, len(array.columns) - 1):
             derivative[derivative.columns[i]] = (
-                array.iloc[:, i + 1].multiply(delta_x.iloc[i - 1] ** 2)
-                - array.iloc[:, i - 1].multiply(delta_x.iloc[i] ** 2)
-                + array.iloc[:, i].multiply(
-                    ((delta_x.iloc[i - 1] ** 2) - (delta_x.iloc[i] ** 2))
+                array.iloc[:, i + 1]
+                .multiply(delta_x.iloc[i - 1] ** 2)
+                .subtract(array.iloc[:, i - 1].multiply(delta_x.iloc[i] ** 2))
+                .add(
+                    array.iloc[:, i].multiply(
+                        ((delta_x.iloc[i - 1] ** 2) - (delta_x.iloc[i] ** 2))
+                    )
                 )
             ).divide(
                 delta_x.iloc[i - 1]
@@ -324,8 +387,9 @@ class ProfileConstructor(AtmosConstants):
                 absolute humidity and temperature.
             meteo_data (pd.DataFrame): Meteorological data from surface
                 measurements.
-            station_elevation (float): Elevation of the weather station
-                taking vertical measurements, not the scintillometer.
+            station_elevation (float): Weather station elevation,
+                |z_stn| [m]. This is the station taking vertical
+                measurements, not the scintillometer.
             scheme (str): Finite differencing method. Supports "uneven"
                 for centred-differencing over a non-uniform mesh, and
                 "backward" for backward-differencing. Default "uneven".

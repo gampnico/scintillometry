@@ -57,7 +57,7 @@ class TestBackendProfileConstructor:
         test_levels (list): Mocked measurement heights.
         test_index (pd.DatetimeIndex): Mocked TZ-naive datetime index
             for dataframe.
-        test_elevation (int): Mocked station elevation.
+        test_elevation (float): Mocked station elevation.
     """
 
     test_profile = scintillometry.backend.constructions.ProfileConstructor()
@@ -65,7 +65,7 @@ class TestBackendProfileConstructor:
     test_index = pd.to_datetime(
         ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
     )
-    test_elevation = 600
+    test_elevation = 600.0
 
     def check_dataframe(self, dataframe: Any):
         """Boilerplate tests for dataframes.
@@ -151,7 +151,11 @@ class TestBackendProfileConstructor:
             columns=levels,
             index=reference.index,
         )
+        dataset.attrs["elevation"] = self.test_elevation
+
         self.check_dataframe(dataframe=dataset)
+        assert "elevation" in dataset.attrs
+        assert np.isclose(dataset.attrs["elevation"], self.test_elevation)
 
         return dataset
 
@@ -170,6 +174,8 @@ class TestBackendProfileConstructor:
         )
         self.check_dataframe(dataframe=compare_extrapolate)
         assert compare_extrapolate.index.equals(test_series.index)
+        assert "elevation" in compare_extrapolate.attrs
+        assert np.isclose(compare_extrapolate.attrs["elevation"], self.test_elevation)
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_constructor_init",
@@ -229,21 +235,28 @@ class TestBackendProfileConstructor:
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_idx = conftest_mock_hatpro_scan_levels[-1]
-        test_pressure = conftest_mock_weather_dataframe_tz["pressure"].multiply(100)
+        ref_pressure = conftest_mock_weather_dataframe_tz["pressure"].multiply(100)
+
+        test_pressure = ref_pressure * np.exp(
+            -self.test_profile.constants.g
+            * (test_idx - 0)
+            / (self.test_profile.constants.r_dry * test_temperature[test_idx])
+        )
 
         compare_pressure = self.test_profile.get_air_pressure(
-            pressure=test_pressure,
+            pressure=ref_pressure,
             air_temperature=test_temperature[test_idx],
             z_target=test_idx,
             z_ref=0,
         )
         assert isinstance(compare_pressure, pd.Series)
         assert compare_pressure.index.equals(test_temperature.index)
-        assert not np.allclose(test_pressure, compare_pressure)
-        assert (test_pressure > compare_pressure).all()
+        assert not np.allclose(ref_pressure, compare_pressure)
+        assert (ref_pressure > compare_pressure).all()
         assert (compare_pressure > 1000).all()
         assert not compare_pressure.isnull().values.any()
         assert not np.isinf(compare_pressure).values.any()
+        assert np.allclose(test_pressure, compare_pressure)
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_extrapolate_air_pressure",
@@ -321,47 +334,46 @@ class TestBackendProfileConstructor:
         self,
         conftest_mock_weather_dataframe_tz,
         conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_scan_levels,
     ):
         """Calculate virtual temperature."""
 
-        test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
+        ref_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_pressure = (
             conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True).multiply(100)
         )
-        test_data = {}
-        for level in test_temperature.columns:  # placeholder values
-            test_data[level] = test_pressure / (test_pressure * (level + 1))
-        test_ratio = pd.DataFrame(
-            data=test_data,
-            columns=test_temperature.columns,
-            index=test_temperature.index,
+
+        test_ratio = self.setup_extrapolated(
+            series=test_pressure.divide(test_pressure + 1),
+            levels=conftest_mock_hatpro_scan_levels,
         )
+        test_temperature = ref_temperature * (1 + (0.61 * test_ratio))
 
         compare_temperature = self.test_profile.get_virtual_temperature(
-            temperature=test_temperature, mixing_ratio=test_ratio
+            temperature=ref_temperature, mixing_ratio=test_ratio
         )
         self.check_dataframe(dataframe=compare_temperature)
         assert compare_temperature.index.equals(test_temperature.index)
-        assert not np.allclose(compare_temperature, test_temperature)
+        assert not np.allclose(compare_temperature, ref_temperature)
+        assert np.allclose(compare_temperature, test_temperature)
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_reduced_pressure",
         depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
-    def test_get_reduced_pressure(self, conftest_mock_weather_dataframe_tz):
+    def test_get_reduced_pressure(
+        self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
+    ):
         """Reduce station pressure to mean sea-level pressure."""
 
-        test_pressure = pd.DataFrame(
-            data={10: conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)},
-            columns=[10],
-            index=conftest_mock_weather_dataframe_tz.index,
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_pressure = self.setup_extrapolated(
+            series=test_weather["pressure"],
+            levels=conftest_mock_hatpro_scan_levels,
         )
-        test_temperature = pd.DataFrame(
-            data={
-                10: conftest_mock_weather_dataframe_tz["temperature_2m"].copy(deep=True)
-            },
-            columns=[10],
-            index=conftest_mock_weather_dataframe_tz.index,
+        test_temperature = self.setup_extrapolated(
+            series=test_weather["temperature_2m"],
+            levels=conftest_mock_hatpro_scan_levels,
         )
         assert isinstance(test_temperature, pd.DataFrame)
         alpha = self.test_profile.constants.r_dry / np.abs(

@@ -675,7 +675,10 @@ class TestDataParsingHatpro:
 
     @pytest.mark.dependency(
         name="TestDataParsingHatpro::test_load_hatpro",
-        depends=["TestDataParsingHatpro::test_construct_hatpro_levels"],
+        depends=[
+            "TestDataParsingBLS::test_pandas_attrs",
+            "TestDataParsingHatpro::test_construct_hatpro_levels",
+        ],
     )
     @pytest.mark.parametrize("arg_timezone", ["CET", "UTC", None])
     @patch("builtins.open")
@@ -692,11 +695,13 @@ class TestDataParsingHatpro:
         _ = conftest_mock_check_file_exists
         test_levels = conftest_mock_hatpro_scan_levels
         open_mock.return_value = io.StringIO(conftest_mock_hatpro_humidity_raw)
+        test_elevation = 612
 
         compare_data = scintillometry.wrangler.data_parser.load_hatpro(
             file_name="/path/to/file",
             levels=test_levels,
             tzone=arg_timezone,
+            station_elevation=test_elevation,
         )
         open_mock.assert_called_once()
 
@@ -710,6 +715,10 @@ class TestDataParsingHatpro:
             assert compare_data.index.tz.zone == "UTC"
         else:
             assert compare_data.index.tz.zone == arg_timezone
+
+        assert "elevation" in compare_data.attrs
+        assert isinstance(compare_data.attrs["elevation"], int)
+        assert compare_data.attrs["elevation"] == test_elevation
 
     @pytest.mark.dependency(
         name="TestDataParsingHatpro::test_parse_hatpro",

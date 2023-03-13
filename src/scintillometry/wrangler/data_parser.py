@@ -482,7 +482,7 @@ def construct_hatpro_levels(levels=None):
     """Construct HATPRO scanning levels.
 
     Hardcoded scan levels specifically for HATPRO Retrieval data from
-    HATPRO UIBK Met. Scan levels are integer measurement heights
+    HATPRO UIBK Met (612m). Scan levels are integer measurement heights
     relative to the station's elevation.
 
     Args:
@@ -518,7 +518,7 @@ def construct_hatpro_levels(levels=None):
     return scan
 
 
-def load_hatpro(file_name, levels, tzone):
+def load_hatpro(file_name, levels, tzone, station_elevation=612.0):
     """Load raw HATPRO data into dataframe.
 
     Args:
@@ -526,6 +526,8 @@ def load_hatpro(file_name, levels, tzone):
         levels (list[int]): Height of HATPRO scan level, |z_scan| [m].
         tzone (str): Local timezone during the scintillometer's
             operation. Default None.
+        station_elevation (float): Station elevation, |z_stn| [m].
+            Default 612.0 m.
     Returns:
         pd.DataFrame: Contains tz-aware and pre-processed HATPRO data.
 
@@ -548,10 +550,12 @@ def load_hatpro(file_name, levels, tzone):
     else:
         data = data.tz_localize("UTC")
 
+    data.attrs["elevation"] = station_elevation
+
     return data
 
 
-def parse_hatpro(file_prefix, scan_heights=None, timezone=None):
+def parse_hatpro(file_prefix, scan_heights=None, timezone=None, elevation=612.0):
     """Parses HATPRO Retrieval data.
 
     Args:
@@ -568,6 +572,8 @@ def parse_hatpro(file_prefix, scan_heights=None, timezone=None):
             |z_scan| [m].
         timezone (str): Local timezone during HATPRO operation.
             Default None.
+        elevation (float): Station elevation, |z_stn| [m].
+            Default 612.0 m.
 
     Returns:
         dict[pd.DataFrame, pd.DataFrame]: Vertical measurements from
@@ -580,10 +586,16 @@ def parse_hatpro(file_prefix, scan_heights=None, timezone=None):
 
     scan_levels = construct_hatpro_levels(levels=scan_heights)
     humidity_data = (10 ** (-3)) * load_hatpro(
-        file_name=humidity_path, levels=scan_levels, tzone=timezone
+        file_name=humidity_path,
+        levels=scan_levels,
+        tzone=timezone,
+        station_elevation=elevation,
     )
     temperature_data = load_hatpro(
-        file_name=temperature_path, levels=scan_levels, tzone=timezone
+        file_name=temperature_path,
+        levels=scan_levels,
+        tzone=timezone,
+        station_elevation=elevation,
     )
 
     data = {}
@@ -593,7 +605,9 @@ def parse_hatpro(file_prefix, scan_heights=None, timezone=None):
     return data
 
 
-def parse_vertical(file_path, device="hatpro", levels=None, tzone=None):
+def parse_vertical(
+    file_path, device="hatpro", levels=None, tzone=None, station_elevation=612.0
+):
     """Parses vertical measurements.
 
     Currently only supports HATPRO.
@@ -614,6 +628,8 @@ def parse_vertical(file_path, device="hatpro", levels=None, tzone=None):
             |z_scan| [m].
         tzone (str): Local timezone during the radiometer's operation.
             Default None.
+        station_elevation (float): Station elevation, |z_stn| [m].
+            Default 612.0 m.
 
     Returns:
         dict[pd.DataFrame, pd.DataFrame]: Vertical measurements for
@@ -629,7 +645,10 @@ def parse_vertical(file_path, device="hatpro", levels=None, tzone=None):
         raise NotImplementedError(error_msg)
     else:
         vert_data = parse_hatpro(
-            file_prefix=file_path, scan_heights=levels, timezone=tzone
+            file_prefix=file_path,
+            scan_heights=levels,
+            timezone=tzone,
+            elevation=station_elevation,
         )
 
     return vert_data
