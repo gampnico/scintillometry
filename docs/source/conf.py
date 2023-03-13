@@ -1,8 +1,25 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-#
+"""Copyright 2023 Scintillometry-Tools Contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+=====
+
+Configuration file for the Sphinx documentation builder.
+
+For the full list of built-in configuration values, see the documentation:
+https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
+
 # pylint: skip-file
 # flake8: noqa: F541
 
@@ -32,7 +49,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.21.a0"
+release = "0.21.a1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -55,6 +72,8 @@ exclude_patterns = []
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {"navigation_depth": 5}
 html_static_path = ["_static"]
+html_show_sphinx = False
+trim_footnote_reference_space = True
 
 rst_prolog = f"""
 .. |gm^-3| replace:: g :math:`\\cdot` m :sup:`-3`

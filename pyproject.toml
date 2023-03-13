@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scintillometry"
-version = "0.21.a0"
+version = "0.21.a1"
 authors = [
-  { name="Nicolas Gampierakis", email="" },
+  { name="Scintillometry-Tools Contributors", email="" },
 ]
 description = "Analyse data & 2D flux footprints from Scintec's BLS scintillometers."
 readme = "README.md"
