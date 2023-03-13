@@ -68,8 +68,8 @@ def define_stability(stability_name):
 
     Returns:
         float: Constant "b" accounting for height dependence of |Cn2|.
-        Values of "b" are from Hartogenesis et al. (2003), and
-        Kleissl et al. (2008).
+        Values of "b" are from Hartogenesis et al. (2003)
+        [#hartogensis2003]_, and Kleissl et al. (2008) [#kleissl2008]_.
 
     Raises:
         NotImplementedError: <stability_name> is not an implemented

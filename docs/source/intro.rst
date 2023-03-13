@@ -60,12 +60,19 @@ Visualisation:
      sources.
 
 Currently implemented MOST functions:
-   - **an1988**: E.L. Andreas (1988), DOI: `10.1364/JOSAA.5.000481 <https://opg.optica.org/josaa/abstract.cfm?uri=josaa-5-4-481>`_
-   - **li2012**: D. Li et al. (2012), DOI: `10.1007/s10546-011-9660-y <https://link.springer.com/article/10.1007/s10546-011-9660-y>`_
-   - **wy1971**: Wyngaard et al. (1971), DOI: `10.1364/JOSA.61.001646 <https://opg.optica.org/josa/abstract.cfm?uri=josa-61-12-1646>`_
-   - **wy1973**: Wyngaard et al. (1973) in Kooijmans and  Hartogensis (2016), DOI: `10.1007/s10546-016-0152-y <https://link.springer.com/article/10.1007/s10546-016-0152-y>`_
-   - **ma2014**: Maronga et al. (2014), DOI: `10.1007/s10546-014-9955-x <https://link.springer.com/article/10.1007/s10546-014-9955-x>`_
-   - **br2014**: Braam et al. (2014), DOI: `10.1007/s10546-014-9938-y <https://link.springer.com/article/10.1007/s10546-014-9938-y>`_
+   - **an1988**: E.L. Andreas (1988) [#andreas1988]_, DOI:
+     `10.1364/JOSAA.5.000481 <https://opg.optica.org/josaa/abstract.cfm?uri=josaa-5-4-481>`_
+   - **li2012**: D. Li et al. (2012) [#li2012]_, DOI:
+     `10.1007/s10546-011-9660-y <https://link.springer.com/article/10.1007/s10546-011-9660-y>`_
+   - **wy1971**: Wyngaard et al. (1971) [#wyngaard1971]_, DOI:
+     `10.1364/JOSA.61.001646 <https://opg.optica.org/josa/abstract.cfm?uri=josa-61-12-1646>`_
+   - **wy1973**: Wyngaard et al. (1973) in Kooijmans and  Hartogensis (2016)
+     [#kooijmans2016]_, DOI:
+     `10.1007/s10546-016-0152-y <https://link.springer.com/article/10.1007/s10546-016-0152-y>`_
+   - **ma2014**: Maronga et al. (2014) [#maronga2014]_, DOI:
+     `10.1007/s10546-014-9955-x <https://link.springer.com/article/10.1007/s10546-014-9955-x>`_
+   - **br2014**: Braam et al. (2014) [#braam2014]_, DOI:
+     `10.1007/s10546-014-9938-y <https://link.springer.com/article/10.1007/s10546-014-9938-y>`_
 
 Footprint Climatology (Roadmap)
 *******************************
@@ -104,7 +111,8 @@ Once installed, list all available arguments with:
    make commands  # if you prefer less typing
 
 Navigate to the package root in the terminal. Calculate and plot surface
-sensible heat fluxes using MOST in CET, with coefficients from Andreas (1988):
+sensible heat fluxes using MOST in CET, with coefficients from Andreas (1988)
+[#andreas1988]_:
 
 .. code-block:: bash
     
@@ -121,3 +129,15 @@ Acknowledgements
 
 This project would not be possible without invaluable contributions from
 Dr. Manuela Lehner, Dr. Helen Ward, and Josef Zink.
+
+References
+----------
+
+.. rubric:: References
+
+.. [#andreas1988] |andreas1988|
+.. [#braam2014] |braam2014|
+.. [#kooijmans2016] |kooijmans2016|
+.. [#li2012] |li2012|
+.. [#maronga2014] |maronga2014|
+.. [#wyngaard1971] |wyngaard1971|

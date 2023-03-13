@@ -70,6 +70,25 @@ In: scintillometry.backend.iterations.py
    :undoc-members:
    :show-inheritance:
 
+References
+----------
+
+.. [#andreas1988] |andreas1988|
+.. [#braam2014] |braam2014|
+.. [#hartogensis2003] |hartogensis2003|
+.. [#kleissl2008] |kleissl2008|
+.. [#kooijmans2016] |kooijmans2016|
+.. [#li2012] |li2012|
+.. [#maronga2014] |maronga2014|
+.. [#scintec2022] |scintec2022|
+.. [#scintec2008] |scintec2008|
+.. [#moene2003] |moene2003|
+.. [#owens1967] |owens1967|
+.. [#paulson1970] |paulson1970|
+.. [#thiermann1992] |thiermann1992|
+.. [#ward2013] |ward2013|
+.. [#wyngaard1971] |wyngaard1971|
+
 Module contents
 ---------------
 

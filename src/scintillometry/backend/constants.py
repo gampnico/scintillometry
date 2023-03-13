@@ -22,9 +22,10 @@ class AtmosConstants(object):
     """Atmospheric constants.
 
     There seems to be a contradiction between the values for |a_11|
-    in the Scintillometer Theory Manual 1.05 (Chapter 1.1.5), and the
-    BLS Manual 1.49 (A.2 Eq.6). The Scintillometer Theory Manual is more
-    recent.
+    in the Scintillometer Theory Manual 1.05
+    (Chapter 1.1.5) [#scintec2022]_, and the BLS Manual 1.49
+    (A.2 Eq.6) [#scintec2008]_. The Scintillometer Theory Manual is
+    more recent.
 
     Attributes:
         alpha11 (dict): |Cn2| measurement coefficients |a_11| for each
@@ -34,12 +35,15 @@ class AtmosConstants(object):
         lamda (float): BLS wavelength, |lamda| [nm].
         lamda_error (float): BLS wavelength error, [nm].
         m1_opt (float): Needed for |A_T| and |A_q|, from Owens (1967).
+            [#owens1967]_
         m2_opt (float): Needed for |A_T| and |A_q|, from Owens (1967).
+            [#owens1967]_
 
         at_opt (float): |A_T| coefficient for 880 nm & typical
-            atmospheric conditions.
+            atmospheric conditions, from Ward et al. (2013).
+            [#ward2013]_
         aq_opt (float): |A_q| coefficient for 880 nm & typical
-            atmospheric conditions.
+            atmospheric conditions, Ward et al. (2013). [#ward2013]_
 
         most_coeffs_ft (dict[list[tuple, tuple]]): Coefficients for MOST
             functions |f_CT2|, in format:
@@ -58,7 +62,7 @@ class AtmosConstants(object):
             |R_v| [|JK^-1| |kg^-1|].
         ratio_rmm (float): Ratio of molecular masses of water vapour and
             dry air i.e. ratio of gas constants |epsilon|.
-        ref_pressure (int): Reference pressure (not SLP), |P_0| [Pa].
+        ref_pressure (int): Reference pressure (not SLP), |P_b| [Pa].
         rho (float): Density of air at STP, |rho| [|kgm^-3|].
 
     """

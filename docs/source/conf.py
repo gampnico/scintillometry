@@ -49,7 +49,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.22.a1"
+release = "0.22.a2"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -132,6 +132,101 @@ rst_prolog = f"""
 .. |z_eff| replace:: :math:`z_{{eff}}`
 .. |z_mean| replace:: :math:`\\bar{{z}}`
 .. |z_scan| replace:: :math:`z_{{scan}}`
+.. |z_stn| replace:: :math:`z_{{stn}}`
 .. |z_u| replace:: :math:`z_{{u}}`
 .. |z_0| replace:: :math:`z_{{0}}`
+"""
+
+rst_epilog = f"""
+.. |andreas1988| replace:: E.L. Andreas (1988).
+    *Estimating Cn2 Over Snow and Sea Ice from Meteorological Data*.
+    J. Opt. Soc. Am. A.,  Vol. 5:4, [481-495].
+    DOI: `<https://doi.org/10.1364/JOSAA.5.000481>`__
+
+.. |braam2014| replace:: M. Braam, A.F. Moene, F. Beyrich, *et al.* (2014).
+    *Similarity Relations for CT2 in the Unstable Atmospheric Surface Layer:
+    Dependence on Regression Approach, Observation Height and Stability Range*.
+    Boundary-Layer Meteorology Vol. 153, [63-87].
+    DOI: `<https://doi.org/10.1007/s10546-014-9938-y>`__
+
+.. |hartogensis2003| replace:: O.K. Hartogensis, C.J. Watts, J. Rodriguez, and
+    H.A.R. De Bruin (2003).
+    *Derivation of an Effective Height for Scintillometers: La Poza Experiment
+    in Northwest Mexico*.
+    J. Hydrometeor., Vol. 4, [915-928].
+    DOI: `<https://doi.org/10.1175/1525-7541(2003)004\<0915:DOAEHF\>2.0.CO;2>`__
+
+.. |kleissl2008| replace:: J. Kleissl, J. Gomez, S.H. Hong, *et al.* (2008).
+    *Large Aperture Scintillometer Intercomparison Study*.
+    Boundary-Layer Meteorology, Vol. 128, [133-150] (2008).
+    DOI: `<https://doi.org/10.1007/s10546-008-9274-1>`__
+
+.. |kooijmans2016| replace:: L.M.J. Kooijmans, O.K. Hartogensis (2014).
+    *Surface-Layer Similarity Functions for Dissipation Rate and Structure
+    Parameters of Temperature and Humidity Based on Eleven Field Experiments*.
+    Boundary-Layer Meteorol Vol. 160, [501-527].
+    DOI: `<https://doi.org/10.1007/s10546-016-0152-y>`__
+
+.. |li2012| replace:: D. Li, E. Bou-Zeid & H.A.R. De Bruin (2012).
+    *Monin-Obukhov Similarity Functions for the Structure Parameters of
+    Temperature and Humidity*.
+    Boundary-Layer Meteorology Vol. 145, [45-67].
+    DOI: `<https://doi.org/10.1007/s10546-011-9660-y>`__
+
+.. |maronga2014| replace:: B. Maronga, O.K. Hartogensis, S. Raasch
+    *et al.* (2014).
+    *The Effect of Surface Heterogeneity on the Structure Parameters of
+    Temperature and Specific Humidity: A Large-Eddy Simulation Case Study for
+    the LITFASS-2003 Experiment*.
+    Boundary-Layer Meteorology, Vol. 153, [441-470].
+    DOI: `<https://doi.org/10.1007/s10546-014-9955-x>`__
+
+.. |moene2003| replace:: A.F. Moene (2003).
+    *Effects of Water Vapour on the Structure Parameter of the Refractive Index
+    for Near-Infrared Radiation*.
+    Boundary-Layer Meteorology, Vol. 107, [635-653].
+    DOI: `<https://doi.org/10.1023/A:1022807617073>`__
+
+.. |owens1967| replace:: J.C. Owens (1967).
+    *Optical Refractive Index of Air: Dependence on Pressure, Temperature and
+    Composition*.
+    Appl. Opt., 6:1 [51-9]. PMID: 20057695.
+    DOI: `<https://doi.org/10.1364/AO.6.000051>`__
+
+.. |paulson1970| replace:: C.A. Paulson (1970).
+    *The Mathematical Representation of Wind Speed and Temperature Profiles in
+    the Unstable Atmospheric Surface Layer*.
+    J. Appl. Meteorology, Vol. 9:6 [857-861].
+    DOI: `<https://doi.org/10.1175/1520-0450(1970)009\<0857\:TMROWS\>2.0.CO;2>`__
+
+.. |scintec2022| replace:: Scintec AG (2022).
+    *Scintec Scintillometers Theory Manual (SLS/BLS)*. Version 1.05.
+    Scintec AG, Rottenburg, Germany.
+
+.. |scintec2008| replace:: Scintec AG (2008).
+    *Scintec Boundary Layer Scintillometer User Manual*. Version 1.49.
+    Scintec AG, Rottenburg, Germany.
+
+.. |thiermann1992| replace:: V. Thiermann, H. Grassl (1992).
+    *The Measurement of Turbulent Surface-Layer Fluxes by Use of Bichromatic
+    Scintillation*.
+    Boundary-Layer Meteorology, Vol. 58, [367-389].
+    DOI: `<https://doi.org/10.1007/BF00120238>`__
+
+.. |ward2013| replace:: H.C. Ward, J.G. Evans, O.K. Hartogensis, A.F. Moene,
+    H.A.R. De Bruin, C.S.B. Grimmond (2013).
+    *A Critical Revision of the Estimation of the Latent Heat Flux from
+    Two-Wavelength Scintillometry*.
+    Q.J.R. Meteorology Soc., Vol. 139 [1912-1922].
+    DOI: `<https://doi.org/10.1002/qj.2076>`__
+
+.. |wyngaard1971| replace:: J. C. Wyngaard, Y. Izumi, and S. A. Collins (1971).
+    *Behavior of the Refractive-Index-Structure Parameter near the Ground*.
+    J. Opt. Soc. Am., Vol. 61:12, [1646-1650].
+    DOI: `<https://doi.org/10.1364/JOSA.61.001646>`__
+
+.. |zhangAnthes1982| replace:: D. Zhang & R. A. Anthes (1982).
+    *A High-Resolution Model of the Planetary Boundary Layer - Sensitivity Tests
+    and Comparisons with SESAME-79 Data*.
+    J. Appl. Meteorology, Vol. 21 [1594-1609].
 """

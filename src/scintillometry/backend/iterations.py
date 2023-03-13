@@ -17,23 +17,25 @@ limitations under the License.
 Iterative methods to calculate heat fluxes.
 
 IterationMost is descended from an old Python port of a method initially
-written in R by Dr. Helen Ward (2019), but has been extensively modified
-- the implementations and features available are fundamentally different
-so the results from one should not be assumed identical to the other.
+written in R by Dr. Helen Ward (2019), but has been completely
+rewritten - the implementations and features available are fundamentally
+different so the results from one should not be assumed identical to the
+other.
 
 The current method used by IterationMost is based on mathematical theory
 available in:
 
     - Scintec AG (2022). Scintec Scintillometers Theory Manual,
-      Version 1.05. Scintec AG, Rottenburg, Germany.
+      Version 1.05. Scintec AG, Rottenburg, Germany. [#scintec2022]_
 
     - Scintec AG (2008). Scintec Boundary Layer Scintillometer User
       Manual, Version 1.49. Scintec AG, Rottenburg, Germany.
+      [#scintec2008]_
 
 This method has been updated to resolve some inconsistencies between
 the manuals, and has additional modifications to enhance performance and
 broaden its use with different scintillometer models. Results may
-therefore differ slightly between this and previous iterative methods.
+therefore differ slightly between this and other iterative methods.
 
 TODO:
     - ST-45: Implement MM5 method (Zhang and Anthes, 1982).
@@ -48,15 +50,14 @@ import numpy as np
 import tqdm
 
 from scintillometry.backend.constants import AtmosConstants
+from scintillometry.backend.constructions import ProfileConstructor
 
 
 class IterationMost(AtmosConstants):
     """Classic MOST Iteration.
 
-    A detailed description of the iterative scheme is available in:
-
-    Scintec AG (2022). Scintec Scintillometers Theory Manual. Version
-    1.05. Scintec AG, Rottenburg, Germany.
+    A detailed description of the iterative scheme is available in the
+    Scintec Scintillometers Theory Manual, Version 1.05. [#scintec2022]_
 
     This iterative method resolves some inconsistencies between
     different scintillometer manuals. Results may therefore differ
@@ -112,11 +113,12 @@ class IterationMost(AtmosConstants):
     def momentum_stability_unstable(self, obukhov, z):
         """Integrated stability function for momentum, unstable.
 
-        Uses Paulson (1970). Apply when |LOb| < 0.
+        Uses formula from Paulson (1970) [#paulson1970]_. Apply when
+        |LOb| < 0.
 
         Args:
             obukhov (float): Obukhov length, |LOb| [m].
-            z (float): Height, z [m].
+            z (float): Height, |z| [m].
 
         Returns:
             mpmath.mpf: Integrated stability function for momentum,
@@ -140,7 +142,7 @@ class IterationMost(AtmosConstants):
 
         Args:
             obukhov (float): Obukhov length, |LOb| [m].
-            z (float): Height, z [m].
+            z (float): Height, |z| [m].
 
         Returns:
             mpmath.mpf: Integrated stability function for momentum,
@@ -160,7 +162,7 @@ class IterationMost(AtmosConstants):
 
         Args:
             obukhov (float): Obukhov length, |LOb| [m].
-            z (float): Height, z [m].
+            z (float): Height, |z| [m].
 
         Returns:
             mpmath.mpf: Integrated stability function for momentum,
@@ -179,17 +181,13 @@ class IterationMost(AtmosConstants):
 
         Implemented MOST coefficients:
 
-        * **an1988**: E.L. Andreas (1988), DOI: 10.1364/JOSAA.5.000481
-        * **li2012**: D. Li et al. (2012),
-          DOI: 10.1007/s10546-011-9660-y
-        * **wy1971**: Wyngaard et al. (1971),
-          DOI: 10.1364/JOSA.61.001646
+        * **an1988**: E.L. Andreas (1988) [#andreas1988]_
+        * **li2012**: D. Li et al. (2012) [#li2012]_
+        * **wy1971**: Wyngaard et al. (1971) [#wyngaard1971]_
         * **wy1973**: Wyngaard et al. (1973) in Kooijmans and
-          Hartogensis (2016), DOI: 10.1007/s10546-016-0152-y
-        * **ma2014**: Maronga et al. (2014),
-          DOI: 10.1007/s10546-014-9955-x
-        * **br2014**: Braam et al. (2014),
-          DOI: 10.1007/s10546-014-9938-y
+          Hartogensis (2016) [#kooijmans2016]_
+        * **ma2014**: Maronga et al. (2014) [#maronga2014]_
+        * **br2014**: Braam et al. (2014) [#braam2014]_
 
         Braam et al. (2014) and Maronga et al. (2014) do not provide
         coefficients for stable conditions, so gradient functions will
@@ -227,12 +225,13 @@ class IterationMost(AtmosConstants):
     def similarity_function(self, obukhov, z, coeffs, stable):
         """Similarity function of |CT2|.
 
-        Adapted from Wyngaard et al. (1971); Thiermann and Grassl, 1992;
-        Kooijmans and Hartogensis, 2016.
+        Adapted from Wyngaard et al. (1971) [#wyngaard1971]_; Thiermann
+        and Grassl (1992) [#thiermann1992]_; Kooijmans and Hartogensis (2016)
+        [#kooijmans2016]_.
 
         Args:
             obukhov (float): Obukhov length, |LOb| [m].
-            z (float): Effective height, z [m].
+            z (float): Effective height, |z| [m].
             stable (bool): True for stable conditions, otherwise False.
             coeffs (list): MOST coefficients for unstable and stable
                 conditions.
@@ -256,9 +255,10 @@ class IterationMost(AtmosConstants):
         """Calculate temperature scale.
 
         Args:
-            ct2 (float): Structure parameter of temperature |CT2|.
+            ct2 (float): Structure parameter of temperature,
+                |CT2| [|K^2m^-2/3|].
             f_ct2 (float): MOST function of |CT2|, |f_CT2|.
-            z (float): Effective height, z [m].
+            z (float): Effective height, |z| [m].
             stable (bool): True for stable conditions, otherwise False.
 
         Returns:
@@ -275,7 +275,7 @@ class IterationMost(AtmosConstants):
         """Calculates friction velocity.
 
         Args:
-            u (float): Wind speed, |u| [m |s^-1|].
+            u (float): Wind speed, |u| [|ms^-1|].
             z_u (float): Height of wind speed measurement including
                 displacement (z-d), |z_u| [m].
             r_length (float): Roughness length, |z_0| [m].
@@ -301,7 +301,7 @@ class IterationMost(AtmosConstants):
         """Calculate Obukhov length.
 
         Args:
-            temp (np.floating): Air temperature in Kelvin, T [K].
+            temp (np.floating): Air temperature in Kelvin, |T| [K].
             u_star (mpmath.mpf): Friction velocity |u*|.
             theta_star (mpmath.mpf): Temperature scale, |theta*|.
 
@@ -319,8 +319,8 @@ class IterationMost(AtmosConstants):
         Args:
             stable_flag (bool): True for stable conditions, otherwise
                 False.
-            dataframe (pd.DataFrame): Dataframe with SHF and Obukhov
-                lengths.
+            dataframe (pd.DataFrame): Dataframe with sensible heat flux
+                and Obukhov lengths.
 
         Warns:
             UserWarning: Sign of Obukhov lengths should be opposite of
@@ -348,8 +348,10 @@ class IterationMost(AtmosConstants):
 
         A detailed description of the iterative method is available in:
 
-            - Scintec AG (2022). Scintec Scintillometers Theory Manual
-              (SLS/BLS) [Version 1.05]. Scintec AG, Rottenburg, Germany.
+            - Scintec AG (2022). *Scintec Scintillometers Theory
+              Manual*, Version 1.05. Scintec AG, Rottenburg, Germany.
+              [#scintec2022]_
+
 
         Iteration until convergence is slower than vectorisation, but
         more accurate. If a value never converges, the iteration stops
@@ -428,17 +430,13 @@ class IterationMost(AtmosConstants):
 
         Implemented MOST coefficients:
 
-        - **an1988**: E.L. Andreas (1988), DOI: 10.1364/JOSAA.5.000481
-        - **li2012**: D. Li et al. (2012),
-          DOI: 10.1007/s10546-011-9660-y
-        - **wy1971**: Wyngaard et al. (1971),
-          DOI: 10.1364/JOSA.61.001646
+        - **an1988**: E.L. Andreas (1988) [#andreas1988]_
+        - **li2012**: D. Li et al. (2012) [#li2012]_
+        - **wy1971**: Wyngaard et al. (1971) [#wyngaard1971]_
         - **wy1973**: Wyngaard et al. (1973) in Kooijmans and
-          Hartogensis (2016), DOI: 10.1007/s10546-016-0152-y
-        - **ma2014**: Maronga et al. (2014),
-          DOI: 10.1007/s10546-014-9955-x
-        - **br2014**: Braam et al. (2014),
-          DOI: 10.1007/s10546-014-9938-y
+          Hartogensis (2016) [#kooijmans2016]_
+        - **ma2014**: Maronga et al. (2014) [#maronga2014]_
+        - **br2014**: Braam et al. (2014) [#braam2014]_
 
         Braam et al. (2014) and Maronga et al. (2014) do not provide
         coefficients for stable conditions, so gradient functions will

@@ -14,26 +14,21 @@
 
    =====
 
-Analyse data & 2D flux footprints from Scintec's BLS scintillometers.
-=====================================================================
+References
+==========
 
-Scintillometry-Tools is a Python framework for studying scintillometer data
-with direct integration of topographical and meteorological data. The framework
-can be used via console or imported into a Python script.
-
-.. toctree::
-   :maxdepth: 3
-   :caption: Contents:
-
-   intro
-   quickstart
-   development
-   scintillometry
-   references
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+(1) |andreas1988|
+(#) |braam2014|
+(#) |hartogensis2003|
+(#) |kleissl2008|
+(#) |kooijmans2016|
+(#) |li2012|
+(#) |maronga2014|
+(#) |scintec2022|
+(#) |scintec2008|
+(#) |moene2003|
+(#) |owens1967|
+(#) |paulson1970|
+(#) |thiermann1992|
+(#) |ward2013|
+(#) |wyngaard1971|

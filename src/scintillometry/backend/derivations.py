@@ -26,12 +26,13 @@ def derive_ct2(dataframe, wavelength=880):
     Derives |CT2| from measured structure parameter of refractive index
     |Cn2| and weather data. The equation to derive |CT2| is precise to
     |10^-5| but doesn't account for humidity fluctuations - errors are
-    within 3% of inverse Bowen ratio (Moene 2003).
+    within 3% of inverse Bowen ratio (Moene 2003). [#moene2003]_
 
     Typical transmission beam wavelengths::
 
-        * Ward et al., (2013), Scintillometer Theory Manual: 880 nm
-        * BLS Manual: 850 nm (± 20 nm)
+        * Ward et al., (2013) [#ward2013]_, Scintillometer Theory Manual
+          [#scintec2022]_: 880 nm
+        * BLS Manual [#scintec2008]_: 850 nm (± 20 nm)
         * SLS Manual: 670 nm (± 10 nm)
 
     See specifications in the corresponding hardware maintenance manual.
