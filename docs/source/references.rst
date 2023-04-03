@@ -26,6 +26,7 @@ References
 (#) |maronga2014|
 (#) |scintec2022|
 (#) |scintec2008|
+(#) |striednig2020|
 (#) |moene2003|
 (#) |owens1967|
 (#) |paulson1970|

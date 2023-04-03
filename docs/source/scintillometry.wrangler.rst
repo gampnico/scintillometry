@@ -30,6 +30,11 @@ In: scintillometry.wrangler.data_parser.py
    :undoc-members:
    :show-inheritance:
 
+References
+----------
+
+.. [#striednig2020] |striednig2020|
+
 Module contents
 ---------------
 

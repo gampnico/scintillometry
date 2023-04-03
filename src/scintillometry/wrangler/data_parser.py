@@ -23,6 +23,7 @@ import re
 
 import numpy as np
 import pandas as pd
+import scipy
 
 from scintillometry.backend.constants import AtmosConstants
 
@@ -425,44 +426,81 @@ def wrangle_data(
     return data_dict
 
 
-def parse_innflux(timestamp, data_dir="./ext/data/raw/InnFLUX/", tzone=None):
-    """Parses InnFLUX data.
+def parse_innflux_csv(file_path, header_list=None):
+    """Parse pre-processed innFLUX data from .csv files.
+
+    If innFLUX data was provided as a pre-processed .csv file (i.e. you
+    are not licensed to use raw data), it may only contain data for a
+    limited number of variables with no headers present.
+
+    Optionally pass a list of column headers using the <header_list>
+    argument. If no list is passed, a default list of headers is used.
 
     Args:
-        timestamp (pd.Timestamp): Start time of scintillometer data
-            collection.
-        data_dir (str): Location of InnFLUX data files.
+        file_path (str): Path to .csv file.
+        header_list (list): List of column headers for data. Default
+            None.
+
+    Returns:
+        pd.DataFrame: Contains innFLUX measurements.
+    """
+
+    if not header_list:
+        header_list = [
+            "year",
+            "month",
+            "day",
+            "hour",
+            "minute",
+            "second",
+            "shf",
+            "wind_speed",
+            "obukhov",
+        ]
+    dataframe = pd.read_csv(
+        file_path, header=None, index_col=None, names=header_list, sep=","
+    )
+
+    t_cols = ["year", "month", "day", "hour", "minute", "second"]
+    dataframe.index = pd.to_datetime(dataframe[t_cols])
+    dataframe = dataframe.drop(t_cols, axis=1)
+
+    return dataframe
+
+
+def parse_innflux(file_name, tzone=None, headers=None):
+    """Parses InnFLUX eddy covariance data.
+
+    The input data should be pre-processed from raw eddy covariance
+    measurements using the innFLUX Eddy Covariance
+    code. [#striednig2020]_
+
+    The input file should contain data for the sensible heat flux, wind
+    speed, and Obukhov length. It may optionally contain data for the
+    stability parameter.
+
+    If parsing a .csv file, optionally pass a list of column headers
+    using the <headers> argument. If no list is passed, a default list
+    of headers is used. This argument is ignored for non-csv files.
+
+    Args:
+        file_name (str): Path to innFLUX data.
         tzone (str): Local timezone during the scintillometer's
             operation. Default None.
+        headers (list): List of column headers for data. Default None.
 
     Returns:
         pd.DataFrame: Parsed and localised InnFLUX data.
     """
 
-    date = timestamp.strftime("%Y%m%d")
-    file_name = f"{data_dir}{date}_innflux.csv"
     check_file_exists(file_name)
 
-    header_list = [
-        "year",
-        "month",
-        "day",
-        "hour",
-        "minute",
-        "second",
-        "shf",
-        "wind_speed",
-        "obukhov",
-    ]
-    dataframe = pd.read_csv(
-        file_name, header=None, skiprows=1, index_col=None, names=header_list, sep=","
-    )
+    if file_name[-4:] == ".mat":
+        raise NotImplementedError("MATLAB® support is not yet implemented.")
+    else:
+        dataframe = parse_innflux_csv(file_path=file_name, header_list=headers)
 
-    t_cols = ["year", "month", "day", "hour", "minute", "second"]
-    dataframe.index = pd.to_datetime(dataframe[t_cols])
     dataframe.index = dataframe.index + pd.DateOffset(hours=3)
-
-    dataframe = dataframe.drop(t_cols, axis=1)
     dataframe = dataframe.replace(-999, np.nan)
     dataframe = dataframe.fillna(method="ffill")
 
@@ -545,6 +583,8 @@ def load_hatpro(file_name, levels, tzone, station_elevation=612.0):
         index_col=0,
         date_parser=pd.to_datetime,
     )
+
+    data.index = data.index + pd.DateOffset(hours=2)
     if tzone:
         data = data.tz_localize(tzone)
     else:

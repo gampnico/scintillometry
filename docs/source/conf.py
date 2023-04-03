@@ -49,7 +49,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.25.a1"
+release = "0.26.a0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -207,6 +207,13 @@ rst_epilog = f"""
 .. |scintec2008| replace:: Scintec AG (2008).
     *Scintec Boundary Layer Scintillometer User Manual*. Version 1.49.
     Scintec AG, Rottenburg, Germany.
+
+.. |striednig2020| replace:: M. Striednig, M. Graus, T.D. Märk, T.G. Karl
+    (2020).
+    *InnFLUX - an Open-Source Code for Conventional and Disjunct Eddy Covariance
+    Analysis of Trace Gas Measurements: an Urban Test Case*.
+    Atmospheric Measurement Techniques, Vol. 13:3, [1447-1465].
+    DOI: `<https://doi.org/10.5194/amt-13-1447-2020>`__
 
 .. |thiermann1992| replace:: V. Thiermann, H. Grassl (1992).
     *The Measurement of Turbulent Surface-Layer Fluxes by Use of Bichromatic

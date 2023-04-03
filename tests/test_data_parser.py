@@ -603,28 +603,45 @@ class TestDataParsingMerge:
 
 
 class TestDataParsingInnflux:
-    """Test class for parsing InnFLUX data."""
+    """Test class for parsing InnFLUX data.
 
-    @pytest.mark.dependency(name="TestDataParsingInnflux::test_parse_innflux")
-    @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", None])
+    Attributes:
+        test_headers (list): Column headers for simulated innFLUX data.
+    """
+
+    test_headers = [
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minutes",
+        "seconds",
+        "shf",
+        "wind_speed",
+        "obukhov",
+    ]
+
+    @pytest.mark.dependency(name="TestDataParsingInnflux::test_parse_innflux_csv")
+    @pytest.mark.parametrize("arg_header", [True, False])
     @patch("pandas.read_csv")
-    def test_parse_innflux(
+    def test_parse_innflux_csv(
         self,
         read_csv_mock: Mock,
         conftest_mock_innflux_dataframe,
         conftest_mock_check_file_exists,
-        arg_timezone,
+        arg_header,
     ):
-        """Parse unformatted InnFLUX data."""
+        """Parse pre-processed innFLUX csv data."""
 
         _ = conftest_mock_check_file_exists
         read_csv_mock.return_value = conftest_mock_innflux_dataframe
 
-        test_timestamp = pd.DatetimeIndex(["2020-06-03T00:00:00Z"]).tz_convert("UTC")[0]
-        dataframe = scintillometry.wrangler.data_parser.parse_innflux(
-            timestamp=test_timestamp,
-            data_dir="/path/innflux/directory/",
-            tzone=arg_timezone,
+        if arg_header:
+            headers = self.test_headers
+        else:
+            headers = None
+        dataframe = scintillometry.wrangler.data_parser.parse_innflux_csv(
+            file_path="/path/innflux/file.csv", header_list=headers
         )
         read_csv_mock.assert_called_once()
         assert isinstance(dataframe, pd.DataFrame)
@@ -636,6 +653,30 @@ class TestDataParsingInnflux:
         for key in data_keys:
             assert key in dataframe.columns
             assert ptypes.is_numeric_dtype(dataframe[key])
+
+    @pytest.mark.dependency(
+        name="TestDataParsingInnflux::test_parse_innflux",
+        depends=["TestDataParsingInnflux::test_parse_innflux_csv"],
+    )
+    @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", None])
+    @patch("pandas.read_csv")
+    def test_parse_innflux(
+        self,
+        read_csv_mock: Mock,
+        conftest_mock_innflux_dataframe,
+        conftest_mock_check_file_exists,
+        arg_timezone,
+    ):
+        """Parse pre-processed innFLUX data."""
+
+        _ = conftest_mock_check_file_exists
+        read_csv_mock.return_value = conftest_mock_innflux_dataframe
+
+        dataframe = scintillometry.wrangler.data_parser.parse_innflux(
+            file_name="/path/innflux/file.csv",
+            tzone=arg_timezone,
+        )
+        read_csv_mock.assert_called_once()
 
         if not arg_timezone:
             assert dataframe.index.tz.zone == "UTC"

@@ -296,7 +296,10 @@ def main():
     )
     if args.eddy_path:
         innflux_frame = DataParser.parse_innflux(
-            timestamp=time_stamp, tzone=args.timezone
+            timestamp=time_stamp,
+            file_name=args.eddy_path,
+            tzone=args.timezone,
+            headers=None,
         )
         metrics_class.compare_innflux(
             arguments=args,
