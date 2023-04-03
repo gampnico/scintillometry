@@ -54,28 +54,64 @@ class TestBackendIterationMost:
             scintillometry.backend.constants.AtmosConstants,
         )
 
+    @pytest.mark.dependency(
+        name="TestBackendIterationMost::test_get_switch_time_method"
+    )
+    @pytest.mark.parametrize("arg_method", ["incorrect_method", None])
+    def test_get_switch_time_method(
+        self,
+        conftest_mock_derived_dataframe,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        arg_method,
+    ):
+        """Raise error if incorrect switch time algorithm specified."""
+
+        test_error = {
+            "weather": conftest_mock_derived_dataframe,
+            "vertical": {"temperature": conftest_mock_hatpro_temperature_dataframe_tz},
+        }
+        error_msg = f"Switch time algorithm not implemented for '{arg_method}'."
+
+        with pytest.raises(NotImplementedError, match=error_msg):
+            test_most_iteration = scintillometry.backend.iterations.IterationMost()
+            test_most_iteration.get_switch_time(
+                data=test_error, method=arg_method, local_time=None
+            )
+
     @pytest.mark.dependency(name="TestBackendIterationMost::test_get_switch_time_error")
-    def test_get_switch_time_error(self, conftest_mock_derived_dataframe):
+    @pytest.mark.parametrize("arg_method", ["sun", "bulk"])
+    def test_get_switch_time_error(self, conftest_mock_derived_dataframe, arg_method):
         """Raise error if no data available to calculate switch time."""
 
-        test_error = conftest_mock_derived_dataframe[["CT2", "temperature_2m"]]
-        with pytest.raises(
-            KeyError, match="No data to calculate switch time. Set manually."
-        ):
+        test_error = {
+            "weather": conftest_mock_derived_dataframe[["CT2", "temperature_2m"]]
+        }
+
+        error_msg = (
+            "No data to calculate switch time.",
+            "Set <local_time> manually with `--switch-time`.",
+        )
+        with pytest.raises(UnboundLocalError, match=" ".join(error_msg)):
             test_most_iteration = scintillometry.backend.iterations.IterationMost()
-            test_most_iteration.get_switch_time(dataframe=test_error, local_time=None)
+            test_most_iteration.get_switch_time(
+                data=test_error, method=arg_method, local_time=None
+            )
 
     @pytest.mark.dependency(
         name="TestBackendIterationMost::test_get_switch_time",
-        depends=["TestBackendIterationMost::test_get_switch_time_error"],
+        depends=[
+            "TestBackendIterationMost::test_get_switch_time_error",
+            "TestBackendIterationMost::test_get_switch_time_method",
+        ],
     )
     @pytest.mark.parametrize("arg_local_time", ["05:20", None])
     def test_get_switch_time(self, conftest_mock_derived_dataframe, arg_local_time):
         """Get time where stability conditions change."""
 
         test_most_iteration = scintillometry.backend.iterations.IterationMost()
+        test_dataset = {"weather": conftest_mock_derived_dataframe}
         compare_switch = test_most_iteration.get_switch_time(
-            dataframe=conftest_mock_derived_dataframe, local_time=arg_local_time
+            data=test_dataset, local_time=arg_local_time
         )
         assert isinstance(compare_switch, str)
         assert compare_switch == "05:20"

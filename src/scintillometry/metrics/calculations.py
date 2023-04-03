@@ -100,7 +100,7 @@ class MetricsFlux:
 
         return flux_data
 
-    def iterate_fluxes(self, user_args, z_parameters, interpolated_data, most_id):
+    def iterate_fluxes(self, user_args, z_parameters, datasets, most_id):
         """Compute sensible heat fluxes with MOST through iteration.
 
         Trades speed from vectorisation for more accurate convergence.
@@ -110,8 +110,8 @@ class MetricsFlux:
             z_parameters (dict[float, float]): Tuples of effective and
                 mean path height |z_eff| and |z_mean| [m], with
                 stability conditions as keys.
-            interpolated_data (pd.DataFrame): Parsed, tz-aware dataframe
-                containing at least |CT2|, wind speed, air density, and
+            datasets (dict): Contains parsed, tz-aware dataframes, with
+                at least |CT2|, wind speed, air density, and
                 temperature.
 
         Returns:
@@ -122,9 +122,10 @@ class MetricsFlux:
 
         # Get time where stability conditions change
         most_class = scintillometry.backend.iterations.IterationMost()
+        interpolated_data = datasets["interpolated"]
 
         switch_time = most_class.get_switch_time(
-            dataframe=interpolated_data, local_time=user_args.switch_time
+            data=datasets, local_time=user_args.switch_time
         )
 
         iteration_stable = interpolated_data.iloc[
@@ -229,17 +230,19 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
 
         Args:
             arguments (argparse.Namespace): User arguments.
-            data (dict): Contains BLS, ZAMG, and transect dataframes, an
-                interpolated dataframe at 60s resolution containing BLS
-                and ZAMG data, and a pd.TimeStamp object of the
-                scintillometer's recorded start time::
+            data (dict): Contains BLS, weather, and transect dataframes,
+                an interpolated dataframe at 60s resolution containing
+                merged BLS and weather data, a pd.TimeStamp object of
+                the scintillometer's recorded start time, and optionally
+                vertical measurements::
 
                     data = {
                         "bls": bls_data,
-                        "zamg": zamg_data,
+                        "weather": weather_data,
                         "transect": transect_data,
                         "interpolated": interpolated_data,
                         "timestamp": bls_time,
+                        "vertical": vertical_data
                         }
 
             site (str): Location of data collection. Default empty
@@ -271,7 +274,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         iterated_dataframe = self.iterate_fluxes(
             user_args=arguments,
             z_parameters=z_params,
-            interpolated_data=data["interpolated"],
+            datasets=data,
             most_id=arguments.most_name,
         )
 

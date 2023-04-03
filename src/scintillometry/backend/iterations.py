@@ -74,39 +74,94 @@ class IterationMost(AtmosConstants):
         mpmath.pretty = True
         self.constants = AtmosConstants()
 
-    def get_switch_time(self, dataframe, local_time=None):
+    def get_switch_time(self, data, method="sun", local_time=None):
         """Gets local time of switch between stability conditions.
 
-        This should be determined in order of priority::
-            * potential temperature profile (NotImplemented)
-            * eddy covariance methods (NotImplemented)
-            * global irradiance (i.e. sunrise)
+        To override automatic detection, pass one of the following to
+        the <method> argument:
+
+        - **eddy**: eddy covariance (NotImplemented)
+        - **sun**: global irradiance (i.e. sunrise)
+        - **static**: static stability from potential temperature
+          profile
+        - **bulk**: bulk Richardson number
+        - **lapse**: temperature lapse rate (NotImplemented)
+        - **brunt**: Brunt-Väisälä frequency (NotImplemented)
+
+        To manually set the regime switch time, pass a local timestamp
+        to <local_time>. This overrides all other methods.
 
         Args:
-            dataframe (pd.DataFrame): Parsed and localised data,
-                containing data to construct a potential temperature
-                profile, or eddy covariance data, or pressure and
-                temperature.
+            data (dict): Parsed and localised dataframes, containing
+                data to construct a potential temperature profile, or
+                eddy covariance data, or global irradiance.
+            method (str): Method to calculate switch time.
+                Default "sun".
             local_time (str): Local time of switch between stability
-                conditions. Overrides calculations from <dataframe>.
+                conditions. Overrides <method>.
 
         Returns:
             str: Local time of switch between stability conditions.
 
         Raises:
-            KeyError: No data to calculate switch time. Set manually.
+            UnboundLocalError: No data to calculate switch time. Set
+                <local_time> manually with `--switch-time`.
+            NotImplementedError: Switch time algorithm not implemented
+                for <method>.
         """
 
         if not local_time:
-            # potential temperature profile
-            # eddy covariance
+            weather_data = data["weather"]
+            if isinstance(method, str):
+                method = method.lower()
 
-            if "global_irradiance" in dataframe.keys():  # ~sunrise
+            if method == "sun" and "global_irradiance" in weather_data.keys():
                 print("Using global irradiance to calculate switch time.\n")
-                local_time = dataframe[dataframe["global_irradiance"] > 20].index[0]
+                local_time = weather_data[weather_data["global_irradiance"] > 20].index[
+                    0
+                ]  # ~sunrise
+            elif "vertical" in data:
+                pt_profile = ProfileConstructor()
+                if method == "static":
+                    static_stability = pt_profile.get_static_stability(
+                        vertical_data=data["vertical"],
+                        meteo_data=weather_data,
+                        scheme="uneven",
+                    )
+                    heights = static_stability.columns[static_stability.columns <= 2000]
+                    mean_static_stability = static_stability[heights].mean(
+                        axis=1, skipna=True
+                    )
+                    local_time = (
+                        mean_static_stability[mean_static_stability.lt(0)]
+                        .dropna()
+                        .index[0]
+                    )
+                elif method == "bulk":
+                    # bulk richardson
+                    derived_data = pt_profile.get_vertical_variables(
+                        vertical_data=data["vertical"], meteo_data=weather_data
+                    )
+                    bulk_richardson = pt_profile.get_bulk_richardson(
+                        potential_temperature=derived_data["potential_temperature"],
+                        meteo_data=weather_data,
+                    )
+                    local_time = bulk_richardson[bulk_richardson.lt(-0.3)].index[0]
+                elif method == "eddy":
+                    raise NotImplementedError(
+                        f"Switch time algorithm not implemented for '{method}'."
+                    )
+                else:
+                    error_msg = f"Switch time algorithm not implemented for '{method}'."
+                    raise NotImplementedError(error_msg)
+            if not local_time:
+                error_msg = (
+                    "No data to calculate switch time.",
+                    "Set <local_time> manually with `--switch-time`.",
+                )
+                raise UnboundLocalError(" ".join(error_msg))
+            elif not isinstance(local_time, str):
                 local_time = local_time.strftime("%H:%M")
-            else:
-                raise KeyError("No data to calculate switch time. Set manually.")
 
         return local_time
 
@@ -181,13 +236,13 @@ class IterationMost(AtmosConstants):
 
         Implemented MOST coefficients:
 
-        * **an1988**: E.L. Andreas (1988) [#andreas1988]_
-        * **li2012**: D. Li et al. (2012) [#li2012]_
-        * **wy1971**: Wyngaard et al. (1971) [#wyngaard1971]_
-        * **wy1973**: Wyngaard et al. (1973) in Kooijmans and
+        - **an1988**: E.L. Andreas (1988) [#andreas1988]_
+        - **li2012**: D. Li et al. (2012) [#li2012]_
+        - **wy1971**: Wyngaard et al. (1971) [#wyngaard1971]_
+        - **wy1973**: Wyngaard et al. (1973) in Kooijmans and
           Hartogensis (2016) [#kooijmans2016]_
-        * **ma2014**: Maronga et al. (2014) [#maronga2014]_
-        * **br2014**: Braam et al. (2014) [#braam2014]_
+        - **ma2014**: Maronga et al. (2014) [#maronga2014]_
+        - **br2014**: Braam et al. (2014) [#braam2014]_
 
         Braam et al. (2014) and Maronga et al. (2014) do not provide
         coefficients for stable conditions, so gradient functions will

@@ -237,11 +237,11 @@ class TestMetricsFluxClass:
         test_args = argparse.Namespace(
             switch_time="05:24", beam_wavelength=880, beam_error=20
         )
-
+        test_dataset = {"interpolated": conftest_mock_derived_dataframe}
         compare_metrics = test_metrics.iterate_fluxes(
             user_args=test_args,
             z_parameters={"stable": (100, 150), "unstable": (2, 150)},
-            interpolated_data=conftest_mock_derived_dataframe,
+            datasets=test_dataset,
             most_id="an1988",
         )
         compare_keys = [
