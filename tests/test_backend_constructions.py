@@ -664,11 +664,13 @@ class TestBackendProfileConstructor:
         ],
         scope="session",
     )
+    @pytest.mark.parametrize("arg_elevation", [None, 600.0])
     def test_get_vertical_variables(
         self,
         conftest_mock_hatpro_temperature_dataframe_tz,
         conftest_mock_hatpro_humidity_dataframe_tz,
         conftest_mock_weather_dataframe_tz,
+        arg_elevation,
     ):
         """Derive data from vertical measurements."""
 
@@ -691,7 +693,7 @@ class TestBackendProfileConstructor:
         compare_dataset = self.test_profile.get_vertical_variables(
             vertical_data=test_vertical,
             meteo_data=test_weather,
-            station_elevation=self.test_elevation,
+            station_elevation=arg_elevation,
         )
 
         assert isinstance(compare_dataset, dict)

@@ -468,7 +468,7 @@ class ProfileConstructor(AtmosConstants):
 
         return bulk_ri
 
-    def get_vertical_variables(self, vertical_data, meteo_data, station_elevation):
+    def get_vertical_variables(self, vertical_data, meteo_data, station_elevation=None):
         """Derives data from vertical measurements.
 
         For several days or more of data, the returned dictionary may be
@@ -481,13 +481,17 @@ class ProfileConstructor(AtmosConstants):
                 measurements.
             station_elevation (float): Weather station elevation,
                 |z_stn| [m]. This is the station taking vertical
-                measurements, not the scintillometer.
+                measurements, not the scintillometer. If None, the
+                elevation is detected from stored dataframe attributes.
 
         Returns:
             dict: Derived vertical data for water vapour pressure, air
             pressure, mixing ratio, virtual temperature, mean sea-level
             pressure, and potential temperature.
         """
+
+        if not station_elevation:
+            station_elevation = vertical_data["temperature"].attrs["elevation"]
 
         vertical_data["temperature"] = self.constants.convert_temperature(
             temperature=vertical_data["temperature"], base=True
