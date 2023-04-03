@@ -188,6 +188,7 @@ def save_figure(
         suffix = f"_{suffix}"
 
     figure.savefig(fname=f"{output_dir}{plot_id}{suffix}.{img_format}")
+    plt.close()
 
 
 def setup_plot_data(df, names=None):
