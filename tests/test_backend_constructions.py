@@ -602,7 +602,6 @@ class TestBackendProfileConstructor:
         name="TestBackendProfileConstructor::test_get_bulk_richardson",
         depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
-    # @pytest.mark.parametrize("arg_method", ["backward", "uneven"])
     def test_get_bulk_richardson(
         self,
         conftest_mock_hatpro_temperature_dataframe_tz,

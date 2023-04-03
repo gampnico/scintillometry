@@ -434,6 +434,11 @@ class ProfileConstructor(AtmosConstants):
     def get_bulk_richardson(self, potential_temperature, meteo_data):
         """Calculate bulk Richardson number.
 
+        As there are no vertical wind observations available to
+        calculate |Delta| |u|, it is assumed mean wind speed vanishes at
+        surface. This severely limits its accuracy for representing
+        dynamic stability.
+
         .. math::
 
             Ri_{{b}} = \\frac{{g}}{{\\bar{{\\theta}}}}
@@ -445,20 +450,20 @@ class ProfileConstructor(AtmosConstants):
             meteo_data (pd.DataFrame): Meteorological data.
         """
 
-        heights = potential_temperature.columns
-
-        # (g * D(potential_temperature) * D(heights)) / (
-        #     (wind_speed**2) * mean(potential_temperature)
-        # )
-        g_theta = potential_temperature.mean(axis=1, skipna=True).rdiv(self.g)
-        dtheta_dz = (
-            potential_temperature[heights[-1]].subtract(
-                potential_temperature[heights[0]]
-            )
-        ).multiply(heights[-1] - heights[0])
-
-        bulk_ri = (dtheta_dz.divide((meteo_data["wind_speed"].pow(2)))).multiply(
-            g_theta
+        heights = potential_temperature.columns[potential_temperature.columns <= 6000]
+        delta_theta = potential_temperature[heights[-1]].subtract(
+            potential_temperature[heights[0]]
         )
+
+        # delta_theta * delta_z * self.g
+        numerator = delta_theta.multiply((heights[-1] - heights[0])).multiply(self.g)
+        # mean_potential_temperature * (wind_speed ** 2)
+        denominator = (
+            potential_temperature[heights]
+            .mean(axis=1, skipna=True)
+            .multiply((meteo_data["wind_speed"] ** 2))
+        )
+
+        bulk_ri = numerator.divide(denominator)
 
         return bulk_ri
