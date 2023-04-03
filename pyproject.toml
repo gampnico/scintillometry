@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scintillometry"
-version = "0.26.a0"
+version = "0.26.a1"
 authors = [
   { name="Scintillometry-Tools Contributors", email="" },
 ]
@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 dependencies = [
-  "pandas >= 1.5",
+  "pandas ^ 1.5",
   "tqdm > 4.8",
   "scipy >= 1.10",
   "mpmath >= 1.2.1",
