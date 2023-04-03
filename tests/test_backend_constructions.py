@@ -629,3 +629,46 @@ class TestBackendProfileConstructor:
         assert not compare_bulk.isnull().values.any()
         assert not np.isinf(compare_bulk).values.any()
         assert np.allclose(compare_bulk, test_bulk)
+
+    @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_vertical_variables",
+        depends=[
+            "TestBackendConstants::test_convert_pressure",
+            "TestBackendConstants::test_convert_pressure",
+        ],
+        scope="session",
+    )
+    def test_get_vertical_variables(
+        self,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_humidity_dataframe_tz,
+        conftest_mock_weather_dataframe_tz,
+    ):
+        """Derive data from vertical measurements."""
+
+        test_vertical = {
+            "temperature": conftest_mock_hatpro_temperature_dataframe_tz.copy(
+                deep=True
+            ),
+            "humidity": conftest_mock_hatpro_humidity_dataframe_tz.copy(deep=True),
+        }
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_keys = [
+            "water_vapour_pressure",
+            "air_pressure",
+            "mixing_ratio",
+            "virtual_temperature",
+            "msl_pressure",
+            "potential_temperature",
+        ]
+
+        compare_dataset = self.test_profile.get_vertical_variables(
+            vertical_data=test_vertical,
+            meteo_data=test_weather,
+            station_elevation=self.test_elevation,
+        )
+
+        assert isinstance(compare_dataset, dict)
+        assert all(key in compare_dataset for key in test_keys)
+        for key in test_keys:
+            self.check_dataframe(compare_dataset[key])

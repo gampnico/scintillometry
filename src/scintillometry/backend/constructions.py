@@ -467,3 +467,62 @@ class ProfileConstructor(AtmosConstants):
         bulk_ri = numerator.divide(denominator)
 
         return bulk_ri
+
+    def get_vertical_variables(self, vertical_data, meteo_data, station_elevation):
+        """Derives data from vertical measurements.
+
+        For several days or more of data, the returned dictionary may be
+        quite large.
+
+        Args:
+            vertical_data (dict): Contains vertical measurements for
+                absolute humidity and temperature.
+            meteo_data (pd.DataFrame): Meteorological data from surface
+                measurements.
+            station_elevation (float): Weather station elevation,
+                |z_stn| [m]. This is the station taking vertical
+                measurements, not the scintillometer.
+
+        Returns:
+            dict: Derived vertical data for water vapour pressure, air
+            pressure, mixing ratio, virtual temperature, mean sea-level
+            pressure, and potential temperature.
+        """
+
+        vertical_data["temperature"] = self.constants.convert_temperature(
+            temperature=vertical_data["temperature"], base=True
+        )
+        meteo_pressure = self.constants.convert_pressure(
+            meteo_data["pressure"], base=True
+        )
+        wvp = self.get_water_vapour_pressure(
+            abs_humidity=vertical_data["humidity"],
+            temperature=vertical_data["temperature"],
+        )
+        z_pressure = self.extrapolate_air_pressure(
+            surface_pressure=meteo_pressure,
+            temperature=vertical_data["temperature"],
+        )
+        m_ratio = self.get_mixing_ratio(wv_pressure=wvp, d_pressure=z_pressure)
+        v_temperature = self.get_virtual_temperature(
+            temperature=vertical_data["temperature"], mixing_ratio=m_ratio
+        )
+        reduced_pressure = self.get_reduced_pressure(
+            station_pressure=z_pressure,
+            virtual_temperature=v_temperature,
+            elevation=station_elevation,
+        )
+        potential_temperature = self.get_potential_temperature(
+            temperature=vertical_data["temperature"], pressure=reduced_pressure
+        )
+
+        derived_measurements = {
+            "water_vapour_pressure": wvp,
+            "air_pressure": z_pressure,
+            "mixing_ratio": m_ratio,
+            "virtual_temperature": v_temperature,
+            "msl_pressure": reduced_pressure,
+            "potential_temperature": potential_temperature,
+        }
+
+        return derived_measurements
