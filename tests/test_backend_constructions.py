@@ -631,6 +631,32 @@ class TestBackendProfileConstructor:
         assert np.allclose(compare_bulk, test_bulk)
 
     @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_n_squared",
+        depends=[
+            "TestBackendProfileConstructor::test_constructor_init",
+            "TestBackendProfileConstructor::test_get_gradient",
+        ],
+    )
+    def test_get_n_squared(self, conftest_mock_hatpro_temperature_dataframe_tz):
+        """Calculate Brunt-Väisälä frequency, squared."""
+
+        test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
+        test_grad_pot_temperature = self.test_profile.get_gradient(
+            data=test_temperature, method="uneven"
+        )
+
+        test_brunt = (self.test_profile.constants.g / test_temperature) * (
+            test_grad_pot_temperature
+        )
+
+        compare_brunt = self.test_profile.get_n_squared(
+            potential_temperature=test_temperature, scheme="uneven"
+        )
+
+        self.check_dataframe(dataframe=compare_brunt)
+        assert np.allclose(compare_brunt, test_brunt)
+
+    @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_vertical_variables",
         depends=[
             "TestBackendConstants::test_convert_pressure",

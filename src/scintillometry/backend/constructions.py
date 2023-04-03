@@ -526,3 +526,31 @@ class ProfileConstructor(AtmosConstants):
         }
 
         return derived_measurements
+
+    def get_n_squared(self, potential_temperature, scheme="uneven"):
+        """Calculates Brunt-Väisälä frequency, squared.
+
+        .. math::
+
+            N^{{2}} = \\frac{{g}}{{\\bar{{\\theta}}}}
+            \\frac{{\\Delta \\theta}}{{\\Delta z}}
+
+        Args:
+            potential_temperature (pd.DataFrame): Vertical measurements,
+                potential temperature |theta| [K].
+            scheme (str): Finite differencing method. Supports "uneven"
+                for centred-differencing over a non-uniform mesh, and
+                "backward" for backward-differencing. Default "uneven".
+
+        Returns:
+            pd.DataFrame: Derived vertical measurements for
+            Brunt-Väisälä frequency squared, |N^2| [Hz].
+        """
+
+        grad_pot_temperature = self.get_gradient(
+            data=potential_temperature, method=scheme
+        )
+
+        n_squared = potential_temperature.rdiv(self.g).multiply(grad_pot_temperature)
+
+        return n_squared
