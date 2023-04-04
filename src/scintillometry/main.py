@@ -279,7 +279,6 @@ def main():
         tzone=args.timezone,
         station_id=args.station_id,
     )
-    time_stamp = parsed_datasets["timestamp"]
 
     # Parse vertical measurements
     if args.profile_prefix:
@@ -296,7 +295,6 @@ def main():
     )
     if args.eddy_path:
         innflux_frame = DataParser.parse_innflux(
-            timestamp=time_stamp,
             file_name=args.eddy_path,
             tzone=args.timezone,
             headers=None,
