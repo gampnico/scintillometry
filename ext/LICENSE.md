@@ -8,14 +8,14 @@ Raw data collected from Scintec's BLS450 Large Aperture Scintillometer using SRu
 
 ## Source
 
-Collected by Nicolas Gampierakis & Josef Zink.
+Collected by Nicolas Gampierakis and Josef Zink.
 
 ## License
 
-Copyright 2019 Nicolas Gampierakis & Josef Zink
+Copyright 2019 Nicolas Gampierakis and Josef Zink
 
 Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
+you may not use these files except in compliance with the License.
 You may obtain a copy of the License at
 
 http://www.apache.org/licenses/LICENSE-2.0
@@ -60,3 +60,23 @@ Department of Atmospheric and Cryospheric Sciences (2012-2023). Retrieved via [A
 This data is available under the terms of the Creative Commons Attribution 4.0 International (CC BY 4.0).
 
 M. Rotach; I. Stiperski; O. Fuhrer; B.Goger; A. Gohm; F.Obleitner; G. Rau; E. Sfyri; J. Vergeiner Investigating Exchange Processes over Complex Topography: The Innsbruck Box (i-Box) DOI [10.1175/BAMS-D-15-00246.1](https://journals.ametsoc.org/view/journals/bams/98/4/bams-d-15-00246.1.xml)
+
+# InnFLUX folder
+
+Data for eddy covariance measurements. The data is processed using the innFLUX Eddy Covariance code (Striednig et al., 2020), which is available via [Gitlab](https://git.uibk.ac.at/acinn/apc/innflux).
+
+## Source
+
+Data source: Atmospheric Physics and Chemistry Group, University of Innsbruck.
+
+Sample data is from the Atmospheric Physics and Chemistry Group, University of Innsbruck (2019-2023). Retrieved via [InnFLUX website](https://www.atm-phys-chem.at/innflux/).
+
+## License
+
+InnFLUX Eddy Covariance data:
+
+This data is not open-source.
+
+InnFLUX Eddy Covariance code:
+
+M. Striednig; M. Graus; T.D. Märk; T.G. Karl (2020). InnFLUX - an Open-Source Code for Conventional and Disjunct Eddy Covariance Analysis of Trace Gas Measurements: an Urban Test Case. Atmospheric Measurement Techniques. Vol. 13:3, pp. 1447-1465. DOI [10.5194/amt-13-1447-2020](https://doi.org/10.5194/amt-13-1447-2020)
