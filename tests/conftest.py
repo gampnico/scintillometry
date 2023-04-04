@@ -16,11 +16,11 @@ limitations under the License.
 
 Provides shared fixtures for tests.
 
-Data used in test fixtures was randomly generated - they are not real
-observational data.
+Data used in test fixtures and sample files were randomly generated -
+they are not real observational data.
 
 Metadata::
-    - Date: 03 June 2023
+    - Date: 03 June 2020
     - Scintillometer data period: 03:23:00Z to 03:24:00Z
     - Meteorological data period: 03:10:00Z to 03:30:00Z
     - Location Name: "Test"
@@ -28,12 +28,172 @@ Metadata::
     - ZAMG Klima-ID: "0000"
 """
 
+from typing import Any
 from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pandas.api.types as ptypes
 import pytest
+
+
+class TestBoilerplate:
+    """Provides boilerplate methods for serialising tests.
+
+    Methods are arranged with their appropriate test::
+
+    .. code-block:: python
+
+        @pytest.mark.dependency(name="TestBoilerplate::foo")
+        def foo(self, ...):
+            pass
+
+        @pytest.mark.dependency(
+            name="TestBoilerplate::test_foo", depends=["TestBoilerplate::foo"]
+            )
+        def test_foo(self ...):
+            pass
+
+    Attributes:
+        test_levels (list): Mocked measurement heights.
+        test_index (pd.DatetimeIndex): Mocked TZ-naive datetime index
+            for dataframe.
+        test_elevation (float): Mocked station elevation.
+    """
+
+    test_levels = [0, 10, 30, 50, 75, 100]
+    test_index = pd.to_datetime(
+        ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
+    )
+    test_elevation = 600.0
+
+    def check_dataframe(self, dataframe: Any):
+        """Boilerplate tests for dataframes.
+
+        Checks input is a dataframe, all columns have numeric dtypes,
+        index is a DatetimeIndex, and there are no NaN or infinite
+        values.
+        """
+
+        assert isinstance(dataframe, pd.DataFrame)
+        assert all(ptypes.is_numeric_dtype(dataframe[i]) for i in dataframe.columns)
+        assert ptypes.is_datetime64_any_dtype(dataframe.index)
+        assert not dataframe.isnull().values.any()
+        assert not np.isinf(dataframe).values.any()
+
+    @pytest.mark.dependency(name="TestBoilerplate::test_check_dataframe_error")
+    @pytest.mark.parametrize(
+        "arg_test", ["type", "ptype", "numeric", "null", "inf", "index"]
+    )
+    def test_check_dataframe_error(self, arg_test: str):
+        """Raise AssertionError if dataframe fails check_dataframe.
+
+        Check AssertionError is raised if input is not a dataframe, any
+        column does not have a numeric dtype, the index is not a
+        DatetimeIndex, or there are any NaN or infinite values.
+        """
+
+        test_data = {0: [1, 2, 3], 10: [4.0, 5.0, 6.0], 20: [7, 8.0, -9]}
+        test_frame = pd.DataFrame(
+            data=test_data, columns=[0, 10, 20], index=self.test_index
+        )
+
+        if arg_test == "ptype":
+            test_frame[test_frame.columns[0]] = "error"
+            assert isinstance(test_frame, pd.DataFrame)
+        elif arg_test == "numeric":
+            test_frame[test_frame.columns[0]] = "error"
+            assert isinstance(test_frame, pd.DataFrame)
+        elif arg_test == "null":
+            test_frame[test_frame.columns[0]] = np.nan
+        elif arg_test == "inf":
+            test_frame[test_frame.columns[0]] = np.inf
+        elif arg_test == "index":
+            test_frame = test_frame.reset_index()
+        else:
+            test_frame = test_frame[test_frame.columns[0]]
+
+        with pytest.raises(AssertionError):
+            self.check_dataframe(dataframe=test_frame)
+
+    @pytest.mark.dependency(
+        name="TestBoilerplate::test_check_dataframe",
+        depends=["TestBoilerplate::test_check_dataframe_error"],
+    )
+    def test_check_dataframe(self):
+        """Correctly assert dataframe properties.
+
+        Assert input is a dataframe, all columns have numeric dtypes,
+        index is a DatetimeIndex, and there are no NaN or infinite
+        values.
+        """
+
+        test_data = {0: [1, 2, 3], 10: [4.0, 5.0, 6.0], 20: [7, 8.0, -9]}
+        test_frame = pd.DataFrame(
+            data=test_data, columns=[0, 10, 20], index=self.test_index
+        )
+        self.check_dataframe(dataframe=test_frame)
+
+    def setup_extrapolated(self, series: pd.Series, levels: list):
+        """Extrapolate series to mock vertical measurements.
+
+        Args:
+            series: Mocked surface measurements.
+            levels: Mocked vertical measurement intervals.
+
+        Returns:
+            pd.DataFrame: Mocked vertical measurements.
+        """
+
+        reference = series.copy(deep=True)
+        values = {}
+        for i in levels:  # for tests, extrapolation can be very simple
+            values[i] = reference.multiply(1 / (i + 1))
+        dataset = pd.DataFrame(
+            data=values,
+            columns=levels,
+            index=reference.index,
+        )
+        dataset.attrs["elevation"] = self.test_elevation
+
+        self.check_dataframe(dataframe=dataset)
+        assert "elevation" in dataset.attrs
+        assert np.isclose(dataset.attrs["elevation"], self.test_elevation)
+
+        return dataset
+
+    @pytest.mark.dependency(
+        name="TestBoilerplate::setup_extrapolated",
+        depends=["TestBoilerplate::test_check_dataframe"],
+    )
+    def test_setup_extrapolated(
+        self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
+    ):
+        """Extrapolate series to dataframe."""
+
+        test_series = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
+        compare_extrapolate = self.setup_extrapolated(
+            series=test_series, levels=conftest_mock_hatpro_scan_levels
+        )
+        self.check_dataframe(dataframe=compare_extrapolate)
+        assert compare_extrapolate.index.equals(test_series.index)
+        assert "elevation" in compare_extrapolate.attrs
+        assert np.isclose(compare_extrapolate.attrs["elevation"], self.test_elevation)
+
+    def test_boilerplate_integration(
+        self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
+    ):
+        """Integration test for boilerplate methods."""
+
+        self.test_check_dataframe()
+        self.test_setup_extrapolated(
+            conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
+        )
+
+
+@pytest.fixture(scope="function", autouse=False)
+def conftest_boilerplate():
+    yield TestBoilerplate()
 
 
 # Function patches
