@@ -180,6 +180,13 @@ class TestBoilerplate:
         assert "elevation" in compare_extrapolate.attrs
         assert np.isclose(compare_extrapolate.attrs["elevation"], self.test_elevation)
 
+    @pytest.mark.dependency(
+        name="TestBoilerplate::test_boilerplate_integration",
+        depends=[
+            "TestBoilerplate::test_check_dataframe",
+            "TestBoilerplate::test_setup_extrapolated",
+        ],
+    )
     def test_boilerplate_integration(
         self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
     ):
@@ -191,7 +198,7 @@ class TestBoilerplate:
         )
 
 
-@pytest.fixture(scope="function", autouse=False)
+@pytest.fixture(name="conftest_boilerplate", scope="function", autouse=False)
 def conftest_boilerplate():
     yield TestBoilerplate()
 
