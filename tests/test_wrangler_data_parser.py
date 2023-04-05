@@ -214,22 +214,20 @@ class TestDataParsingBLS:
 
     @pytest.mark.dependency(name="TestDataParsingBLS::test_convert_time_index")
     @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
-    def test_convert_time_index(self, arg_timezone):
+    def test_convert_time_index(
+        self, conftest_mock_weather_dataframe, conftest_boilerplate, arg_timezone
+    ):
         """Tests time index conversion."""
 
-        test_raw = {"time": ["2020-06-03T00:00:00Z"], "wind_direction": [31.0]}
-        test_data = pd.DataFrame.from_dict(test_raw)
+        test_data = conftest_mock_weather_dataframe.copy(deep=True)
+        assert not ptypes.is_datetime64_any_dtype(test_data.index)
+
         compare_data = scintillometry.wrangler.data_parser.convert_time_index(
             data=test_data, tzone=arg_timezone
         )
         assert compare_data.index.name == "time"
         assert "time" not in compare_data.columns
-        assert ptypes.is_datetime64_any_dtype(compare_data.index)
-
-        if not arg_timezone:
-            assert compare_data.index.tz.zone == "UTC"
-        else:
-            assert compare_data.index.tz.zone == arg_timezone
+        conftest_boilerplate.check_timezone(dataframe=compare_data, tzone=arg_timezone)
 
     @pytest.mark.dependency(
         name="TestDataParsingBLS::test_parse_scintillometer",
