@@ -28,7 +28,7 @@ Metadata::
     - ZAMG Klima-ID: "0000"
 """
 
-from typing import Any
+import datetime
 from unittest.mock import patch
 
 import numpy as np
@@ -39,6 +39,16 @@ import pytest
 
 class TestBoilerplate:
     """Provides boilerplate methods for serialising tests.
+
+    The class is instantiated via the `conftest_boilerplate` fixture.
+    The fixture is autoused, and can be called directly within a test::
+
+    ..code-block:: python
+
+        def test_foo(self, conftest_boilerplate)"
+
+            foobar = [...]
+            conftest_boilerplate.bar(foobar)
 
     Methods are arranged with their appropriate test::
 
@@ -67,7 +77,7 @@ class TestBoilerplate:
     )
     test_elevation = 600.0
 
-    def check_dataframe(self, dataframe: Any):
+    def check_dataframe(self, dataframe: pd.DataFrame):
         """Boilerplate tests for dataframes.
 
         Checks input is a dataframe, all columns have numeric dtypes,
@@ -169,7 +179,7 @@ class TestBoilerplate:
     def test_setup_extrapolated(
         self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
     ):
-        """Extrapolate series to dataframe."""
+        """Correctly extrapolate series to dataframe."""
 
         test_series = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
         compare_extrapolate = self.setup_extrapolated(
@@ -180,15 +190,48 @@ class TestBoilerplate:
         assert "elevation" in compare_extrapolate.attrs
         assert np.isclose(compare_extrapolate.attrs["elevation"], self.test_elevation)
 
+    def check_timezone(self, dataframe: pd.DataFrame, tzone: str):
+        """Verify index has correct timezone attributes.
+
+        Args:
+            dataframe: Pandas dataframe with DatetimeIndex.
+            tzone: Timezone name.
+        """
+
+        assert ptypes.is_datetime64_any_dtype(dataframe.index)
+        if not tzone or tzone == "UTC":
+            assert dataframe.index.tzinfo == datetime.timezone.utc
+        else:
+            assert dataframe.index.tz.zone == tzone
+
+    @pytest.mark.dependency(name="TestBoilerplate::test_check_timezone")
+    @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
+    def test_check_timezone(self, conftest_mock_weather_dataframe_tz, arg_timezone):
+        """Validate tests for time index attributes."""
+
+        test_data = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        if arg_timezone:
+            test_data = test_data.tz_convert(arg_timezone)
+        else:
+            test_data = test_data.tz_convert("UTC")
+        assert ptypes.is_datetime64_any_dtype(test_data.index)
+
+        self.check_timezone(dataframe=test_data, tzone=arg_timezone)
+
     @pytest.mark.dependency(
         name="TestBoilerplate::test_boilerplate_integration",
         depends=[
             "TestBoilerplate::test_check_dataframe",
-            "TestBoilerplate::test_setup_extrapolated",
+            # "TestBoilerplate::test_setup_extrapolated",
+            "TestBoilerplate::test_check_timezone",
         ],
     )
+    @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
     def test_boilerplate_integration(
-        self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
+        self,
+        conftest_mock_weather_dataframe_tz,
+        conftest_mock_hatpro_scan_levels,
+        arg_timezone,
     ):
         """Integration test for boilerplate methods."""
 
@@ -196,6 +239,7 @@ class TestBoilerplate:
         self.test_setup_extrapolated(
             conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
         )
+        self.test_check_timezone(conftest_mock_weather_dataframe_tz, arg_timezone)
 
 
 @pytest.fixture(name="conftest_boilerplate", scope="function", autouse=False)

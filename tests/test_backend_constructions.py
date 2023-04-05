@@ -32,6 +32,8 @@ should be written as::
 
 The module being tested uses these pandas methods, so duplicating them
 in tests makes comparisons pointless.
+
+Use the `conftest_boilerplate` fixture to avoid duplicating tests.
 """
 
 import numpy as np
@@ -45,9 +47,6 @@ import scintillometry.backend.constructions
 class TestBackendProfileConstructor:
     """Test class for profile construction objects.
 
-    The `check_dataframe` and `setup_extrapolated` functions are
-    recommended instead of repetitive boilerplate.
-
     Attributes:
         test_profile (ProfileConstructor): An initialised
             ProfileConstructor object.
@@ -56,20 +55,6 @@ class TestBackendProfileConstructor:
 
     test_profile = scintillometry.backend.constructions.ProfileConstructor()
     test_elevation = 600.0
-
-    @pytest.mark.dependency(name="TestBackendProfileConstructor::test_boilerplate")
-    def test_boilerplate(
-        self,
-        conftest_mock_weather_dataframe_tz,
-        conftest_mock_hatpro_scan_levels,
-        conftest_boilerplate,
-    ):
-        """Check boilerplate methods are correctly instantiated."""
-
-        compare_boilerplate = conftest_boilerplate
-        compare_boilerplate.test_boilerplate_integration(
-            conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
-        )
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_constructor_init",
@@ -87,10 +72,7 @@ class TestBackendProfileConstructor:
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_water_vapour_pressure",
-        depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
-            "TestBackendProfileConstructor::test_constructor_init",
-        ],
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_water_vapour_pressure(
         self,
@@ -101,7 +83,6 @@ class TestBackendProfileConstructor:
     ):
         """Calculate water vapour pressure."""
 
-        check = conftest_boilerplate
         assert isinstance(self.test_profile.constants.r_vapour, (float, int))
         test_wvp = (
             conftest_mock_hatpro_humidity_dataframe
@@ -113,7 +94,7 @@ class TestBackendProfileConstructor:
             temperature=conftest_mock_hatpro_temperature_dataframe,
         )
 
-        check.check_dataframe(dataframe=compare_wvp)
+        conftest_boilerplate.check_dataframe(dataframe=compare_wvp)
         assert all(
             key in compare_wvp.columns for key in conftest_mock_hatpro_scan_levels
         )
@@ -160,7 +141,6 @@ class TestBackendProfileConstructor:
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_extrapolate_air_pressure",
         depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
             "TestBackendProfileConstructor::test_constructor_init",
             "TestBackendProfileConstructor::test_get_air_pressure",
         ],
@@ -173,7 +153,6 @@ class TestBackendProfileConstructor:
     ):
         """Extrapolate air pressure across all scan heights."""
 
-        check = conftest_boilerplate
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_pressure = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
         test_pressure = test_pressure.multiply(100)  # hPa -> Pa
@@ -182,7 +161,7 @@ class TestBackendProfileConstructor:
             surface_pressure=test_pressure, temperature=test_temperature
         )
 
-        check.check_dataframe(dataframe=compare_pressure)
+        conftest_boilerplate.check_dataframe(dataframe=compare_pressure)
         assert compare_pressure.index.equals(test_temperature.index)
         assert np.allclose(compare_pressure[compare_pressure.columns[0]], test_pressure)
         for col in compare_pressure.columns.difference([0]):
@@ -195,10 +174,7 @@ class TestBackendProfileConstructor:
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_mixing_ratio",
-        depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
-            "TestBackendProfileConstructor::test_constructor_init",
-        ],
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_mixing_ratio(
         self,
@@ -210,9 +186,8 @@ class TestBackendProfileConstructor:
     ):
         """Calculate mixing ratio for dry air pressure."""
 
-        check = conftest_boilerplate
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
-        test_pressure = check.setup_extrapolated(
+        test_pressure = conftest_boilerplate.setup_extrapolated(
             series=test_weather["pressure"].multiply(100),
             levels=conftest_mock_hatpro_scan_levels,
         )
@@ -227,13 +202,12 @@ class TestBackendProfileConstructor:
             wv_pressure=test_wvp, d_pressure=test_pressure
         )
 
-        check.check_dataframe(dataframe=compare_ratio)
+        conftest_boilerplate.check_dataframe(dataframe=compare_ratio)
         assert compare_ratio.index.equals(test_wvp.index)
         assert np.allclose(compare_ratio, test_ratio)
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_virtual_temperature",
-        depends=["TestBackendProfileConstructor::test_boilerplate"],
     )
     def test_get_virtual_temperature(
         self,
@@ -244,13 +218,12 @@ class TestBackendProfileConstructor:
     ):
         """Calculate virtual temperature."""
 
-        check = conftest_boilerplate
         ref_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_pressure = (
             conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True).multiply(100)
         )
 
-        test_ratio = check.setup_extrapolated(
+        test_ratio = conftest_boilerplate.setup_extrapolated(
             series=test_pressure.divide(test_pressure + 1),
             levels=conftest_mock_hatpro_scan_levels,
         )
@@ -259,17 +232,14 @@ class TestBackendProfileConstructor:
         compare_temperature = self.test_profile.get_virtual_temperature(
             temperature=ref_temperature, mixing_ratio=test_ratio
         )
-        check.check_dataframe(dataframe=compare_temperature)
+        conftest_boilerplate.check_dataframe(dataframe=compare_temperature)
         assert compare_temperature.index.equals(test_temperature.index)
         assert not np.allclose(compare_temperature, ref_temperature)
         assert np.allclose(compare_temperature, test_temperature)
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_reduced_pressure",
-        depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
-            "TestBackendProfileConstructor::test_constructor_init",
-        ],
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_reduced_pressure(
         self,
@@ -279,13 +249,12 @@ class TestBackendProfileConstructor:
     ):
         """Reduce station pressure to mean sea-level pressure."""
 
-        check = conftest_boilerplate
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
-        test_pressure = check.setup_extrapolated(
+        test_pressure = conftest_boilerplate.setup_extrapolated(
             series=test_weather["pressure"],
             levels=conftest_mock_hatpro_scan_levels,
         )
-        test_temperature = check.setup_extrapolated(
+        test_temperature = conftest_boilerplate.setup_extrapolated(
             series=test_weather["temperature_2m"],
             levels=conftest_mock_hatpro_scan_levels,
         )
@@ -296,7 +265,7 @@ class TestBackendProfileConstructor:
         assert np.isclose(alpha, 29.26)
         test_factor = self.test_elevation / (alpha * test_temperature)
         test_exp = np.exp(test_factor)
-        check.check_dataframe(dataframe=test_exp)
+        conftest_boilerplate.check_dataframe(dataframe=test_exp)
         assert np.allclose(test_exp, np.e**test_factor)
         test_mslp = test_pressure * test_exp
         assert isinstance(test_mslp, pd.DataFrame)
@@ -307,15 +276,12 @@ class TestBackendProfileConstructor:
             elevation=self.test_elevation,
         )
 
-        check.check_dataframe(dataframe=compare_mslp)
+        conftest_boilerplate.check_dataframe(dataframe=compare_mslp)
         assert np.allclose(compare_mslp, test_mslp)
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_potential_temperature",
-        depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
-            "TestBackendProfileConstructor::test_constructor_init",
-        ],
+        depends=["TestBackendProfileConstructor::test_constructor_init"],
     )
     def test_get_potential_temperature(
         self,
@@ -326,9 +292,8 @@ class TestBackendProfileConstructor:
     ):
         """Calculate potential temperature."""
 
-        check = conftest_boilerplate
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
-        test_pressure = check.setup_extrapolated(
+        test_pressure = conftest_boilerplate.setup_extrapolated(
             series=test_weather["pressure"].multiply(100),
             levels=conftest_mock_hatpro_scan_levels,
         )
@@ -340,20 +305,19 @@ class TestBackendProfileConstructor:
             assert isinstance(frame, pd.DataFrame)
             assert frame.index.equals(test_weather.index)
             assert all(i in conftest_mock_hatpro_scan_levels for i in frame.columns)
-            check.check_dataframe(dataframe=frame)
+            conftest_boilerplate.check_dataframe(dataframe=frame)
             assert frame.gt(0).values.all()
 
         compare_potential = self.test_profile.get_potential_temperature(
             temperature=test_temperature, pressure=test_pressure
         )
-        check.check_dataframe(dataframe=compare_potential)
+        conftest_boilerplate.check_dataframe(dataframe=compare_potential)
         assert compare_potential.gt(0).values.all()
 
         assert np.allclose(compare_potential, test_potential)
 
     @pytest.mark.dependency(
-        name="TestBackendProfileConstructor::test_non_uniform_differencing",
-        depends=["TestBackendProfileConstructor::test_boilerplate"],
+        name="TestBackendProfileConstructor::test_non_uniform_differencing"
     )
     def test_non_uniform_differencing(
         self,
@@ -363,7 +327,6 @@ class TestBackendProfileConstructor:
     ):
         """Compute centred-differencing scheme for non-uniform data."""
 
-        check = conftest_boilerplate
         test_dataframe = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_cols = test_dataframe.columns
         test_diff = test_cols.to_series().diff()
@@ -387,7 +350,7 @@ class TestBackendProfileConstructor:
             dataframe=test_dataframe
         )
 
-        check.check_dataframe(dataframe=compare_gradient)
+        conftest_boilerplate.check_dataframe(dataframe=compare_gradient)
         assert all(
             key in compare_gradient.columns for key in conftest_mock_hatpro_scan_levels
         )
@@ -418,7 +381,6 @@ class TestBackendProfileConstructor:
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_gradient",
         depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
             "TestBackendProfileConstructor::test_get_gradient_error",
             "TestBackendProfileConstructor::test_non_uniform_differencing",
         ],
@@ -433,7 +395,6 @@ class TestBackendProfileConstructor:
     ):
         """Calculate spatial gradient."""
 
-        check = conftest_boilerplate
         test_dataframe = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_cols = test_dataframe.columns
         test_diff = test_cols.to_series().diff()
@@ -452,7 +413,7 @@ class TestBackendProfileConstructor:
             data=test_dataframe, method=arg_method
         )
 
-        check.check_dataframe(dataframe=compare_gradient)
+        conftest_boilerplate.check_dataframe(dataframe=compare_gradient)
         assert all(
             key in compare_gradient.columns for key in conftest_mock_hatpro_scan_levels
         )
@@ -474,7 +435,6 @@ class TestBackendProfileConstructor:
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_static_stability",
         depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
             "TestBackendProfileConstructor::test_constructor_init",
             "TestBackendProfileConstructor::test_get_water_vapour_pressure",
             "TestBackendProfileConstructor::test_extrapolate_air_pressure",
@@ -497,7 +457,6 @@ class TestBackendProfileConstructor:
     ):
         """Calculate static stability."""
 
-        check = conftest_boilerplate
         test_hatpro = {
             "temperature": conftest_mock_hatpro_temperature_dataframe_tz.copy(
                 deep=True
@@ -507,7 +466,7 @@ class TestBackendProfileConstructor:
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
         assert isinstance(test_hatpro, dict)
         for frame in test_hatpro.values():
-            check.check_dataframe(dataframe=frame)
+            conftest_boilerplate.check_dataframe(dataframe=frame)
             assert frame.index.equals(test_weather.index)
 
         compare_stability = self.test_profile.get_static_stability(
@@ -517,7 +476,7 @@ class TestBackendProfileConstructor:
             scheme=arg_method,
         )
 
-        check.check_dataframe(dataframe=compare_stability)
+        conftest_boilerplate.check_dataframe(dataframe=compare_stability)
         assert all(
             key in compare_stability.columns for key in conftest_mock_hatpro_scan_levels
         )
@@ -558,7 +517,6 @@ class TestBackendProfileConstructor:
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_n_squared",
         depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
             "TestBackendProfileConstructor::test_constructor_init",
             "TestBackendProfileConstructor::test_get_gradient",
         ],
@@ -568,7 +526,6 @@ class TestBackendProfileConstructor:
     ):
         """Calculate Brunt-Väisälä frequency, squared."""
 
-        check = conftest_boilerplate
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_grad_pot_temperature = self.test_profile.get_gradient(
             data=test_temperature, method="uneven"
@@ -582,13 +539,12 @@ class TestBackendProfileConstructor:
             potential_temperature=test_temperature, scheme="uneven"
         )
 
-        check.check_dataframe(dataframe=compare_brunt)
+        conftest_boilerplate.check_dataframe(dataframe=compare_brunt)
         assert np.allclose(compare_brunt, test_brunt)
 
     @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_get_vertical_variables",
         depends=[
-            "TestBackendProfileConstructor::test_boilerplate",
             "TestBackendConstants::test_convert_pressure",
             "TestBackendConstants::test_convert_pressure",
         ],
@@ -605,7 +561,6 @@ class TestBackendProfileConstructor:
     ):
         """Derive data from vertical measurements."""
 
-        check = conftest_boilerplate
         test_vertical = {
             "temperature": conftest_mock_hatpro_temperature_dataframe_tz.copy(
                 deep=True
@@ -631,4 +586,4 @@ class TestBackendProfileConstructor:
         assert isinstance(compare_dataset, dict)
         assert all(key in compare_dataset for key in test_keys)
         for key in test_keys:
-            check.check_dataframe(compare_dataset[key])
+            conftest_boilerplate.check_dataframe(compare_dataset[key])
