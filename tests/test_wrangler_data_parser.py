@@ -509,7 +509,7 @@ class TestDataParsingZAMG:
         conftest_boilerplate.check_timezone(dataframe=compare_merged, tzone="CET")
         assert "station" in compare_merged
         conftest_boilerplate.check_dataframe(
-            dataframe=compare_merged.drop(["station"], axis=1)
+            dataframe=compare_merged.drop("station", axis=1)
         )
         for key in test_weather.columns:
             assert key in compare_merged.columns
@@ -528,14 +528,15 @@ class TestDataParsingZAMG:
     @pytest.mark.parametrize("arg_pressure", [100, 1])
     def test_merge_scintillometry_weather_convert(
         self,
-        conftest_mock_bls_dataframe,
+        conftest_mock_bls_dataframe_tz,
         conftest_mock_weather_dataframe_tz,
+        conftest_boilerplate,
         arg_temp,
         arg_pressure,
     ):
         """Merge scintillometry and weather data and convert units."""
 
-        test_bls = conftest_mock_bls_dataframe
+        test_bls = conftest_mock_bls_dataframe_tz
         test_weather = conftest_mock_weather_dataframe_tz
         test_weather["temperature_2m"] = test_weather["temperature_2m"] + arg_temp
         test_weather["pressure"] = test_weather["pressure"] * arg_pressure
@@ -546,8 +547,11 @@ class TestDataParsingZAMG:
                 weather_dataframe=test_weather,
             )
         )
-        assert isinstance(compare_merged, pd.DataFrame)
 
+        assert "station" in compare_merged
+        conftest_boilerplate.check_dataframe(
+            dataframe=compare_merged.drop("station", axis=1)
+        )
         for key in test_weather.columns:
             assert key in compare_merged.columns
         assert not (compare_merged["temperature_2m"].lt(100)).any()
