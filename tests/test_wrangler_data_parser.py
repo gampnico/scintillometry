@@ -405,16 +405,16 @@ class TestDataParsingTransect:
 
         _ = conftest_mock_check_file_exists
         read_csv_mock.return_value = conftest_mock_transect_dataframe
-        test_dataframe = scintillometry.wrangler.data_parser.parse_transect(
+        compare_dataframe = scintillometry.wrangler.data_parser.parse_transect(
             file_path="/path/to/file"
         )
         read_csv_mock.assert_called_once()
-        assert isinstance(test_dataframe, pd.DataFrame)
-        for key in test_dataframe.keys():
+        assert isinstance(compare_dataframe, pd.DataFrame)
+        for key in compare_dataframe.keys():
             assert key in ["path_height", "norm_position"]
-            assert ptypes.is_numeric_dtype(test_dataframe[key])
+            assert ptypes.is_numeric_dtype(compare_dataframe[key])
 
-        assert all(test_dataframe["norm_position"].between(0, 1, "both"))
+        assert all(compare_dataframe["norm_position"].between(0, 1, "both"))
 
 
 class TestDataParsingZAMG:
@@ -435,6 +435,7 @@ class TestDataParsingZAMG:
         read_csv_mock: Mock,
         conftest_mock_weather_raw,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
         arg_timestamp,
         arg_name,
     ):
@@ -461,22 +462,22 @@ class TestDataParsingZAMG:
         )
         read_csv_mock.assert_called_once()
         read_csv_mock.reset_mock(return_value=True)
-        assert isinstance(compare_data, pd.DataFrame)
-        assert isinstance(compare_data.index, pd.DatetimeIndex)
 
+        assert "station" in compare_data
+        conftest_boilerplate.check_dataframe(
+            dataframe=compare_data.drop("station", axis=1)
+        )
+        assert isinstance(compare_data.index, pd.DatetimeIndex)
         assert all(  # renamed columns
             x not in compare_data.columns
             for x in ["DD", "FF", "FAM", "GSX", "P", "RF", "RR", "TL"]
         )
-
         if not arg_name:
             assert "precipitation" in compare_data.columns
         else:
             assert "RR" not in compare_data.columns
             assert arg_name in compare_data.columns
-
         assert all(station == "0000" for station in compare_data["station"])
-        assert not compare_data.isnull().values.any()
 
     @pytest.mark.dependency(
         name="TestDataParsingZAMG::test_merge_scintillometry_weather",
