@@ -640,7 +640,7 @@ def load_hatpro(file_name, levels, tzone, station_elevation=612.0):
         header=0,
         names=levels,
         index_col=0,
-        date_parser=pd.to_datetime,
+        parse_dates=True,
     )
 
     data.index = data.index + pd.DateOffset(hours=2)

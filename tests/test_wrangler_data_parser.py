@@ -833,6 +833,8 @@ class TestDataParsingHatpro:
 
         conftest_boilerplate.check_dataframe(dataframe=compare_data)
         conftest_boilerplate.check_timezone(dataframe=compare_data, tzone=arg_timezone)
+        assert compare_data.index[0].year == 2020
+        assert compare_data.index.resolution == "minute"
 
         for key in test_levels:
             assert key in compare_data.columns
