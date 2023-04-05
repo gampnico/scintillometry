@@ -43,8 +43,11 @@ opposite order::
 MATLAB® arrays generated from the innFLUX Eddy Covariance code are in a
 proprietary format that cannot be mocked. Sample files containing
 randomised data are available in `tests/test_data/`.
+
+Use the `conftest_boilerplate` fixture to avoid duplicating tests.
 """
 
+import datetime
 import io
 from unittest.mock import Mock, patch
 
@@ -247,6 +250,7 @@ class TestDataParsingBLS:
         open_mock: Mock,
         conftest_mock_mnd_raw,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
     ):
         """Parse raw data from BLS450."""
 
@@ -263,15 +267,11 @@ class TestDataParsingBLS:
         assert compare_data.attrs["name"] == "Test"
 
         data_keys = ["Cn2", "CT2", "H_convection", "pressure"]
+        conftest_boilerplate.check_dataframe(compare_data[data_keys])
         for key in data_keys:
             assert key in compare_data.columns
-            assert ptypes.is_numeric_dtype(compare_data[key])
         assert "iso_duration" in compare_data.columns
         assert ptypes.is_timedelta64_dtype(compare_data["iso_duration"])
-
-        for key in ["Cn2", "H_convection"]:
-            assert key in compare_data.columns
-            assert ptypes.is_numeric_dtype(compare_data[key])
 
     @pytest.mark.dependency(
         name="TestDataParsingBLS::test_parse_scintillometer_args",
@@ -297,6 +297,7 @@ class TestDataParsingBLS:
         conftest_mock_mnd_raw,
         conftest_mock_bls_dataframe,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
         arg_timezone,
         arg_calibration,
         arg_station,
@@ -304,7 +305,7 @@ class TestDataParsingBLS:
         """Parse raw data from BLS450."""
 
         _ = conftest_mock_check_file_exists
-        if not arg_station:
+        if arg_station:
             test_mnd_raw = conftest_mock_mnd_raw
         else:
             test_mnd_raw = conftest_mock_mnd_raw.replace("Station Code:     Test", "")
@@ -321,14 +322,11 @@ class TestDataParsingBLS:
         open_mock.reset_mock(return_value=True)
         read_table_mock.reset_mock(return_value=True)
 
-        assert isinstance(compare_data, pd.DataFrame)
-
+        conftest_boilerplate.check_dataframe(dataframe=compare_data)
         assert compare_data.index[0].strftime("%Y-%m-%d") == "2020-06-03"
-        if not arg_timezone:
-            assert compare_data.index.tz.zone == "UTC"
+        conftest_boilerplate.check_timezone(dataframe=compare_data, tzone=arg_timezone)
+        if compare_data.index.tzinfo == datetime.timezone.utc:
             assert compare_data.index[0].strftime("%H:%M") == "03:23"
-        else:
-            assert compare_data.index.tz.zone == arg_timezone
 
         if arg_calibration:
             for key in ["Cn2", "H_convection"]:
@@ -337,16 +335,15 @@ class TestDataParsingBLS:
                     * (arg_calibration[1] ** (-3))
                     / (arg_calibration[0] ** (-3))
                 )
-                assert ptypes.is_numeric_dtype(compare_data[key])
                 assert np.allclose(compare_data[key], test_calib)
 
         if not arg_station:
-            assert "name" not in test_data.attrs
-            assert not test_data.attrs
+            assert "name" not in compare_data.attrs
+            assert not compare_data.attrs
         else:
-            test_data.attrs["name"] = "Test Name"
-            assert isinstance(test_data, pd.DataFrame)
-            assert test_data.attrs["name"] == "Test Name"
+            compare_data.attrs["name"] = "Test Name"
+            conftest_boilerplate.check_dataframe(dataframe=compare_data)
+            assert compare_data.attrs["name"] == "Test Name"
 
 
 class TestDataParsingTransect:
