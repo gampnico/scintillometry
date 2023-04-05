@@ -478,6 +478,7 @@ class TestDataParsingZAMG:
             assert "RR" not in compare_data.columns
             assert arg_name in compare_data.columns
         assert all(station == "0000" for station in compare_data["station"])
+        assert compare_data.index.resolution == "minute"
 
     @pytest.mark.dependency(
         name="TestDataParsingZAMG::test_merge_scintillometry_weather",
@@ -488,21 +489,28 @@ class TestDataParsingZAMG:
         scope="module",
     )
     def test_merge_scintillometry_weather(
-        self, conftest_mock_bls_dataframe, conftest_mock_weather_dataframe_tz
+        self,
+        conftest_mock_bls_dataframe_tz,
+        conftest_mock_weather_dataframe_tz,
+        conftest_boilerplate,
     ):
         """Merge scintillometry and weather data."""
 
-        test_bls = conftest_mock_bls_dataframe
+        test_bls = conftest_mock_bls_dataframe_tz
         test_weather = conftest_mock_weather_dataframe_tz
 
+        assert test_bls.index.resolution == test_weather.index.resolution
         compare_merged = (
             scintillometry.wrangler.data_parser.merge_scintillometry_weather(
                 scint_dataframe=test_bls,
                 weather_dataframe=test_weather,
             )
         )
-        assert isinstance(compare_merged, pd.DataFrame)
-
+        conftest_boilerplate.check_timezone(dataframe=compare_merged, tzone="CET")
+        assert "station" in compare_merged
+        conftest_boilerplate.check_dataframe(
+            dataframe=compare_merged.drop(["station"], axis=1)
+        )
         for key in test_weather.columns:
             assert key in compare_merged.columns
         for key in ["Cn2", "H_convection"]:
