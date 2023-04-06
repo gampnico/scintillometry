@@ -133,7 +133,9 @@ class TestBackendProfileConstructor:
         )
 
         assert isinstance(compare_pressure, pd.Series)
-        assert compare_pressure.index.equals(test_temperature.index)
+        pd.testing.assert_index_equal(
+            compare_pressure.index, test_temperature.index, check_names=False
+        )
         assert not np.allclose(compare_pressure, ref_pressure)
         assert (compare_pressure < ref_pressure).all()
         assert (compare_pressure > 1000).all()
@@ -166,8 +168,10 @@ class TestBackendProfileConstructor:
 
         conftest_boilerplate.check_dataframe(dataframe=compare_pressure)
         # verify resampling
-        assert compare_pressure.index.equals(test_temperature.index)
-        assert not compare_pressure.index.equals(test_pressure.index)
+        pd.testing.assert_index_equal(compare_pressure.index, test_temperature.index)
+        conftest_boilerplate.index_not_equal(
+            compare_pressure.index, test_pressure.index
+        )
         assert np.allclose(
             compare_pressure[compare_pressure.columns[0]], test_pressure.asfreq("10T")
         )
@@ -210,7 +214,7 @@ class TestBackendProfileConstructor:
         )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_ratio)
-        assert compare_ratio.index.equals(test_wvp.index)
+        pd.testing.assert_index_equal(compare_ratio.index, test_wvp.index)
         assert np.allclose(compare_ratio, test_ratio)
 
     @pytest.mark.dependency(
@@ -239,7 +243,7 @@ class TestBackendProfileConstructor:
             temperature=ref_temperature, mixing_ratio=test_ratio
         )
         conftest_boilerplate.check_dataframe(dataframe=compare_temperature)
-        assert compare_temperature.index.equals(test_temperature.index)
+        pd.testing.assert_index_equal(compare_temperature.index, test_temperature.index)
         assert not np.allclose(compare_temperature, ref_temperature)
         assert np.allclose(compare_temperature, test_temperature)
 
@@ -309,7 +313,9 @@ class TestBackendProfileConstructor:
         ) ** (self.test_profile.constants.r_dry / self.test_profile.constants.cp)
         for frame in (test_temperature, test_pressure):
             assert isinstance(frame, pd.DataFrame)
-            assert frame.index.equals(test_weather.index)
+            pd.testing.assert_index_equal(
+                frame.index, test_weather.index, check_names=False
+            )
             assert all(i in conftest_mock_hatpro_scan_levels for i in frame.columns)
             conftest_boilerplate.check_dataframe(dataframe=frame)
             assert frame.gt(0).values.all()
@@ -482,8 +488,12 @@ class TestBackendProfileConstructor:
         )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_stability)
-        assert not compare_stability.index.equals(test_weather.index)
-        assert compare_stability.index.equals(test_hatpro["temperature"].index)
+        conftest_boilerplate.index_not_equal(
+            compare_stability.index, test_weather.index
+        )
+        pd.testing.assert_index_equal(
+            compare_stability.index, test_hatpro["temperature"].index
+        )
         assert all(
             key in compare_stability.columns for key in conftest_mock_hatpro_scan_levels
         )
@@ -516,7 +526,7 @@ class TestBackendProfileConstructor:
         )
 
         assert isinstance(compare_bulk, pd.Series)
-        assert compare_bulk.index.equals(test_temperature.index)
+        pd.testing.assert_index_equal(compare_bulk.index, test_temperature.index)
         assert not compare_bulk.isnull().values.any()
         assert not np.isinf(compare_bulk).values.any()
         assert np.allclose(compare_bulk, test_bulk)
@@ -594,5 +604,11 @@ class TestBackendProfileConstructor:
         assert all(key in compare_dataset for key in test_keys)
         for key in test_keys:
             conftest_boilerplate.check_dataframe(compare_dataset[key])
-            assert compare_dataset[key].index.equals(test_vertical["temperature"].index)
-            assert not compare_dataset[key].index.equals(test_weather.index)
+            assert isinstance(compare_dataset[key].index, pd.DatetimeIndex)
+
+            pd.testing.assert_index_equal(
+                compare_dataset[key].index, test_vertical["temperature"].index
+            )
+            conftest_boilerplate.index_not_equal(
+                compare_dataset[key].index, test_weather.index
+            )
