@@ -115,7 +115,9 @@ class TestBackendProfileConstructor:
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_idx = conftest_mock_hatpro_scan_levels[-1]
-        ref_pressure = conftest_mock_weather_dataframe_tz["pressure"].multiply(100)
+        ref_pressure = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
+        ref_pressure = ref_pressure.asfreq("10T").multiply(100)  # same indices
+        assert isinstance(ref_pressure, pd.Series)
 
         test_pressure = ref_pressure * np.exp(
             -self.test_profile.constants.g
@@ -129,10 +131,11 @@ class TestBackendProfileConstructor:
             z_target=test_idx,
             z_ref=0,
         )
+
         assert isinstance(compare_pressure, pd.Series)
         assert compare_pressure.index.equals(test_temperature.index)
-        assert not np.allclose(ref_pressure, compare_pressure)
-        assert (ref_pressure > compare_pressure).all()
+        assert not np.allclose(compare_pressure, ref_pressure)
+        assert (compare_pressure < ref_pressure).all()
         assert (compare_pressure > 1000).all()
         assert not compare_pressure.isnull().values.any()
         assert not np.isinf(compare_pressure).values.any()
@@ -155,17 +158,21 @@ class TestBackendProfileConstructor:
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_pressure = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
-        test_pressure = test_pressure.multiply(100)  # hPa -> Pa
+        test_pressure = test_pressure.multiply(100)  # hPa -> Pa, do not resample
 
         compare_pressure = self.test_profile.extrapolate_air_pressure(
             surface_pressure=test_pressure, temperature=test_temperature
         )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_pressure)
+        # verify resampling
         assert compare_pressure.index.equals(test_temperature.index)
-        assert np.allclose(compare_pressure[compare_pressure.columns[0]], test_pressure)
+        assert not compare_pressure.index.equals(test_pressure.index)
+        assert np.allclose(
+            compare_pressure[compare_pressure.columns[0]], test_pressure.asfreq("10T")
+        )
         for col in compare_pressure.columns.difference([0]):
-            assert not np.allclose(test_pressure, compare_pressure[col])
+            assert not np.allclose(test_pressure.asfreq("10T"), compare_pressure[col])
         assert ((compare_pressure.ge(1000)).all()).all()
         assert not np.allclose(
             compare_pressure[compare_pressure.columns[-1]],
@@ -186,7 +193,7 @@ class TestBackendProfileConstructor:
     ):
         """Calculate mixing ratio for dry air pressure."""
 
-        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True).asfreq("10T")
         test_pressure = conftest_boilerplate.setup_extrapolated(
             series=test_weather["pressure"].multiply(100),
             levels=conftest_mock_hatpro_scan_levels,
@@ -219,9 +226,8 @@ class TestBackendProfileConstructor:
         """Calculate virtual temperature."""
 
         ref_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
-        test_pressure = (
-            conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True).multiply(100)
-        )
+        test_pressure = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
+        test_pressure = test_pressure.asfreq("10T").multiply(100)
 
         test_ratio = conftest_boilerplate.setup_extrapolated(
             series=test_pressure.divide(test_pressure + 1),
@@ -249,13 +255,13 @@ class TestBackendProfileConstructor:
     ):
         """Reduce station pressure to mean sea-level pressure."""
 
-        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True).asfreq("10T")
         test_pressure = conftest_boilerplate.setup_extrapolated(
-            series=test_weather["pressure"],
+            series=test_weather["pressure"].multiply(100),
             levels=conftest_mock_hatpro_scan_levels,
         )
         test_temperature = conftest_boilerplate.setup_extrapolated(
-            series=test_weather["temperature_2m"],
+            series=test_weather["temperature_2m"].add(273.15),
             levels=conftest_mock_hatpro_scan_levels,
         )
         assert isinstance(test_temperature, pd.DataFrame)
@@ -292,7 +298,7 @@ class TestBackendProfileConstructor:
     ):
         """Calculate potential temperature."""
 
-        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True).asfreq("10T")
         test_pressure = conftest_boilerplate.setup_extrapolated(
             series=test_weather["pressure"].multiply(100),
             levels=conftest_mock_hatpro_scan_levels,
@@ -467,7 +473,6 @@ class TestBackendProfileConstructor:
         assert isinstance(test_hatpro, dict)
         for frame in test_hatpro.values():
             conftest_boilerplate.check_dataframe(dataframe=frame)
-            assert frame.index.equals(test_weather.index)
 
         compare_stability = self.test_profile.get_static_stability(
             vertical_data=test_hatpro,
@@ -477,6 +482,8 @@ class TestBackendProfileConstructor:
         )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_stability)
+        assert not compare_stability.index.equals(test_weather.index)
+        assert compare_stability.index.equals(test_hatpro["temperature"].index)
         assert all(
             key in compare_stability.columns for key in conftest_mock_hatpro_scan_levels
         )
@@ -493,7 +500,7 @@ class TestBackendProfileConstructor:
     ):
         """Calculate bulk Richardson number."""
 
-        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True).asfreq("10T")
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
 
         cols = test_temperature.columns
@@ -587,3 +594,5 @@ class TestBackendProfileConstructor:
         assert all(key in compare_dataset for key in test_keys)
         for key in test_keys:
             conftest_boilerplate.check_dataframe(compare_dataset[key])
+            assert compare_dataset[key].index.equals(test_vertical["temperature"].index)
+            assert not compare_dataset[key].index.equals(test_weather.index)

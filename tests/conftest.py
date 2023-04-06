@@ -423,6 +423,11 @@ def fixture_conftest_mock_weather_dataframe_tz(conftest_mock_weather_dataframe):
     dataframe = dataframe.set_index("time")
     dataframe = dataframe.tz_convert("CET")
     assert dataframe.index.name == "time"
+    oidx = dataframe.index
+    nidx = pd.date_range(oidx.min(), oidx.max(), freq="60s")
+    dataframe = dataframe.reindex(oidx.union(nidx)).interpolate("index").reindex(nidx)
+    dataframe["station"] = "0000"  # str objects were converted to NaN
+    assert dataframe.index.resolution == "minute"
 
     yield dataframe
 

@@ -43,8 +43,11 @@ opposite order::
 MATLAB® arrays generated from the innFLUX Eddy Covariance code are in a
 proprietary format that cannot be mocked. Sample files containing
 randomised data are available in `tests/test_data/`.
+
+Use the `conftest_boilerplate` fixture to avoid duplicating tests.
 """
 
+import datetime
 import io
 from unittest.mock import Mock, patch
 
@@ -212,24 +215,43 @@ class TestDataParsingBLS:
         assert isinstance(test_data, pd.DataFrame)
         assert test_data.attrs["name"] == "Test Name"
 
+    @pytest.mark.dependency(name="TestDataParsingBLS::test_change_index_frequency")
+    @pytest.mark.parametrize("arg_frequency", ["60S", "60s", "30T", "1H"])
+    def test_change_index_frequency(self, conftest_boilerplate, arg_frequency):
+        """Change index frequency."""
+
+        date_today = datetime.datetime.now()
+        hours = pd.date_range(date_today, date_today + datetime.timedelta(24), freq="H")
+
+        random_data = np.random.randint(1, high=100, size=len(hours))
+        test_data = pd.DataFrame({"time": hours, "x1": random_data})
+        test_data = test_data.set_index("time")
+        test_data = test_data.tz_localize("CET")
+
+        compare_data = scintillometry.wrangler.data_parser.change_index_frequency(
+            data=test_data, frequency=arg_frequency
+        )
+
+        conftest_boilerplate.check_dataframe(dataframe=compare_data)
+        conftest_boilerplate.check_timezone(dataframe=compare_data, tzone="CET")
+        assert compare_data.index.freq == arg_frequency
+
     @pytest.mark.dependency(name="TestDataParsingBLS::test_convert_time_index")
     @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
-    def test_convert_time_index(self, arg_timezone):
-        """Tests time index conversion."""
+    def test_convert_time_index(
+        self, conftest_mock_weather_dataframe, conftest_boilerplate, arg_timezone
+    ):
+        """Convert timezone of index."""
 
-        test_raw = {"time": ["2020-06-03T00:00:00Z"], "wind_direction": [31.0]}
-        test_data = pd.DataFrame.from_dict(test_raw)
+        test_data = conftest_mock_weather_dataframe.copy(deep=True)
+        assert not ptypes.is_datetime64_any_dtype(test_data.index)
+
         compare_data = scintillometry.wrangler.data_parser.convert_time_index(
             data=test_data, tzone=arg_timezone
         )
         assert compare_data.index.name == "time"
         assert "time" not in compare_data.columns
-        assert ptypes.is_datetime64_any_dtype(compare_data.index)
-
-        if not arg_timezone:
-            assert compare_data.index.tz.zone == "UTC"
-        else:
-            assert compare_data.index.tz.zone == arg_timezone
+        conftest_boilerplate.check_timezone(dataframe=compare_data, tzone=arg_timezone)
 
     @pytest.mark.dependency(
         name="TestDataParsingBLS::test_parse_scintillometer",
@@ -249,6 +271,7 @@ class TestDataParsingBLS:
         open_mock: Mock,
         conftest_mock_mnd_raw,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
     ):
         """Parse raw data from BLS450."""
 
@@ -265,15 +288,11 @@ class TestDataParsingBLS:
         assert compare_data.attrs["name"] == "Test"
 
         data_keys = ["Cn2", "CT2", "H_convection", "pressure"]
+        conftest_boilerplate.check_dataframe(compare_data[data_keys])
         for key in data_keys:
             assert key in compare_data.columns
-            assert ptypes.is_numeric_dtype(compare_data[key])
         assert "iso_duration" in compare_data.columns
         assert ptypes.is_timedelta64_dtype(compare_data["iso_duration"])
-
-        for key in ["Cn2", "H_convection"]:
-            assert key in compare_data.columns
-            assert ptypes.is_numeric_dtype(compare_data[key])
 
     @pytest.mark.dependency(
         name="TestDataParsingBLS::test_parse_scintillometer_args",
@@ -299,6 +318,7 @@ class TestDataParsingBLS:
         conftest_mock_mnd_raw,
         conftest_mock_bls_dataframe,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
         arg_timezone,
         arg_calibration,
         arg_station,
@@ -306,7 +326,7 @@ class TestDataParsingBLS:
         """Parse raw data from BLS450."""
 
         _ = conftest_mock_check_file_exists
-        if not arg_station:
+        if arg_station:
             test_mnd_raw = conftest_mock_mnd_raw
         else:
             test_mnd_raw = conftest_mock_mnd_raw.replace("Station Code:     Test", "")
@@ -323,14 +343,11 @@ class TestDataParsingBLS:
         open_mock.reset_mock(return_value=True)
         read_table_mock.reset_mock(return_value=True)
 
-        assert isinstance(compare_data, pd.DataFrame)
-
+        conftest_boilerplate.check_dataframe(dataframe=compare_data)
         assert compare_data.index[0].strftime("%Y-%m-%d") == "2020-06-03"
-        if not arg_timezone:
-            assert compare_data.index.tz.zone == "UTC"
+        conftest_boilerplate.check_timezone(dataframe=compare_data, tzone=arg_timezone)
+        if compare_data.index.tzinfo == datetime.timezone.utc:
             assert compare_data.index[0].strftime("%H:%M") == "03:23"
-        else:
-            assert compare_data.index.tz.zone == arg_timezone
 
         if arg_calibration:
             for key in ["Cn2", "H_convection"]:
@@ -339,16 +356,15 @@ class TestDataParsingBLS:
                     * (arg_calibration[1] ** (-3))
                     / (arg_calibration[0] ** (-3))
                 )
-                assert ptypes.is_numeric_dtype(compare_data[key])
                 assert np.allclose(compare_data[key], test_calib)
 
         if not arg_station:
-            assert "name" not in test_data.attrs
-            assert not test_data.attrs
+            assert "name" not in compare_data.attrs
+            assert not compare_data.attrs
         else:
-            test_data.attrs["name"] = "Test Name"
-            assert isinstance(test_data, pd.DataFrame)
-            assert test_data.attrs["name"] == "Test Name"
+            compare_data.attrs["name"] = "Test Name"
+            conftest_boilerplate.check_dataframe(dataframe=compare_data)
+            assert compare_data.attrs["name"] == "Test Name"
 
 
 class TestDataParsingTransect:
@@ -410,16 +426,16 @@ class TestDataParsingTransect:
 
         _ = conftest_mock_check_file_exists
         read_csv_mock.return_value = conftest_mock_transect_dataframe
-        test_dataframe = scintillometry.wrangler.data_parser.parse_transect(
+        compare_dataframe = scintillometry.wrangler.data_parser.parse_transect(
             file_path="/path/to/file"
         )
         read_csv_mock.assert_called_once()
-        assert isinstance(test_dataframe, pd.DataFrame)
-        for key in test_dataframe.keys():
+        assert isinstance(compare_dataframe, pd.DataFrame)
+        for key in compare_dataframe.keys():
             assert key in ["path_height", "norm_position"]
-            assert ptypes.is_numeric_dtype(test_dataframe[key])
+            assert ptypes.is_numeric_dtype(compare_dataframe[key])
 
-        assert all(test_dataframe["norm_position"].between(0, 1, "both"))
+        assert all(compare_dataframe["norm_position"].between(0, 1, "both"))
 
 
 class TestDataParsingZAMG:
@@ -440,6 +456,7 @@ class TestDataParsingZAMG:
         read_csv_mock: Mock,
         conftest_mock_weather_raw,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
         arg_timestamp,
         arg_name,
     ):
@@ -466,22 +483,23 @@ class TestDataParsingZAMG:
         )
         read_csv_mock.assert_called_once()
         read_csv_mock.reset_mock(return_value=True)
-        assert isinstance(compare_data, pd.DataFrame)
-        assert isinstance(compare_data.index, pd.DatetimeIndex)
 
+        assert "station" in compare_data
+        conftest_boilerplate.check_dataframe(
+            dataframe=compare_data.drop("station", axis=1)
+        )
+        assert isinstance(compare_data.index, pd.DatetimeIndex)
         assert all(  # renamed columns
             x not in compare_data.columns
             for x in ["DD", "FF", "FAM", "GSX", "P", "RF", "RR", "TL"]
         )
-
         if not arg_name:
             assert "precipitation" in compare_data.columns
         else:
             assert "RR" not in compare_data.columns
             assert arg_name in compare_data.columns
-
         assert all(station == "0000" for station in compare_data["station"])
-        assert not compare_data.isnull().values.any()
+        assert compare_data.index.resolution == "minute"
 
     @pytest.mark.dependency(
         name="TestDataParsingZAMG::test_merge_scintillometry_weather",
@@ -492,21 +510,28 @@ class TestDataParsingZAMG:
         scope="module",
     )
     def test_merge_scintillometry_weather(
-        self, conftest_mock_bls_dataframe, conftest_mock_weather_dataframe_tz
+        self,
+        conftest_mock_bls_dataframe_tz,
+        conftest_mock_weather_dataframe_tz,
+        conftest_boilerplate,
     ):
         """Merge scintillometry and weather data."""
 
-        test_bls = conftest_mock_bls_dataframe
+        test_bls = conftest_mock_bls_dataframe_tz
         test_weather = conftest_mock_weather_dataframe_tz
 
+        assert test_bls.index.resolution == test_weather.index.resolution
         compare_merged = (
             scintillometry.wrangler.data_parser.merge_scintillometry_weather(
                 scint_dataframe=test_bls,
                 weather_dataframe=test_weather,
             )
         )
-        assert isinstance(compare_merged, pd.DataFrame)
-
+        conftest_boilerplate.check_timezone(dataframe=compare_merged, tzone="CET")
+        assert "station" in compare_merged
+        conftest_boilerplate.check_dataframe(
+            dataframe=compare_merged.drop("station", axis=1)
+        )
         for key in test_weather.columns:
             assert key in compare_merged.columns
         for key in ["Cn2", "H_convection"]:
@@ -524,14 +549,15 @@ class TestDataParsingZAMG:
     @pytest.mark.parametrize("arg_pressure", [100, 1])
     def test_merge_scintillometry_weather_convert(
         self,
-        conftest_mock_bls_dataframe,
+        conftest_mock_bls_dataframe_tz,
         conftest_mock_weather_dataframe_tz,
+        conftest_boilerplate,
         arg_temp,
         arg_pressure,
     ):
         """Merge scintillometry and weather data and convert units."""
 
-        test_bls = conftest_mock_bls_dataframe
+        test_bls = conftest_mock_bls_dataframe_tz
         test_weather = conftest_mock_weather_dataframe_tz
         test_weather["temperature_2m"] = test_weather["temperature_2m"] + arg_temp
         test_weather["pressure"] = test_weather["pressure"] * arg_pressure
@@ -542,8 +568,11 @@ class TestDataParsingZAMG:
                 weather_dataframe=test_weather,
             )
         )
-        assert isinstance(compare_merged, pd.DataFrame)
 
+        assert "station" in compare_merged
+        conftest_boilerplate.check_dataframe(
+            dataframe=compare_merged.drop("station", axis=1)
+        )
         for key in test_weather.columns:
             assert key in compare_merged.columns
         assert not (compare_merged["temperature_2m"].lt(100)).any()
@@ -574,6 +603,7 @@ class TestDataParsingMerge:
         conftest_mock_bls_dataframe_tz,
         conftest_mock_transect_dataframe,
         conftest_mock_weather_dataframe_tz,
+        conftest_boilerplate,
     ):
         """Parse BLS and ZAMG datasets."""
 
@@ -602,7 +632,9 @@ class TestDataParsingMerge:
             assert isinstance(compare_dict[key], pd.DataFrame)
         for key in test_keys[:-1]:  # time-indexed dataframes only
             assert ptypes.is_datetime64_any_dtype(compare_dict[key].index)
-            assert compare_dict[key].index[0].tz.zone == "CET"
+            conftest_boilerplate.check_timezone(
+                dataframe=compare_dict[key], tzone="CET"
+            )
 
 
 class TestDataParsingInnflux:
@@ -626,20 +658,6 @@ class TestDataParsingInnflux:
         "wind_speed",
         "obukhov",
     ]
-
-    @pytest.mark.dependency(name="TestDataParsingInnflux::test_boilerplate")
-    def test_boilerplate(
-        self,
-        conftest_mock_weather_dataframe_tz,
-        conftest_mock_hatpro_scan_levels,
-        conftest_boilerplate,
-    ):
-        """Check boilerplate methods are correctly instantiated."""
-
-        compare_boilerplate = conftest_boilerplate
-        compare_boilerplate.test_boilerplate_integration(
-            conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
-        )
 
     @pytest.mark.dependency(
         name="TestDataParsingInnflux::test_parse_innflux_mat_missing"
@@ -665,15 +683,10 @@ class TestDataParsingInnflux:
         with pytest.raises(ValueError, match=error_message):
             scintillometry.wrangler.data_parser.parse_innflux_mat(file_path=test_path)
 
-    @pytest.mark.dependency(
-        name="TestDataParsingInnflux::test_parse_innflux_mat",
-        depends=["TestDataParsingInnflux::test_boilerplate"],
-    )
+    @pytest.mark.dependency(name="TestDataParsingInnflux::test_parse_innflux_mat")
     @pytest.mark.parametrize("arg_format", ["v7"])
     def test_parse_innflux_mat(self, conftest_boilerplate, arg_format):
         """Parse .mat file generated by innFLUX."""
-
-        check_object = conftest_boilerplate
 
         test_path = f"./tests/test_data/test_data_{arg_format}_results.mat"
         compare_mat = scintillometry.wrangler.data_parser.parse_innflux_mat(
@@ -695,7 +708,7 @@ class TestDataParsingInnflux:
             ["2020-06-03T00:00:00", "2020-06-03T23:00:00"], utc=False
         )
 
-        check_object.check_dataframe(compare_mat)
+        conftest_boilerplate.check_dataframe(dataframe=compare_mat)
         assert all(name in test_names.values() for name in compare_mat.columns)
         assert "invalid_key" not in compare_mat.columns
         assert compare_mat.index.resolution == "minute"
@@ -710,6 +723,7 @@ class TestDataParsingInnflux:
         read_csv_mock: Mock,
         conftest_mock_innflux_dataframe,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
         arg_header,
     ):
         """Parse pre-processed innFLUX csv data."""
@@ -721,24 +735,20 @@ class TestDataParsingInnflux:
             headers = self.test_headers
         else:
             headers = None
-        dataframe = scintillometry.wrangler.data_parser.parse_innflux_csv(
+        compare_dataframe = scintillometry.wrangler.data_parser.parse_innflux_csv(
             file_path="/path/innflux/file.csv", header_list=headers
         )
         read_csv_mock.assert_called_once()
-        assert isinstance(dataframe, pd.DataFrame)
-        for key in ["year", "month", "day", "hour", "minutes", "seconds"]:
-            assert key not in dataframe.columns
-        assert ptypes.is_datetime64_any_dtype(dataframe.index)
+        conftest_boilerplate.check_dataframe(dataframe=compare_dataframe)
 
+        for key in ["year", "month", "day", "hour", "minutes", "seconds"]:
+            assert key not in compare_dataframe.columns
         data_keys = ["shf", "wind_speed", "obukhov"]
-        for key in data_keys:
-            assert key in dataframe.columns
-            assert ptypes.is_numeric_dtype(dataframe[key])
+        assert all(key in compare_dataframe for key in data_keys)
 
     @pytest.mark.dependency(
         name="TestDataParsingInnflux::test_parse_innflux",
         depends=[
-            "TestDataParsingInnflux::test_boilerplate",
             "TestDataParsingInnflux::test_parse_innflux_mat",
             "TestDataParsingInnflux::test_parse_innflux_csv",
         ],
@@ -757,28 +767,26 @@ class TestDataParsingInnflux:
     ):
         """Parse innFLUX data."""
 
-        check = conftest_boilerplate
-
         if arg_file == ".csv":
             _ = conftest_mock_check_file_exists
             read_csv_mock.return_value = conftest_mock_innflux_dataframe
-            dataframe = scintillometry.wrangler.data_parser.parse_innflux(
+            compare_dataframe = scintillometry.wrangler.data_parser.parse_innflux(
                 file_name="/path/innflux/file.csv",
                 tzone=arg_timezone,
             )
             read_csv_mock.assert_called_once()
         else:
-            dataframe = scintillometry.wrangler.data_parser.parse_innflux(
+            compare_dataframe = scintillometry.wrangler.data_parser.parse_innflux(
                 file_name="./tests/test_data/test_data_v7_results.mat",
                 tzone=arg_timezone,
             )
 
-        check.check_dataframe(dataframe)
-        if not arg_timezone:
-            assert dataframe.index.tz.zone == "UTC"
-        else:
-            assert dataframe.index.tz.zone == arg_timezone
-        assert dataframe.index.resolution == "minute"
+        conftest_boilerplate.check_dataframe(dataframe=compare_dataframe)
+        conftest_boilerplate.check_timezone(
+            dataframe=compare_dataframe, tzone=arg_timezone
+        )
+
+        assert compare_dataframe.index.resolution == "minute"
 
 
 class TestDataParsingHatpro:
@@ -826,6 +834,7 @@ class TestDataParsingHatpro:
         conftest_mock_hatpro_humidity_raw,
         conftest_mock_check_file_exists,
         conftest_mock_hatpro_scan_levels,
+        conftest_boilerplate,
         arg_timezone,
     ):
         """Load raw HATPRO data into dataframe."""
@@ -843,17 +852,13 @@ class TestDataParsingHatpro:
         )
         open_mock.assert_called_once()
 
-        assert isinstance(compare_data, pd.DataFrame)
+        conftest_boilerplate.check_dataframe(dataframe=compare_data)
+        conftest_boilerplate.check_timezone(dataframe=compare_data, tzone=arg_timezone)
+        assert compare_data.index[0].year == 2020
+        assert compare_data.index.resolution == "minute"
+
         for key in test_levels:
             assert key in compare_data.columns
-            assert ptypes.is_numeric_dtype(compare_data[key])
-        assert ptypes.is_datetime64_any_dtype(compare_data.index)
-
-        if not arg_timezone:
-            assert compare_data.index.tz.zone == "UTC"
-        else:
-            assert compare_data.index.tz.zone == arg_timezone
-
         assert "elevation" in compare_data.attrs
         assert isinstance(compare_data.attrs["elevation"], int)
         assert compare_data.attrs["elevation"] == test_elevation
@@ -871,6 +876,7 @@ class TestDataParsingHatpro:
         conftest_mock_hatpro_temperature_dataframe,
         conftest_mock_hatpro_scan_levels,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
         arg_timezone,
     ):
         """Parse unformatted HATPRO data."""
@@ -890,17 +896,14 @@ class TestDataParsingHatpro:
 
         assert isinstance(compare_data, dict)
         for frame_key, compare_frame in compare_data.items():
-            assert isinstance(compare_frame, pd.DataFrame)
             assert frame_key in ["humidity", "temperature"]
+            conftest_boilerplate.check_dataframe(dataframe=compare_frame)
+            conftest_boilerplate.check_timezone(
+                dataframe=compare_frame, tzone=arg_timezone
+            )
             for key in test_levels:
                 assert key in compare_frame.columns
-                assert ptypes.is_numeric_dtype(compare_frame[key])
             assert compare_frame.index.name == "rawdate"
-            assert ptypes.is_datetime64_any_dtype(compare_frame.index)
-            if not arg_timezone:
-                assert compare_frame.index.tz.zone == "UTC"
-            else:
-                assert compare_frame.index.tz.zone == arg_timezone
         assert all(compare_data["humidity"]) < 0.007  # should be in |kgm^-3|
 
     @pytest.mark.dependency(name="TestDataParsingHatpro::test_parse_vertical_error")
@@ -936,6 +939,7 @@ class TestDataParsingHatpro:
         conftest_mock_hatpro_temperature_dataframe,
         conftest_mock_hatpro_scan_levels,
         conftest_mock_check_file_exists,
+        conftest_boilerplate,
         arg_timezone,
     ):
         """Parse vertical measurements."""
@@ -956,9 +960,10 @@ class TestDataParsingHatpro:
 
         assert isinstance(compare_data, dict)
         for frame_key, compare_frame in compare_data.items():
-            assert isinstance(compare_frame, pd.DataFrame)
             assert frame_key in ["humidity", "temperature"]
-            if not arg_timezone:
-                assert compare_frame.index.tz.zone == "UTC"
-            else:
-                assert compare_frame.index.tz.zone == arg_timezone
+            conftest_boilerplate.check_dataframe(dataframe=compare_frame)
+            conftest_boilerplate.check_timezone(
+                dataframe=compare_frame, tzone=arg_timezone
+            )
+            for key in test_levels:
+                assert key in compare_frame.columns
