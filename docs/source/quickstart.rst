@@ -97,7 +97,7 @@ Optional arguments:
    -s, --stability <str>            Set default stability condition.
    -s, --switch-time <str>          Override local time of switch between
                                        stability regimes.
-   -k, --station-id <int>           ZAMG station ID (Klima-ID). Default 11803.
+   -k, --station-id <str>           ZAMG station ID (Klima-ID). Default 11803.
    --location <str>                 Location of experiment. Overrides any other
                                        location metadata.
    --beam-wavelength <int>          Transmitter beam wavelength, nm.

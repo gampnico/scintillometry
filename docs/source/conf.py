@@ -49,7 +49,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.29.a0"
+release = "0.29.a1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
