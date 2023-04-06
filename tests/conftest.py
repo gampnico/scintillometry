@@ -65,17 +65,22 @@ class TestBoilerplate:
             pass
 
     Attributes:
-        test_levels (list): Mocked measurement heights.
-        test_index (pd.DatetimeIndex): Mocked TZ-naive datetime index
-            for dataframe.
-        test_elevation (float): Mocked station elevation.
+        bp_levels (list): Mocked measurement heights.
+        bp_index (pd.DatetimeIndex): Mocked TZ-naive DatetimeIndex for
+            dataframe.
+        bp_data (dict): Random numeric data with integer column labels.
+        bp_elevation (float): Mocked station elevation.
+        bp_frame (pd.DataFrame): Dataframe containing random numeric
+            data, DatetimeIndex, and integer column labels.
     """
 
-    test_levels = [0, 10, 30, 50, 75, 100]
-    test_index = pd.to_datetime(
+    bp_levels = [0, 10, 30, 50, 75, 100]
+    bp_index = pd.to_datetime(
         ["2020-06-03 03:10:00", "2020-06-03 03:20:00", "2020-06-03 03:30:00"], utc=False
     )
-    test_elevation = 600.0
+    bp_data = {0: [1, 2, 3], 10: [4.0, 5.0, 6.0], 20: [7, 8.0, -9]}
+    bp_elevation = 600.0
+    bp_frame = pd.DataFrame(data=bp_data, columns=[0, 10, 20], index=bp_index)
 
     def check_dataframe(self, dataframe: pd.DataFrame):
         """Boilerplate tests for dataframes.
@@ -83,6 +88,9 @@ class TestBoilerplate:
         Checks input is a dataframe, all columns have numeric dtypes,
         index is a DatetimeIndex, and there are no NaN or infinite
         values.
+
+        Args:
+            dataframe: Pandas DataFrame object.
         """
 
         assert isinstance(dataframe, pd.DataFrame)
@@ -103,10 +111,7 @@ class TestBoilerplate:
         DatetimeIndex, or there are any NaN or infinite values.
         """
 
-        test_data = {0: [1, 2, 3], 10: [4.0, 5.0, 6.0], 20: [7, 8.0, -9]}
-        test_frame = pd.DataFrame(
-            data=test_data, columns=[0, 10, 20], index=self.test_index
-        )
+        test_frame = self.bp_frame.copy(deep=True)
 
         if arg_test == "ptype":
             test_frame[test_frame.columns[0]] = "error"
@@ -138,10 +143,7 @@ class TestBoilerplate:
         values.
         """
 
-        test_data = {0: [1, 2, 3], 10: [4.0, 5.0, 6.0], 20: [7, 8.0, -9]}
-        test_frame = pd.DataFrame(
-            data=test_data, columns=[0, 10, 20], index=self.test_index
-        )
+        test_frame = self.bp_frame.copy(deep=True)
         self.check_dataframe(dataframe=test_frame)
 
     def setup_extrapolated(self, series: pd.Series, levels: list):
@@ -164,11 +166,11 @@ class TestBoilerplate:
             columns=levels,
             index=reference.index,
         )
-        dataset.attrs["elevation"] = self.test_elevation
+        dataset.attrs["elevation"] = self.bp_elevation
 
         self.check_dataframe(dataframe=dataset)
         assert "elevation" in dataset.attrs
-        assert np.isclose(dataset.attrs["elevation"], self.test_elevation)
+        assert np.isclose(dataset.attrs["elevation"], self.bp_elevation)
 
         return dataset
 
@@ -176,22 +178,23 @@ class TestBoilerplate:
         name="TestBoilerplate::setup_extrapolated",
         depends=["TestBoilerplate::test_check_dataframe"],
     )
-    def test_setup_extrapolated(
-        self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
-    ):
+    def test_setup_extrapolated(self):
         """Correctly extrapolate series to dataframe."""
 
-        test_series = conftest_mock_weather_dataframe_tz["pressure"].copy(deep=True)
+        test_frame = self.bp_frame.copy(deep=True)
+        test_series = test_frame[0]
         compare_extrapolate = self.setup_extrapolated(
-            series=test_series, levels=conftest_mock_hatpro_scan_levels
+            series=test_series, levels=self.bp_levels
         )
         self.check_dataframe(dataframe=compare_extrapolate)
-        assert compare_extrapolate.index.equals(test_series.index)
+        pd.testing.assert_index_equal(compare_extrapolate.index, test_series.index)
         assert "elevation" in compare_extrapolate.attrs
-        assert np.isclose(compare_extrapolate.attrs["elevation"], self.test_elevation)
+        assert np.isclose(compare_extrapolate.attrs["elevation"], self.bp_elevation)
 
     def check_timezone(self, dataframe: pd.DataFrame, tzone: str):
         """Verify index has correct timezone attributes.
+
+        Checks input dataframe has a TZ-aware index matching <tzone>.
 
         Args:
             dataframe: Pandas dataframe with DatetimeIndex.
@@ -205,45 +208,67 @@ class TestBoilerplate:
             assert dataframe.index.tz.zone == tzone
 
     @pytest.mark.dependency(name="TestBoilerplate::test_check_timezone")
-    @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
-    def test_check_timezone(self, conftest_mock_weather_dataframe_tz, arg_timezone):
+    def test_check_timezone(self):
         """Validate tests for time index attributes."""
 
-        test_data = conftest_mock_weather_dataframe_tz.copy(deep=True)
-        if arg_timezone:
-            test_data = test_data.tz_convert(arg_timezone)
-        else:
-            test_data = test_data.tz_convert("UTC")
-        assert ptypes.is_datetime64_any_dtype(test_data.index)
+        test_data = {0: [1, 2, 3], 10: [4.0, 5.0, 6.0], 20: [7, 8.0, -9]}
+        dataframe = pd.DataFrame(
+            data=test_data, columns=[0, 10, 20], index=self.bp_index
+        )
+        for arg_timezone in ["CET", "Europe/Berlin", "UTC", None]:
+            if arg_timezone:
+                test_frame = dataframe.tz_localize(arg_timezone)
+            else:
+                test_frame = dataframe.tz_localize("UTC")
+        assert ptypes.is_datetime64_any_dtype(test_frame.index)
 
-        self.check_timezone(dataframe=test_data, tzone=arg_timezone)
+        self.check_timezone(dataframe=test_frame, tzone=arg_timezone)
+
+    def index_not_equal(self, index_01: pd.Index, index_02: pd.Index):
+        """Check that two indices are not equal."""
+
+        with pytest.raises(AssertionError, match="Index are different"):
+            assert pd.testing.assert_index_equal(
+                left=index_01, right=index_02, check_names=False
+            )
+
+    @pytest.mark.dependency(name="TestBoilerplate::test_assert_index_not_equal")
+    def test_index_not_equal(self):
+        """Validate tests for index inequality."""
+
+        test_index = pd.Index([1, 2, 3])
+        compare_index = pd.Index([1, 2, 4])
+        self.index_not_equal(index_01=test_index, index_02=compare_index)
 
     @pytest.mark.dependency(
         name="TestBoilerplate::test_boilerplate_integration",
         depends=[
             "TestBoilerplate::test_check_dataframe",
-            # "TestBoilerplate::test_setup_extrapolated",
+            "TestBoilerplate::test_setup_extrapolated",
             "TestBoilerplate::test_check_timezone",
+            "TestBoilerplate::test_assert_index_not_equal",
         ],
     )
-    @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
-    def test_boilerplate_integration(
-        self,
-        conftest_mock_weather_dataframe_tz,
-        conftest_mock_hatpro_scan_levels,
-        arg_timezone,
-    ):
+    def test_boilerplate_integration(self):
         """Integration test for boilerplate methods."""
 
         self.test_check_dataframe()
-        self.test_setup_extrapolated(
-            conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_scan_levels
-        )
-        self.test_check_timezone(conftest_mock_weather_dataframe_tz, arg_timezone)
+        self.test_setup_extrapolated()
+        self.test_check_timezone()
+        self.test_index_not_equal()
 
 
+@pytest.mark.dependency(
+    name="TestBoilerplate::conftest_boilerplate",
+    depends=["TestBoilerplate::test_boilerplate_integration"],
+)
 @pytest.fixture(name="conftest_boilerplate", scope="function", autouse=False)
 def conftest_boilerplate():
+    """Yields class containing methods for common tests."""
+
+    test_boilerplate = TestBoilerplate()
+    test_boilerplate.test_boilerplate_integration()
+
     yield TestBoilerplate()
 
 
