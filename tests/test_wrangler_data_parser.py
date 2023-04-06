@@ -215,12 +215,33 @@ class TestDataParsingBLS:
         assert isinstance(test_data, pd.DataFrame)
         assert test_data.attrs["name"] == "Test Name"
 
+    @pytest.mark.dependency(name="TestDataParsingBLS::test_change_index_frequency")
+    @pytest.mark.parametrize("arg_frequency", ["60S", "60s", "30T", "1H"])
+    def test_change_index_frequency(self, conftest_boilerplate, arg_frequency):
+        """Change index frequency."""
+
+        date_today = datetime.datetime.now()
+        hours = pd.date_range(date_today, date_today + datetime.timedelta(24), freq="H")
+
+        random_data = np.random.randint(1, high=100, size=len(hours))
+        test_data = pd.DataFrame({"time": hours, "x1": random_data})
+        test_data = test_data.set_index("time")
+        test_data = test_data.tz_localize("CET")
+
+        compare_data = scintillometry.wrangler.data_parser.change_index_frequency(
+            data=test_data, frequency=arg_frequency
+        )
+
+        conftest_boilerplate.check_dataframe(dataframe=compare_data)
+        conftest_boilerplate.check_timezone(dataframe=compare_data, tzone="CET")
+        assert compare_data.index.freq == arg_frequency
+
     @pytest.mark.dependency(name="TestDataParsingBLS::test_convert_time_index")
     @pytest.mark.parametrize("arg_timezone", ["CET", "Europe/Berlin", "UTC", None])
     def test_convert_time_index(
         self, conftest_mock_weather_dataframe, conftest_boilerplate, arg_timezone
     ):
-        """Tests time index conversion."""
+        """Convert timezone of index."""
 
         test_data = conftest_mock_weather_dataframe.copy(deep=True)
         assert not ptypes.is_datetime64_any_dtype(test_data.index)

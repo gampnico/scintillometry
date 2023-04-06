@@ -167,6 +167,25 @@ def calibrate_data(data, path_lengths):
     return data
 
 
+def change_index_frequency(data, frequency="60S"):
+    """Change frequency of time index.
+
+    Args:
+        data (pd.DataFrame or pd.Series): An object with a time or
+            datetime index.
+        frequency (str): Reindexing frequency. Default "60s".
+
+    Returns:
+        pd.DataFrame or pd.Series: Object with new index frequency.
+    """
+
+    old_idx = data.index
+    new_idx = pd.date_range(old_idx.min(), old_idx.max(), freq=frequency)
+    data = data.reindex(old_idx.union(new_idx)).interpolate("index").reindex(new_idx)
+
+    return data
+
+
 def convert_time_index(data, tzone=None):
     """Make tz-naive dataframe tz-aware.
 
@@ -285,9 +304,7 @@ def parse_zamg_data(
     station_id = zamg_data["station"][0]
 
     # resample to 60s intervals
-    oidx = zamg_data.index
-    nidx = pd.date_range(oidx.min(), oidx.max(), freq="60s")
-    zamg_data = zamg_data.reindex(oidx.union(nidx)).interpolate("index").reindex(nidx)
+    zamg_data = change_index_frequency(data=zamg_data, frequency="60S")
     zamg_data["station"] = station_id  # str objects were converted to NaN
 
     zamg_names = {
@@ -563,9 +580,7 @@ def parse_innflux(file_name, tzone=None, headers=None):
     dataframe = dataframe.replace(-999, np.nan)
     dataframe = dataframe.fillna(method="ffill")
 
-    oidx = dataframe.index
-    nidx = pd.date_range(oidx.min(), oidx.max(), freq="60s")
-    dataframe = dataframe.reindex(oidx.union(nidx)).interpolate("index").reindex(nidx)
+    dataframe = change_index_frequency(data=dataframe, frequency="60S")
 
     if tzone:
         dataframe = dataframe.tz_localize(tzone)
