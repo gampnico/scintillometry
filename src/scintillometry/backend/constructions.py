@@ -104,7 +104,10 @@ class ProfileConstructor(AtmosConstants):
     def extrapolate_air_pressure(self, surface_pressure, temperature):
         """Extrapolates reference pressure measurements to scan levels.
 
-        Input series and dataframe must have matching indices.
+        Input series and dataframe do not need matching indices. Data
+        for <surface_pressure> (1D time series) is mapped to the index
+        and columns of <temperature> (2D time series), i.e. no
+        interpolation occurs.
 
         Args:
             surface_pressure (pd.Series): Air pressure measurements at
