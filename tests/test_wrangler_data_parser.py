@@ -443,13 +443,9 @@ class TestDataParsingZAMG:
 
     @pytest.mark.dependency(name="TestDataParsingZAMG::test_parse_zamg_data")
     @pytest.mark.parametrize(
-        "arg_timestamp",
-        ["2020-06-03T00:00:00Z", "2020-06-03T03:23:00Z"],
+        "arg_timestamp", ["2020-06-03T00:00:00Z", "2020-06-03T03:23:00Z"]
     )
-    @pytest.mark.parametrize(
-        "arg_name",
-        [None, "rand_var"],
-    )
+    @pytest.mark.parametrize("arg_name", [None, "rand_var"])
     @patch("pandas.read_csv")
     def test_parse_zamg_data(
         self,
@@ -498,6 +494,7 @@ class TestDataParsingZAMG:
         else:
             assert "RR" not in compare_data.columns
             assert arg_name in compare_data.columns
+        assert ptypes.is_string_dtype(compare_data["station"])
         assert all(station == "0000" for station in compare_data["station"])
         assert compare_data.index.resolution == "minute"
 
