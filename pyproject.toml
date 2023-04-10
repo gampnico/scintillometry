@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scintillometry"
-version = "0.29.a2"
+version = "0.29.a3"
 authors = [
   { name="Scintillometry-Tools Contributors", email="" },
 ]
