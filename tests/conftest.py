@@ -221,7 +221,6 @@ class TestBoilerplate:
             else:
                 test_frame = dataframe.tz_localize("UTC")
         assert ptypes.is_datetime64_any_dtype(test_frame.index)
-
         self.check_timezone(dataframe=test_frame, tzone=arg_timezone)
 
     def index_not_equal(self, index_01: pd.Index, index_02: pd.Index):

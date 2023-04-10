@@ -34,6 +34,9 @@ import scintillometry.visuals.plotting
 class TestVisualsFormatting:
     """Tests figure and axis formatting."""
 
+    test_location = "Test Location"
+    test_date = "03 June 2020"
+
     @pytest.mark.dependency(name="TestVisualsFormatting::test_get_site_name")
     @pytest.mark.parametrize("arg_string", ["", 3, "Test Location"])
     @pytest.mark.parametrize("arg_dataframe", [None, True, "name", "wrong_key"])
@@ -45,7 +48,7 @@ class TestVisualsFormatting:
         if arg_dataframe:
             test_frame = conftest_mock_bls_dataframe_tz.copy(deep=True)
             if isinstance(arg_dataframe, str):
-                test_frame.attrs[arg_dataframe] = "Test Location"
+                test_frame.attrs[arg_dataframe] = self.test_location
         else:
             test_frame = None
 
@@ -58,7 +61,7 @@ class TestVisualsFormatting:
             assert compare_label == str(arg_string)
         elif isinstance(arg_dataframe, str):
             if arg_dataframe == "name":
-                assert compare_label == "Test Location"
+                assert compare_label == self.test_location
             else:
                 assert compare_label == ""
         else:
@@ -90,7 +93,7 @@ class TestVisualsFormatting:
     def test_get_date_and_timezone(self, conftest_mock_bls_dataframe_tz):
         """Get start date and timezone from dataframe."""
 
-        test_data = conftest_mock_bls_dataframe_tz
+        test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
         compare_times = scintillometry.visuals.plotting.get_date_and_timezone(
             data=test_data
         )
@@ -98,7 +101,7 @@ class TestVisualsFormatting:
         assert all(key in compare_times for key in ("date", "tzone"))
 
         assert isinstance(compare_times["date"], str)
-        assert compare_times["date"] == "03 June 2020"
+        assert compare_times["date"] == self.test_date
 
         assert isinstance(compare_times["tzone"], datetime.tzinfo)
         assert compare_times["tzone"].zone == "CET"
@@ -110,15 +113,14 @@ class TestVisualsFormatting:
 
         test_fig = plt.figure(figsize=(26, 6))
         test_title = r"Test Title $X_{sub}$"
-        test_date = "03 June 2020"
 
         compare_title = scintillometry.visuals.plotting.title_plot(
-            title=test_title, timestamp=test_date, location=arg_location
+            title=test_title, timestamp=self.test_date, location=arg_location
         )
 
         assert isinstance(compare_title, str)
         assert compare_title[:20] == test_title
-        assert compare_title[-12:] == test_date
+        assert compare_title[-12:] == self.test_date
         if arg_location:
             location_idx = -14 - len(arg_location)
             assert compare_title[location_idx:-14] == arg_location
@@ -130,7 +132,6 @@ class TestVisualsFormatting:
     @pytest.mark.dependency(
         name="TestVisualsFormatting::test_set_xy_labels",
         depends=["TestVisualsFormatting::test_label_selector"],
-        scope="class",
     )
     @pytest.mark.parametrize("arg_name", ["shf", "test variable"])
     def test_set_xy_labels(self, arg_name):
@@ -157,17 +158,21 @@ class TestVisualsFormatting:
 class TestVisualsPlotting:
     """Tests time series plots."""
 
+    test_location = "Test Location"
+    test_date = "03 June 2020"
+
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_setup_plot_data",
         depends=["TestVisualsFormatting::test_get_date_and_timezone"],
-        scope="module",
     )
     @pytest.mark.parametrize("arg_names", [["H_convection"], None])
-    def test_setup_plot_data(self, conftest_mock_bls_dataframe_tz, arg_names):
+    def test_setup_plot_data(
+        self, conftest_mock_bls_dataframe_tz, conftest_boilerplate, arg_names
+    ):
         """Setup data for plotting."""
 
-        test_data = conftest_mock_bls_dataframe_tz
-        assert conftest_mock_bls_dataframe_tz.index.tz.zone == "CET"
+        test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
+        conftest_boilerplate.check_timezone(dataframe=test_data, tzone="CET")
 
         (
             compare_data,
@@ -178,8 +183,7 @@ class TestVisualsPlotting:
         )
 
         for dataframe in [compare_data, compare_mean]:
-            assert isinstance(dataframe, pd.DataFrame)
-            assert dataframe.index.tz.zone == "CET"
+            conftest_boilerplate.check_dataframe(dataframe=dataframe)
             if arg_names:
                 assert all(name in dataframe.columns for name in arg_names)
 
@@ -239,22 +243,24 @@ class TestVisualsPlotting:
             "TestVisualsPlotting::test_setup_plot_data",
             "TestVisualsPlotting::test_plot_time_series",
         ],
-        scope="module",
     )
     def test_plot_generic(self, conftest_mock_bls_dataframe_tz):
         """Plot time series of variable."""
 
-        test_data = conftest_mock_bls_dataframe_tz
+        test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
 
         compare_fig, compare_ax = scintillometry.visuals.plotting.plot_generic(
-            dataframe=test_data, name="pressure", site="Test"
+            dataframe=test_data, name="pressure", site=self.test_location
         )
 
         assert isinstance(compare_fig, plt.Figure)
         assert isinstance(compare_ax, plt.Axes)
         assert compare_ax.xaxis.label.get_text() == "Time, CET"
         assert compare_ax.yaxis.label.get_text() == "Pressure, [mbar]"
-        assert compare_ax.get_title() == "Pressure at Test, 03 June 2020"
+        assert (
+            compare_ax.get_title()
+            == f"Pressure at {self.test_location}, {self.test_date}"
+        )
         plt.close("all")
 
     @pytest.mark.dependency(
@@ -266,13 +272,12 @@ class TestVisualsPlotting:
             "TestVisualsPlotting::test_setup_plot_data",
             "TestVisualsPlotting::test_plot_time_series",
         ],
-        scope="module",
     )
     @pytest.mark.parametrize("arg_stability", ["unstable", None])
     def test_plot_convection(self, conftest_mock_bls_dataframe_tz, arg_stability):
         """Plot SHFs for scintillometer and free convection."""
 
-        test_data = conftest_mock_bls_dataframe_tz
+        test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
         test_data["H_free"] = pd.Series([4.4, 5.5], index=test_data.index)
 
         compare_fig, compare_ax = scintillometry.visuals.plotting.plot_convection(
@@ -292,7 +297,7 @@ class TestVisualsPlotting:
             compare_conditions = "No Height Dependency"
         compare_title = (
             "Sensible Heat Fluxes from On-Board Software and",
-            f"for Free Convection ({compare_conditions}), 03 June 2020",
+            f"for Free Convection ({compare_conditions}), {self.test_date}",
         )
         assert compare_ax.get_title() == " ".join(compare_title)
         plt.close("all")
@@ -306,7 +311,6 @@ class TestVisualsPlotting:
             "TestVisualsPlotting::test_setup_plot_data",
             "TestVisualsPlotting::test_plot_time_series",
         ],
-        scope="module",
     )
     @pytest.mark.parametrize(
         "arg_keys", [["wind_speed", "rho_air"], ["wind_speed", "wind_speed"]]
@@ -315,8 +319,8 @@ class TestVisualsPlotting:
     def test_plot_comparison(self, conftest_mock_merged_dataframe, arg_keys, arg_site):
         """Plot comparison between two dataframes."""
 
-        test_data_01 = conftest_mock_merged_dataframe
-        test_data_02 = conftest_mock_merged_dataframe
+        test_data_01 = conftest_mock_merged_dataframe.copy(deep=True)
+        test_data_02 = conftest_mock_merged_dataframe.copy(deep=True)
         if "rho_air" in arg_keys:
             test_labels = ["Wind Speed", "Air Density"]
         else:
@@ -339,7 +343,7 @@ class TestVisualsPlotting:
         if test_labels[1] != test_labels[0]:
             test_title_label = f"{test_title_label} and {test_labels[1]}"
         test_title = (
-            f"{test_title_label} from Test 01 and Test 02{test_site}, 03 June 2020"
+            f"{test_title_label} from Test 01 and Test 02{test_site}, {self.test_date}"
         )
         assert compare_ax.get_title() == test_title
         plt.close("all")
@@ -354,24 +358,22 @@ class TestVisualsPlotting:
             "TestVisualsPlotting::test_plot_generic",
             "TestVisualsPlotting::test_plot_comparison",
         ],
-        scope="module",
     )
     @pytest.mark.parametrize("arg_location", ["", "Test Location"])
     def test_plot_iterated_fluxes(
-        self,
-        conftest_mock_iterated_dataframe,
-        conftest_mock_save_figure,
-        arg_location,
+        self, conftest_mock_iterated_dataframe, conftest_mock_save_figure, arg_location
     ):
         """Plot and save iterated fluxes."""
 
         _ = conftest_mock_save_figure  # otherwise figure is saved to disk
-        timestamp = conftest_mock_iterated_dataframe.index[0]
+
+        test_data = conftest_mock_iterated_dataframe.copy(deep=True)
+        timestamp = test_data.index[0]
         (
             compare_shf,
             compare_comp,
         ) = scintillometry.visuals.plotting.plot_iterated_fluxes(
-            iteration_data=conftest_mock_iterated_dataframe,
+            iteration_data=test_data,
             time_id=timestamp,
             location=arg_location,
         )
@@ -384,13 +386,13 @@ class TestVisualsPlotting:
             test_location = ""
         test_title = (
             "Sensible Heat Flux",
-            f"{test_location}, 03 June 2020",
+            f"{test_location}, {self.test_date}",
         )
         assert compare_shf.gca().get_title() == "".join(test_title)
 
         test_title = (
             "Sensible Heat Flux from Free Convection and Iterated Flux",
-            f"{test_location}, 03 June 2020",
+            f"{test_location}, {self.test_date}",
         )
         assert compare_comp.gca().get_title() == "".join(test_title)
         plt.close("all")
@@ -404,7 +406,6 @@ class TestVisualsPlotting:
             "TestVisualsFormatting::test_get_site_name",
             "TestVisualsPlotting::test_setup_plot_data",
         ],
-        scope="module",
     )
     @pytest.mark.parametrize("arg_name", ["obukhov", "shf"])
     @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
@@ -417,8 +418,8 @@ class TestVisualsPlotting:
     ):
         """Plots comparison with InnFLUX data."""
 
-        test_iterated = conftest_mock_iterated_dataframe
-        test_innflux = conftest_mock_innflux_dataframe_tz
+        test_iterated = conftest_mock_iterated_dataframe.copy(deep=True)
+        test_innflux = conftest_mock_innflux_dataframe_tz.copy(deep=True)
 
         if arg_site:
             test_site = f" at {arg_site}"
