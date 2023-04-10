@@ -72,15 +72,27 @@ def label_selector(dependent):
         "obukhov": ("Obukhov Length", r"$L_{Ob}$", "[m]"),
         "theta_star": ("Temperature Scale", r"$\theta^{*}$", "[K]"),
         "u_star": ("Friction Velocity", r"$u^{*}$", r"[m$\cdot$s$^{-2}$]"),
-        "temperature_2m": ("Temperature", r"$T$", "[K]"),
+        "temperature_2m": ("2m Temperature", r"$T$", "[K]"),
+        "temperature": ("Temperature", r"$T$", "[K]"),
         "pressure": ("Pressure", r"$P$", "[mbar]"),
         "rho_air": ("Air Density", r"$\rho_{air}$", r"[kg$\cdotm^{3}$]"),
-        "cn2": ("Structure Parameter of Refractive Index", "", r"$C_{n}^{2}$"),
-        "ct2": ("Structure Parameter of Temperature", "", r"$C_{T}^{2}$"),
+        "cn2": ("Structure Parameter of Refractive Index", r"$C_{n}^{2}$", ""),
+        "ct2": ("Structure Parameter of Temperature", r"$C_{T}^{2}$", ""),
         "h_free": (
             "Sensible Heat Flux (Free Convection)",
             r"$Q_{H free}$",
             r"[W$\cdot$m$^{-2}$]",
+        ),
+        "water_vapour_pressure": ("Water Vapour Pressure", r"$e$", "[Pa]"),
+        "air_pressure": ("Water Vapour Pressure", r"$e$", "[Pa]"),
+        "mixing_ratio": ("Mixing Ratio", r"$r$", r"[$kg \cdot kg^{-1}]"),
+        "virtual_temperature": ("Virtual Temperature", r"$T_{v}$", "[K]"),
+        "msl_pressure": ("Mean Sea-Level Pressure", r"$P_{MSL}$", "[Pa]"),
+        "potential_temperature": ("Potential Temperature", r"$\theta$", "[K]"),
+        "grad_potential_temperature": (
+            "Gradient of Potential Temperature",
+            r"$\Delta \theta$",
+            r"[$K\cdot m^{-1}$]",
         ),
     }
 
@@ -455,5 +467,42 @@ def plot_innflux(iter_data, innflux_data, name="obukhov", site=""):
     title_plot(title=title_string, timestamp=iter_tzone["date"], location=site_label)
     axes = plt.gca()
     set_xy_labels(ax=axes, timezone=iter_tzone["tzone"], name=name)
+
+    return fig, axes
+
+
+def plot_vertical_profile(vertical_data, time_idx, name, site=""):
+    """Plots vertical profile of variable.
+
+    Args:
+        vertical_data (dict[pd.DataFrame]): Contains time series of
+            vertical profiles.
+        time_idx (str): The time for which to plot a vertical profile.
+        name (str): Name of dependent variable, must be key in
+            <vertical_data>.
+        site (str): Location of data collection. Default empty string.
+    """
+
+    fig = plt.figure(figsize=(26, 8))
+    vertical_profile = vertical_data[name].iloc[
+        vertical_data[name].index.indexer_at_time(time_idx)
+    ]
+    time_data = get_date_and_timezone(data=vertical_data[name])
+    vertical_profile.plot(color="black", label="HATPRO")
+
+    time_label = f"{time_data['date']} {time_idx}"
+    title_name = label_selector(name)
+    title_string = f"Vertical Profile of {title_name[0]} (HATPRO)"
+    site_label = get_site_name(site_name=site, dataframe=vertical_data[name])
+    title_plot(title=title_string, timestamp=time_label, location=site_label)
+    axes = plt.gca()
+
+    label = label_selector(dependent=name)
+    x_label = f"{label[0]}"
+    if label[2]:  # if unit given
+        x_label = f"{x_label}, {label[2]}"
+    y_label = "Height [m]"
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
 
     return fig, axes

@@ -445,3 +445,43 @@ class TestVisualsPlotting:
         )
         assert compare_ax.get_title() == test_title
         plt.close("all")
+
+    @pytest.mark.dependency(name="TestVisualsPlotting::test_plot_vertical_profile")
+    @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
+    @pytest.mark.parametrize("arg_name", ["temperature", "test_variable"])
+    def test_plot_vertical_profile(
+        self, conftest_mock_hatpro_temperature_dataframe_tz, arg_site, arg_name
+    ):
+        """Plots vertical profile at specific time."""
+
+        test_data = {
+            arg_name: conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
+        }
+        test_idx = "03:20"
+        if arg_site:
+            test_site = f" at {arg_site}"
+        else:
+            test_site = ""
+        test_title = (
+            f"Vertical Profile of {arg_name.title()} (HATPRO){test_site},",
+            f" {self.test_date} {test_idx}",
+        )
+
+        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_vertical_profile(
+            vertical_data=test_data,
+            time_idx=test_idx,
+            name=arg_name,
+            site=arg_site,
+        )
+
+        assert isinstance(compare_fig, plt.Figure)
+        assert isinstance(compare_ax, plt.Axes)
+
+        assert compare_ax.yaxis.get_label().get_text() == "Height [m]"
+        compare_x_label = compare_ax.xaxis.get_label().get_text()
+        if arg_name != "temperature":
+            assert compare_x_label == arg_name.title()
+        else:
+            assert compare_x_label == "Temperature, [K]"
+        assert compare_ax.get_title() == "".join(test_title)
+        plt.close("all")
