@@ -32,7 +32,7 @@ def check_file_exists(fname):
     """Check file exists.
 
     Args:
-        fname: Path to a file.
+        fname (str): Path to a file.
 
     Raises:
         FileNotFoundError: No file found with path: <fname>.

@@ -14,7 +14,7 @@ limitations under the License.
 
 =====
 
-Tests path weighting module.
+Tests mathematical derivations of input data.
 """
 
 import numpy as np

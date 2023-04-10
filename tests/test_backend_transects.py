@@ -14,7 +14,7 @@ limitations under the License.
 
 =====
 
-Tests path weighting module.
+Tests path weighting and topographical functions.
 """
 
 import numpy as np

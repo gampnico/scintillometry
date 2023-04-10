@@ -14,7 +14,7 @@ limitations under the License.
 
 =====
 
-Tests path weighting module.
+Tests plotting module.
 
 Any test that creates a plot should be explicitly appended with
 `plt.close("all")` if the test scope is outside the function, otherwise the
