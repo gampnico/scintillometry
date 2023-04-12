@@ -524,6 +524,8 @@ class ProfileConstructor(AtmosConstants):
         )
 
         derived_measurements = {
+            "temperature": vertical_data["temperature"],
+            "humidity": vertical_data["humidity"],
             "water_vapour_pressure": wvp,
             "air_pressure": z_pressure,
             "mixing_ratio": m_ratio,

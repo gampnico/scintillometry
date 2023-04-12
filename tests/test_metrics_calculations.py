@@ -117,6 +117,8 @@ class TestMetricsTopographyClass:
 class TestMetricsFluxClass:
     """Test class for flux metrics."""
 
+    test_metrics = scintillometry.metrics.calculations.MetricsFlux()
+
     @pytest.mark.dependency(name="TestMetricsFluxClass::test_metrics_flux_init")
     def test_metrics_flux_init(self):
         """Boilerplate implementation in case of future changes."""
@@ -133,14 +135,12 @@ class TestMetricsFluxClass:
     def test_construct_flux_dataframe(self, conftest_mock_merged_dataframe, arg_regime):
         """Compute sensible heat flux for free convection."""
 
-        test_metrics = scintillometry.metrics.calculations.MetricsFlux()
-
         test_args = argparse.Namespace(
             regime=arg_regime, beam_wavelength=880, beam_error=20
         )
         test_frame = conftest_mock_merged_dataframe[["CT2", "H_convection"]]
 
-        compare_metrics = test_metrics.construct_flux_dataframe(
+        compare_metrics = self.test_metrics.construct_flux_dataframe(
             user_args=test_args,
             interpolated_data=conftest_mock_merged_dataframe,
             z_eff=(100, 200),
@@ -227,7 +227,9 @@ class TestMetricsFluxClass:
     def test_iterate_fluxes(
         self,
         conftest_mock_save_figure,
-        conftest_mock_derived_dataframe,
+        conftest_mock_merged_dataframe,
+        conftest_mock_weather_dataframe_tz,
+        conftest_mock_hatpro_dataset,
     ):
         """Compute sensible heat fluxes with MOST through iteration."""
 
@@ -237,7 +239,11 @@ class TestMetricsFluxClass:
         test_args = argparse.Namespace(
             switch_time="05:24", beam_wavelength=880, beam_error=20
         )
-        test_dataset = {"interpolated": conftest_mock_derived_dataframe}
+        test_dataset = {
+            "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
+            "interpolated": conftest_mock_merged_dataframe.copy(deep=True),
+            "vertical": conftest_mock_hatpro_dataset,
+        }
         compare_metrics = test_metrics.iterate_fluxes(
             user_args=test_args,
             z_parameters={"stable": (100, 150), "unstable": (2, 150)},
@@ -295,6 +301,7 @@ class TestMetricsWorkflowClass:
         conftest_mock_weather_dataframe_tz,
         conftest_mock_transect_dataframe,
         conftest_mock_merged_dataframe,
+        conftest_mock_hatpro_dataset,
         arg_regime,
         arg_switch_time,
         arg_most_name,
@@ -310,6 +317,7 @@ class TestMetricsWorkflowClass:
             "transect": conftest_mock_transect_dataframe.copy(deep=True),
             "interpolated": conftest_mock_merged_dataframe.copy(deep=True),
             "timestamp": conftest_mock_bls_dataframe_tz.index[0],
+            "vertical": conftest_mock_hatpro_dataset,
         }
 
         test_args = argparse.Namespace(

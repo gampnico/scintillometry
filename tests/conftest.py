@@ -448,7 +448,7 @@ def fixture_conftest_mock_weather_dataframe_tz(conftest_mock_weather_dataframe):
     dataframe = dataframe.tz_convert("CET")
     assert dataframe.index.name == "time"
     oidx = dataframe.index
-    nidx = pd.date_range(oidx.min(), oidx.max(), freq="60s")
+    nidx = pd.date_range(oidx.min(), oidx.max(), freq="60S")
     dataframe = dataframe.reindex(oidx.union(nidx)).interpolate("index").reindex(nidx)
     dataframe["station"] = "0000"  # str objects were converted to NaN
     assert dataframe.index.resolution == "minute"
@@ -677,6 +677,26 @@ def fixture_conftest_mock_hatpro_temperature_dataframe_tz(
     assert dataframe.index.tz.zone == "CET"
 
     yield dataframe
+
+
+@pytest.fixture(
+    name="conftest_mock_hatpro_dataset",
+    scope="function",
+    autouse=False,
+)
+def fixture_conftest_mock_hatpro_dataset(
+    conftest_mock_hatpro_temperature_dataframe_tz,
+    conftest_mock_hatpro_humidity_dataframe_tz,
+):
+    """Mocks fully parsed HATPRO data."""
+
+    dataset = {
+        "temperature": conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True),
+        "humidity": conftest_mock_hatpro_humidity_dataframe_tz.copy(deep=True),
+    }
+    assert all(isinstance(frame, pd.DataFrame) for frame in dataset.values())
+
+    yield dataset
 
 
 # Mock processed data

@@ -570,22 +570,18 @@ class TestBackendProfileConstructor:
     @pytest.mark.parametrize("arg_elevation", [None, 600.0])
     def test_get_vertical_variables(
         self,
-        conftest_mock_hatpro_temperature_dataframe_tz,
-        conftest_mock_hatpro_humidity_dataframe_tz,
+        conftest_mock_hatpro_dataset,
         conftest_mock_weather_dataframe_tz,
         conftest_boilerplate,
         arg_elevation,
     ):
         """Derive data from vertical measurements."""
 
-        test_vertical = {
-            "temperature": conftest_mock_hatpro_temperature_dataframe_tz.copy(
-                deep=True
-            ),
-            "humidity": conftest_mock_hatpro_humidity_dataframe_tz.copy(deep=True),
-        }
+        test_vertical = conftest_mock_hatpro_dataset
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
         test_keys = [
+            "temperature",
+            "humidity",
             "water_vapour_pressure",
             "air_pressure",
             "mixing_ratio",
