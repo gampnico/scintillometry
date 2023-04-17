@@ -573,3 +573,58 @@ def plot_vertical_profile(vertical_data, time_idx, name, site=""):
     axes = plt.gca()
 
     return fig, axes
+
+
+def plot_vertical_comparison(dataset, time_index, keys, site=""):
+    """Plots comparison of two vertical profiles with the same indices.
+
+    Args:
+        dataset (dict): Dataframes of vertical profiles.
+        time_index (str or pd.Timestamp): The time for which to plot a
+            vertical profile.
+        keys (list): Dependent variable keys.
+        site (str): Location of data collection. Default empty string.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes]: Figure and axis of vertical
+        profiles.
+    """
+
+    key_number = len(keys)
+    fig, axes = plt.subplots(
+        nrows=1, ncols=key_number, sharey=True, figsize=(4 * key_number, 8)
+    )
+    subplot_labels = []
+    for i in range(key_number):
+        vertical_profile = dataset[keys[i]].iloc[
+            dataset[keys[i]].index.indexer_at_time(time_index)
+        ]
+        time_data = get_date_and_timezone(data=dataset[keys[i]])
+        axes[i].plot(
+            vertical_profile.values[0],
+            vertical_profile.columns,
+            color="black",
+            label=keys[i],
+        )
+        label = label_selector(dependent=keys[i])
+        subplot_labels.append(label[0])
+        x_label = merge_label_with_unit(label=label)
+        axes[i].set_xlabel(x_label)
+
+    axes[0].set_ylabel("Height [m]")
+    plt.ylim(bottom=0)
+
+    title_name = merge_multiple_labels(labels=subplot_labels)
+    title = f"Vertical Profiles of {title_name}"
+    site_label = get_site_name(site_name=site, dataframe=dataset[keys[0]])
+    if not site_label:
+        location = ",\n"
+    else:
+        location = f"\nat {site_label}, "
+    if not isinstance(time_index, str):
+        time_index = time_index.strftime("%H:%M")
+    time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
+    title_string = f"{title}{location}{time_label}"
+    fig.suptitle(title_string, fontweight="bold")
+
+    return fig, axes

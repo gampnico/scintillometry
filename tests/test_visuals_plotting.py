@@ -567,3 +567,46 @@ class TestVisualsPlotting:
             assert compare_x_label == "Temperature, [K]"
         assert compare_ax.get_title() == "".join(test_title)
         plt.close("all")
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_vertical_comparison",
+        depends=["TestVisualsFormatting::test_label_selector"],
+        scope="module",
+    )
+    @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
+    def test_plot_vertical_comparison(self, conftest_mock_hatpro_dataset, arg_site):
+        """Plots comparison of vertical profiles at specific time."""
+
+        test_data = conftest_mock_hatpro_dataset.copy()
+        test_idx = "05:20"
+        if arg_site:
+            test_site = f"\nat {arg_site}, "
+        else:
+            test_site = ",\n"
+        test_keys = ["temperature", "humidity"]
+        test_title = (
+            f"Vertical Profiles of Temperature and Humidity{test_site}",
+            f"{self.test_date} {test_idx} CET",
+        )
+        (
+            compare_fig,
+            compare_ax,
+        ) = scintillometry.visuals.plotting.plot_vertical_comparison(
+            dataset=test_data,
+            time_index=test_idx,
+            keys=test_keys,
+            site=arg_site,
+        )
+
+        assert isinstance(compare_fig, plt.Figure)
+        assert all(isinstance(ax, plt.Axes) for ax in compare_ax)
+        assert compare_ax[0].yaxis.get_label().get_text() == "Height [m]"
+        for i in range(len(test_keys)):
+            compare_x_label = compare_ax[i].xaxis.get_label().get_text()
+            test_label = scintillometry.visuals.plotting.label_selector(
+                dependent=test_keys[i]
+            )
+            test_x_label = f"{test_label[0]}, [{test_label[2]}]"
+            assert test_x_label in compare_x_label
+        assert compare_fig.texts[0].get_text() == "".join(test_title)
+        plt.close("all")
