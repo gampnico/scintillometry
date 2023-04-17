@@ -80,11 +80,11 @@ References
 .. [#kooijmans2016] |kooijmans2016|
 .. [#li2012] |li2012|
 .. [#maronga2014] |maronga2014|
-.. [#scintec2022] |scintec2022|
-.. [#scintec2008] |scintec2008|
 .. [#moene2003] |moene2003|
 .. [#owens1967] |owens1967|
 .. [#paulson1970] |paulson1970|
+.. [#scintec2022] |scintec2022|
+.. [#scintec2008] |scintec2008|
 .. [#thiermann1992] |thiermann1992|
 .. [#ward2013] |ward2013|
 .. [#wyngaard1971] |wyngaard1971|

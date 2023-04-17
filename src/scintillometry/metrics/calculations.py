@@ -182,7 +182,7 @@ class MetricsFlux:
 
         return match_time
 
-    def get_switch_time(self, data, method="sun", local_time=None, ri_crit=0.3):
+    def get_switch_time(self, data, method="sun", local_time=None, ri_crit=0.25):
         """Gets local time of switch between stability conditions.
 
         To override automatic detection, pass one of the following to

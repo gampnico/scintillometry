@@ -42,6 +42,8 @@ Optional arguments:
                                     Default "an1988".
     -s, --switch-time <str>     Override local time of switch between
                                     stability regimes.
+    -a, --algorithm <str>       Algorithm used to calculate switch time.
+                                    Default "sun".
     -k, --station-id <str>      ZAMG station ID (Klima-ID).
                                     Default 11803.
     --location <str>            Location of experiment. Overrides any
@@ -83,6 +85,8 @@ def user_argumentation():
                                         Default "an1988".
         -s, --switch-time <str>     Override local time of switch
                                         between stability regimes.
+        -a, --algorithm <str>       Algorithm used to calculate switch time.
+                                    Default "sun".
         -k, --station-id <str>      ZAMG station ID (Klima-ID).
                                         Default 11803.
         --location <str>            Location of experiment. Overrides
@@ -168,6 +172,17 @@ def user_argumentation():
         help="override local time of switch between stability regimes",
     )
     parser.add_argument(
+        "-a",
+        "--algorithm",
+        dest="algorithm",
+        metavar="<str>",
+        type=str,
+        required=False,
+        default="sun",
+        choices=["sun", "static", "bulk", "eddy"],
+        help="algorithm used to calculate switch time. Default 'sun'",
+    )
+    parser.add_argument(
         "-e",
         "--eddy",
         default=None,
@@ -237,7 +252,7 @@ def user_argumentation():
         type=str,
         required=False,
         default="",
-        help="Location of experiment. Overrides any other location metadata.",
+        help="Location of experiment. Overrides any other location metadata",
     )
     parser.add_argument(
         "--beam-wavelength",
@@ -246,7 +261,7 @@ def user_argumentation():
         type=int,
         required=False,
         default=880,
-        help="Transmitter beam wavelength, nm. Default 880 nm.",
+        help="Transmitter beam wavelength, nm. Default 880 nm",
     )
     parser.add_argument(
         "--beam-error",
@@ -255,7 +270,7 @@ def user_argumentation():
         type=int,
         required=False,
         default=20,
-        help="Transmitter beam error, nm. Default 20 nm.",
+        help="Transmitter beam error, nm. Default 20 nm",
     )
 
     arguments = parser.parse_args()
