@@ -30,6 +30,12 @@ In: scintillometry.metrics.calculations.py
    :undoc-members:
    :show-inheritance:
 
+References
+----------
+
+.. [#jericevic2006] |jericevic2006|
+.. [#zhao2020] |zhao2020|
+
 Module contents
 ---------------
 

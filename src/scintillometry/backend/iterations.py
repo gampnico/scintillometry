@@ -50,7 +50,6 @@ import numpy as np
 import tqdm
 
 from scintillometry.backend.constants import AtmosConstants
-from scintillometry.backend.constructions import ProfileConstructor
 
 
 class IterationMost(AtmosConstants):
@@ -73,97 +72,6 @@ class IterationMost(AtmosConstants):
         mpmath.dps = 30
         mpmath.pretty = True
         self.constants = AtmosConstants()
-
-    def get_switch_time(self, data, method="sun", local_time=None):
-        """Gets local time of switch between stability conditions.
-
-        To override automatic detection, pass one of the following to
-        the <method> argument:
-
-        - **eddy**: eddy covariance (NotImplemented)
-        - **sun**: global irradiance (i.e. sunrise)
-        - **static**: static stability from potential temperature
-          profile
-        - **bulk**: bulk Richardson number
-        - **lapse**: temperature lapse rate (NotImplemented)
-        - **brunt**: Brunt-Väisälä frequency (NotImplemented)
-
-        To manually set the regime switch time, pass a local timestamp
-        to <local_time>. This overrides all other methods.
-
-        Args:
-            data (dict): Parsed and localised dataframes, containing
-                data to construct a potential temperature profile, or
-                eddy covariance data, or global irradiance.
-            method (str): Method to calculate switch time.
-                Default "sun".
-            local_time (str): Local time of switch between stability
-                conditions. Overrides <method>.
-
-        Returns:
-            str: Local time of switch between stability conditions.
-
-        Raises:
-            UnboundLocalError: No data to calculate switch time. Set
-                <local_time> manually with `--switch-time`.
-            NotImplementedError: Switch time algorithm not implemented
-                for <method>.
-        """
-
-        if not local_time:
-            weather_data = data["weather"]
-            if isinstance(method, str):
-                method = method.lower()
-
-            if method == "sun" and "global_irradiance" in weather_data.keys():
-                print("Using global irradiance to calculate switch time.\n")
-                local_time = weather_data[weather_data["global_irradiance"] > 20].index[
-                    0
-                ]  # ~sunrise
-            elif "vertical" in data:
-                pt_profile = ProfileConstructor()
-                if method == "static":
-                    static_stability = pt_profile.get_static_stability(
-                        vertical_data=data["vertical"],
-                        meteo_data=weather_data,
-                        scheme="uneven",
-                    )
-                    heights = static_stability.columns[static_stability.columns <= 2000]
-                    mean_static_stability = static_stability[heights].mean(
-                        axis=1, skipna=True
-                    )
-                    local_time = (
-                        mean_static_stability[mean_static_stability.lt(0)]
-                        .dropna()
-                        .index[0]
-                    )
-                elif method == "bulk":
-                    # bulk richardson
-                    derived_data = pt_profile.get_vertical_variables(
-                        vertical_data=data["vertical"], meteo_data=weather_data
-                    )
-                    bulk_richardson = pt_profile.get_bulk_richardson(
-                        potential_temperature=derived_data["potential_temperature"],
-                        meteo_data=weather_data,
-                    )
-                    local_time = bulk_richardson[bulk_richardson.lt(-0.3)].index[0]
-                elif method == "eddy":
-                    raise NotImplementedError(
-                        f"Switch time algorithm not implemented for '{method}'."
-                    )
-                else:
-                    error_msg = f"Switch time algorithm not implemented for '{method}'."
-                    raise NotImplementedError(error_msg)
-            if not local_time:
-                error_msg = (
-                    "No data to calculate switch time.",
-                    "Set <local_time> manually with `--switch-time`.",
-                )
-                raise UnboundLocalError(" ".join(error_msg))
-            elif not isinstance(local_time, str):
-                local_time = local_time.strftime("%H:%M")
-
-        return local_time
 
     def momentum_stability_unstable(self, obukhov, z):
         """Integrated stability function for momentum, unstable.

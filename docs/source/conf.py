@@ -49,7 +49,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.32.a0"
+release = "0.33.a0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -157,6 +157,12 @@ rst_epilog = f"""
     J. Hydrometeor., Vol. 4, [915-928].
     DOI: `<https://doi.org/10.1175/1525-7541(2003)004\<0915:DOAEHF\>2.0.CO;2>`__
 
+.. |jericevic2006| replace:: A. Jeričević, B Grisogono (2006).
+    *The Critical Bulk Richardson Number in Urban Areas: Verification and
+    Application in a Numerical Weather Prediction Model*.
+    Tellus A: Dynamic Meteorology and Oceanography, Vol. 58:1, [19-27].
+    DOI: `<https://doi.org/10.1111/j.1600-0870.2006.00153.x>`__
+
 .. |kleissl2008| replace:: J. Kleissl, J. Gomez, S.H. Hong, *et al.* (2008).
     *Large Aperture Scintillometer Intercomparison Study*.
     Boundary-Layer Meteorology, Vol. 128, [133-150] (2008).
@@ -237,4 +243,11 @@ rst_epilog = f"""
     *A High-Resolution Model of the Planetary Boundary Layer - Sensitivity Tests
     and Comparisons with SESAME-79 Data*.
     J. Appl. Meteorology, Vol. 21 [1594-1609].
+
+.. |zhao2020| replace:: Y. Zhao, L.W. Chew, A. Kubilay, J. Carmeliet (2020).
+    *Isothermal and Non-Isothermal Flow in Street Canyons: a Review From
+    Theoretical, Experimental and Numerical Perspectives*.
+    Building and Environment, Vol. 184 [107163] .
+    DOI:`<https://doi.org/10.1016/j.buildenv.2020.107163>`__
+
 """

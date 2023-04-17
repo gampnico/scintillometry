@@ -461,39 +461,20 @@ class TestBackendProfileConstructor:
     def test_get_static_stability(
         self,
         conftest_mock_hatpro_temperature_dataframe_tz,
-        conftest_mock_hatpro_humidity_dataframe_tz,
-        conftest_mock_weather_dataframe_tz,
         conftest_mock_hatpro_scan_levels,
         conftest_boilerplate,
         arg_method,
     ):
         """Calculate static stability."""
 
-        test_hatpro = {
-            "temperature": conftest_mock_hatpro_temperature_dataframe_tz.copy(
-                deep=True
-            ),
-            "humidity": conftest_mock_hatpro_humidity_dataframe_tz.copy(deep=True),
-        }
-        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
-        assert isinstance(test_hatpro, dict)
-        for frame in test_hatpro.values():
-            conftest_boilerplate.check_dataframe(dataframe=frame)
+        test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
 
         compare_stability = self.test_profile.get_static_stability(
-            vertical_data=test_hatpro,
-            meteo_data=test_weather,
-            station_elevation=self.test_elevation,
-            scheme=arg_method,
+            potential_temperature=test_temperature, scheme=arg_method
         )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_stability)
-        conftest_boilerplate.index_not_equal(
-            compare_stability.index, test_weather.index
-        )
-        pd.testing.assert_index_equal(
-            compare_stability.index, test_hatpro["temperature"].index
-        )
+        pd.testing.assert_index_equal(compare_stability.index, test_temperature.index)
         assert all(
             key in compare_stability.columns for key in conftest_mock_hatpro_scan_levels
         )

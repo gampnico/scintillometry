@@ -20,8 +20,7 @@ API
 Main module
 -----------
 
-scintillometry.main module
---------------------------
+In scintillometry.main.py
 
 .. automodule:: scintillometry.main
    :members:
