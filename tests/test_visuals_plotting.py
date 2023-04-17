@@ -17,12 +17,12 @@ limitations under the License.
 Tests plotting module.
 
 Any test that creates a plot should be explicitly appended with
-`plt.close("all")` if the test scope is outside the function, otherwise the
-plots remain open in memory.
+`plt.close("all")`, otherwise the plots remain open in memory.
 """
 
 import datetime
 
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
@@ -36,6 +36,36 @@ class TestVisualsFormatting:
 
     test_location = "Test Location"
     test_date = "03 June 2020"
+
+    @pytest.mark.dependency(
+        name="TestVisualsFormatting::test_initialise_formatting", scope="function"
+    )
+    @pytest.mark.parametrize("arg_offset", [1, 0])
+    def test_initialise_formatting(self, arg_offset):
+        """Initialise font sizes for matplotlib figures."""
+
+        plt.rcdefaults()
+        test_small = 14 + arg_offset
+        test_medium = 16 + arg_offset
+        test_large = 18 + arg_offset
+        test_extra = 20 + arg_offset
+        test_params = {
+            "font.size": test_small,
+            "xtick.labelsize": test_small,
+            "ytick.labelsize": test_small,
+            "legend.fontsize": test_small,
+            "axes.labelsize": test_medium,
+            "axes.titlesize": test_large,
+            "figure.titlesize": test_extra,
+        }
+
+        scintillometry.visuals.plotting.initialise_formatting(
+            small=test_small, medium=test_medium, large=test_large, extra=test_extra
+        )
+        for param, font_size in test_params.items():
+            assert plt.rcParams[param] == font_size
+        plt.rcdefaults()
+        plt.close("all")
 
     @pytest.mark.dependency(name="TestVisualsFormatting::test_get_site_name")
     @pytest.mark.parametrize("arg_string", ["", 3, "Test Location"])
@@ -71,8 +101,8 @@ class TestVisualsFormatting:
     @pytest.mark.parametrize(
         "arg_label",
         [
-            ["shf", ("Sensible Heat Flux", r"$Q_{H}$", r"[W$\cdot$m$^{-2}$]")],
-            ["SHF", ("Sensible Heat Flux", r"$Q_{H}$", r"[W$\cdot$m$^{-2}$]")],
+            ["shf", ("Sensible Heat Flux", r"$Q_{H}$", r"W$\cdot$m$^{-2}$")],
+            ["SHF", ("Sensible Heat Flux", r"$Q_{H}$", r"W$\cdot$m$^{-2}$")],
             ["missing key", ("Missing Key", r"$missing key$", "")],
         ],
     )
@@ -129,9 +159,55 @@ class TestVisualsFormatting:
         assert test_fig.legend
         plt.close("all")
 
+    @pytest.mark.dependency(name="TestVisualsFormatting::test_merge_label_with_unit")
+    @pytest.mark.parametrize("arg_unit", ["m", "", r"m$\theta$", r"m$^{-1}$"])
+    def test_merge_label_with_unit(self, arg_unit):
+        """Merge name and unit strings."""
+
+        test_label = ("Variable Name", r"$V$", arg_unit)
+        compare_label = scintillometry.visuals.plotting.merge_label_with_unit(
+            label=test_label
+        )
+
+        assert isinstance(compare_label, str)
+        assert test_label[1] not in compare_label
+        if not arg_unit:
+            assert compare_label == "Variable Name"
+        else:
+            assert compare_label == f"Variable Name, [{arg_unit}]"
+
+    @pytest.mark.dependency(
+        name="TestVisualsFormatting::test_merge_merge_multiple_labels"
+    )
+    @pytest.mark.parametrize("arg_labels", [1, 2, 3])
+    def test_merge_multiple_labels(self, arg_labels):
+        """Merge and format multiple labels."""
+
+        test_labels = []
+        for i in range(arg_labels):
+            test_labels.append(f"{i}")
+        compare_label = scintillometry.visuals.plotting.merge_multiple_labels(
+            labels=test_labels
+        )
+
+        assert isinstance(compare_label, str)
+        for label in test_labels:
+            assert label in compare_label
+        if arg_labels == 1:
+            assert compare_label == test_labels[0]
+        elif arg_labels == 2:
+            test_merged = "0 and 1"
+            assert compare_label == test_merged
+        else:
+            test_merged = "0, 1, 2"
+            assert compare_label == test_merged
+
     @pytest.mark.dependency(
         name="TestVisualsFormatting::test_set_xy_labels",
-        depends=["TestVisualsFormatting::test_label_selector"],
+        depends=[
+            "TestVisualsFormatting::test_label_selector",
+            "TestVisualsFormatting::test_merge_label_with_unit",
+        ],
     )
     @pytest.mark.parametrize("arg_name", ["shf", "test variable"])
     def test_set_xy_labels(self, arg_name):
@@ -140,6 +216,7 @@ class TestVisualsFormatting:
         plt.figure(figsize=(26, 6))
         test_timezone = pytz.timezone(zone="CET")
         test_axis = plt.gca()
+        test_formatter = matplotlib.dates.DateFormatter("%H:%M", test_timezone)
         compare_axis = scintillometry.visuals.plotting.set_xy_labels(
             ax=test_axis, timezone=test_timezone, name=arg_name
         )
@@ -152,6 +229,11 @@ class TestVisualsFormatting:
             assert compare_name == arg_name.title()
         else:
             assert compare_name == r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]"
+
+        compare_formatter = compare_axis.xaxis.get_major_formatter()
+        assert isinstance(compare_formatter, matplotlib.dates.DateFormatter)
+        assert compare_formatter.tz == test_formatter.tz
+        assert compare_formatter.fmt == test_formatter.fmt
         plt.close("all")
 
 
@@ -259,7 +341,7 @@ class TestVisualsPlotting:
         assert compare_ax.yaxis.label.get_text() == "Pressure, [mbar]"
         assert (
             compare_ax.get_title()
-            == f"Pressure at {self.test_location}, {self.test_date}"
+            == f"Pressure at {self.test_location},\n{self.test_date}"
         )
         plt.close("all")
 
@@ -297,7 +379,7 @@ class TestVisualsPlotting:
             compare_conditions = "No Height Dependency"
         compare_title = (
             "Sensible Heat Fluxes from On-Board Software and",
-            f"for Free Convection ({compare_conditions}), {self.test_date}",
+            f"for Free Convection ({compare_conditions}),\n{self.test_date}",
         )
         assert compare_ax.get_title() == " ".join(compare_title)
         plt.close("all")
@@ -343,7 +425,7 @@ class TestVisualsPlotting:
         if test_labels[1] != test_labels[0]:
             test_title_label = f"{test_title_label} and {test_labels[1]}"
         test_title = (
-            f"{test_title_label} from Test 01 and Test 02{test_site}, {self.test_date}"
+            f"{test_title_label} from Test 01 and Test 02{test_site},\n{self.test_date}"
         )
         assert compare_ax.get_title() == test_title
         plt.close("all")
@@ -386,13 +468,13 @@ class TestVisualsPlotting:
             test_location = ""
         test_title = (
             "Sensible Heat Flux",
-            f"{test_location}, {self.test_date}",
+            f"{test_location},\n{self.test_date}",
         )
         assert compare_shf.gca().get_title() == "".join(test_title)
 
         test_title = (
-            "Sensible Heat Flux from Free Convection and Iterated Flux",
-            f"{test_location}, {self.test_date}",
+            "Sensible Heat Flux from Free Convection and Iteration",
+            f"{test_location},\n{self.test_date}",
         )
         assert compare_comp.gca().get_title() == "".join(test_title)
         plt.close("all")
@@ -441,7 +523,7 @@ class TestVisualsPlotting:
         assert isinstance(compare_ax, plt.Axes)
 
         test_title = (
-            f"{test_name} from Scintillometer and InnFLUX{test_site}, 03 June 2020"
+            f"{test_name} from Scintillometer and InnFLUX{test_site},\n{self.test_date}"
         )
         assert compare_ax.get_title() == test_title
         plt.close("all")
@@ -457,14 +539,14 @@ class TestVisualsPlotting:
         test_data = {
             arg_name: conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         }
-        test_idx = "03:20"
+        test_idx = "05:20"
         if arg_site:
-            test_site = f" at {arg_site}"
+            test_site = f"\nat {arg_site}, "
         else:
-            test_site = ""
+            test_site = ",\n"
         test_title = (
-            f"Vertical Profile of {arg_name.title()} (HATPRO){test_site},",
-            f" {self.test_date} {test_idx}",
+            f"Vertical Profile of {arg_name.title()}{test_site}",
+            f"{self.test_date} {test_idx} CET",
         )
 
         compare_fig, compare_ax = scintillometry.visuals.plotting.plot_vertical_profile(

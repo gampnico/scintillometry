@@ -24,6 +24,28 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
+def initialise_formatting(small=14, medium=16, large=18, extra=20):
+    """Initialises font sizes for matplotlib figures.
+
+    Called separately from other plotting functions in this module to
+    avoid overwriting on-the-fly formatting changes.
+
+    Args:
+        small (int): Size of text, ticks, legend.
+        medium (int): Size of axis labels.
+        large (int): Size of axis title.
+        extra (int): Size of figure title (suptitle).
+    """
+
+    plt.rc("font", size=small)  # controls default text sizes
+    plt.rc("axes", titlesize=large)  # fontsize of the axes title
+    plt.rc("axes", labelsize=medium)  # fontsize of the x and y labels
+    plt.rc("xtick", labelsize=small)  # fontsize of the tick labels
+    plt.rc("ytick", labelsize=small)  # fontsize of the tick labels
+    plt.rc("legend", fontsize=small)  # legend fontsize
+    plt.rc("figure", titlesize=extra)  # fontsize of the figure title
+
+
 def get_site_name(site_name, dataframe=None):
     """Gets name of site from user string or from dataframe metadata.
 
@@ -67,33 +89,30 @@ def label_selector(dependent):
     """
 
     implemented_labels = {
-        "shf": ("Sensible Heat Flux", r"$Q_{H}$", r"[W$\cdot$m$^{-2}$]"),
-        "wind_speed": ("Wind Speed", r"$u$", r"[ms$^{-2}$]"),
-        "obukhov": ("Obukhov Length", r"$L_{Ob}$", "[m]"),
-        "theta_star": ("Temperature Scale", r"$\theta^{*}$", "[K]"),
-        "u_star": ("Friction Velocity", r"$u^{*}$", r"[m$\cdot$s$^{-2}$]"),
-        "temperature_2m": ("2m Temperature", r"$T$", "[K]"),
-        "temperature": ("Temperature", r"$T$", "[K]"),
-        "pressure": ("Pressure", r"$P$", "[mbar]"),
-        "rho_air": ("Air Density", r"$\rho_{air}$", r"[kg$\cdotm^{3}$]"),
+        "air_pressure": ("Water Vapour Pressure", r"$e$", "Pa"),
         "cn2": ("Structure Parameter of Refractive Index", r"$C_{n}^{2}$", ""),
         "ct2": ("Structure Parameter of Temperature", r"$C_{T}^{2}$", ""),
-        "h_free": (
-            "Sensible Heat Flux (Free Convection)",
-            r"$Q_{H free}$",
-            r"[W$\cdot$m$^{-2}$]",
-        ),
-        "water_vapour_pressure": ("Water Vapour Pressure", r"$e$", "[Pa]"),
-        "air_pressure": ("Water Vapour Pressure", r"$e$", "[Pa]"),
-        "mixing_ratio": ("Mixing Ratio", r"$r$", r"[$kg \cdot kg^{-1}]"),
-        "virtual_temperature": ("Virtual Temperature", r"$T_{v}$", "[K]"),
-        "msl_pressure": ("Mean Sea-Level Pressure", r"$P_{MSL}$", "[Pa]"),
-        "potential_temperature": ("Potential Temperature", r"$\theta$", "[K]"),
         "grad_potential_temperature": (
             "Gradient of Potential Temperature",
             r"$\Delta \theta$",
-            r"[$K\cdot m^{-1}$]",
+            r"K$\cdot$m$^{-1}$",
         ),
+        "h_free": ("Sensible Heat Flux", r"$Q_{H free}$", r"W$\cdot$m$^{-2}$"),
+        "humidity": ("Humidity", r"$\rho_{v}$", r"kg$\cdot$m$^{-3}$"),
+        "mixing_ratio": ("Mixing Ratio", r"$r$", r"kg$\cdot$kg$^{-1}"),
+        "msl_pressure": ("Mean Sea-Level Pressure", r"$P_{MSL}$", "Pa"),
+        "obukhov": ("Obukhov Length", r"$L_{Ob}$", "m"),
+        "potential_temperature": ("Potential Temperature", r"$\theta$", "K"),
+        "pressure": ("Pressure", r"$P$", "mbar"),
+        "rho_air": ("Air Density", r"$\rho_{air}$", r"kg$\cdot$m$^{3}$"),
+        "shf": ("Sensible Heat Flux", r"$Q_{H}$", r"W$\cdot$m$^{-2}$"),
+        "temperature": ("Temperature", r"$T$", "K"),
+        "temperature_2m": ("2m Temperature", r"$T$", "K"),
+        "theta_star": ("Temperature Scale", r"$\theta^{*}$", "K"),
+        "u_star": ("Friction Velocity", r"$u^{*}$", r"m$\cdot$s$^{-2}$"),
+        "virtual_temperature": ("Virtual Temperature", r"$T_{v}$", "K"),
+        "water_vapour_pressure": ("Water Vapour Pressure", r"$e$", "Pa"),
+        "wind_speed": ("Wind Speed", r"$u$", r"ms$^{-2}$"),
     }
 
     name = dependent.lower()
@@ -140,11 +159,55 @@ def title_plot(title, timestamp, location=""):
     else:
         location = f" at {location}"
 
-    title_string = "".join((f"{title}{location}, {timestamp}"))
-    plt.title(title_string, fontsize=24, fontweight="bold")
+    title_string = "".join((f"{title}{location},\n{timestamp}"))
+    plt.title(title_string, fontweight="bold")
     plt.legend(loc="upper left")
 
     return title_string
+
+
+def merge_label_with_unit(label):
+    """Merges variable name with its unit if applicable.
+
+    Args:
+        label (tuple[str, str, str]): Contains the name, symbol, and
+            unit of a variable. Supports both TeX and empty strings.
+            Strings containing TeX must be passed as raw strings::
+
+                label = ("Name", "Symbol", r"$Unit_{TeX}$")
+                label = ("Name", r"$Symbol_{TeX}$", "")
+
+    Returns:
+        str: Formatted string with the name and unit of a variable.
+    """
+
+    if not label[2]:  # if unit given
+        merged_label = f"{label[0]}"
+    else:
+        merged_label = f"{label[0]}, [{label[2]}]"
+
+    return merged_label
+
+
+def merge_multiple_labels(labels):
+    """Merges multiple labels into a single formatted string.
+
+    Args:
+        labels (list[str]): Labels, which may contain duplicates.
+
+    Returns:
+        str: A formatted, puncutated string with no duplicates.
+    """
+
+    unique_text = list(dict.fromkeys(labels))
+    if len(unique_text) < 2:
+        merged = f"{unique_text[0]}"
+    elif len(unique_text) == 2:
+        merged = " and ".join(unique_text)
+    else:
+        merged = ", ".join(unique_text)
+
+    return merged
 
 
 def set_xy_labels(ax, timezone, name):
@@ -162,10 +225,8 @@ def set_xy_labels(ax, timezone, name):
     """
 
     x_label = f"Time, {timezone.zone}"
-    label = label_selector(dependent=name)
-    y_label = f"{label[0]}"
-    if label[2]:  # if unit given
-        y_label = f"{y_label}, {label[2]}"
+    label_text = label_selector(dependent=name)
+    y_label = merge_label_with_unit(label=label_text)
 
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -194,8 +255,8 @@ def save_figure(
             print(error)
 
     plot_id = timestamp.strftime("%Y%m%d")
-
     plot_id = re.sub(r"\W+", "", str(plot_id))
+
     if suffix:
         suffix = f"_{suffix}"
 
@@ -380,15 +441,8 @@ def plot_comparison(df_01, df_02, keys, labels, site=""):
         name=labels[1],
     )
 
-    label_01 = label_selector(keys[0])
-    label_02 = label_selector(keys[1])
-
-    if f"{label_01[0]}" in f"{label_02[0]}":
-        title_name = f"{label_01[0]}"
-    elif f"{label_02[0]}" in f"{label_01[0]}":
-        title_name = f"{label_02[0]}"
-    else:
-        title_name = f"{label_01[0]} and {label_02[0]}"
+    key_labels = [label_selector(keys[0])[0], label_selector(keys[1])[0]]
+    title_name = merge_multiple_labels(labels=key_labels)
 
     title_string = f"{title_name} from {labels[0]} and {labels[1]}"
     site_label = get_site_name(site_name=site, dataframe=plot_data_01)
@@ -421,7 +475,7 @@ def plot_iterated_fluxes(iteration_data, time_id, location=""):
         df_01=iteration_data,
         df_02=iteration_data,
         keys=["H_free", "shf"],
-        labels=["Free Convection", "Iterated Flux"],
+        labels=["Free Convection", "Iteration"],
         site=location,
     )
     fig_comp = plt.gcf()
@@ -477,32 +531,45 @@ def plot_vertical_profile(vertical_data, time_idx, name, site=""):
     Args:
         vertical_data (dict[pd.DataFrame]): Contains time series of
             vertical profiles.
-        time_idx (str): The time for which to plot a vertical profile.
+        time_idx (str or pd.Timestamp): The local time for which to plot
+            a vertical profile.
         name (str): Name of dependent variable, must be key in
             <vertical_data>.
         site (str): Location of data collection. Default empty string.
     """
 
-    fig = plt.figure(figsize=(26, 8))
+    fig = plt.figure(figsize=(4, 8))
     vertical_profile = vertical_data[name].iloc[
         vertical_data[name].index.indexer_at_time(time_idx)
     ]
     time_data = get_date_and_timezone(data=vertical_data[name])
-    vertical_profile.plot(color="black", label="HATPRO")
-
-    time_label = f"{time_data['date']} {time_idx}"
     title_name = label_selector(name)
-    title_string = f"Vertical Profile of {title_name[0]} (HATPRO)"
-    site_label = get_site_name(site_name=site, dataframe=vertical_data[name])
-    title_plot(title=title_string, timestamp=time_label, location=site_label)
-    axes = plt.gca()
 
+    plt.plot(
+        vertical_profile.values[0],
+        vertical_profile.columns,
+        color="black",
+        label=title_name,
+    )
+
+    plt.ylim(bottom=0)
     label = label_selector(dependent=name)
-    x_label = f"{label[0]}"
-    if label[2]:  # if unit given
-        x_label = f"{x_label}, {label[2]}"
+    x_label = merge_label_with_unit(label=label)
     y_label = "Height [m]"
     plt.xlabel(x_label)
     plt.ylabel(y_label)
+
+    title = f"Vertical Profile of {title_name[0]}"
+    site_label = get_site_name(site_name=site, dataframe=vertical_data[name])
+    if not site_label:
+        location = ",\n"
+    else:
+        location = f"\nat {site_label}, "
+    if not isinstance(time_idx, str):
+        time_idx = time_idx.strftime("%H:%M")
+    time_label = f"{time_data['date']} {time_idx} {time_data['tzone']}"
+    title_string = f"{title}{location}{time_label}"
+    plt.title(title_string, fontweight="bold")
+    axes = plt.gca()
 
     return fig, axes
