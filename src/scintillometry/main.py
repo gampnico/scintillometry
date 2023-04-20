@@ -150,17 +150,7 @@ def user_argumentation():
     )
     # Parameters
     group = parser.add_mutually_exclusive_group()
-    # --profile and --switch-time are incompatible
-    group.add_argument(
-        "-p",
-        "--profile",
-        default=None,
-        dest="profile_prefix",
-        type=str,
-        metavar="<path>",
-        required=False,
-        help="path prefix to vertical temperature and humidity measurements (HATPRO)",
-    )
+    # --switch-time and --algorithm are incompatible
     group.add_argument(
         "-s",
         "--switch-time",
@@ -171,7 +161,7 @@ def user_argumentation():
         default=None,
         help="override local time of switch between stability regimes",
     )
-    parser.add_argument(
+    group.add_argument(
         "-a",
         "--algorithm",
         dest="algorithm",
@@ -181,6 +171,16 @@ def user_argumentation():
         default="sun",
         choices=["sun", "static", "bulk", "eddy"],
         help="algorithm used to calculate switch time. Default 'sun'",
+    )
+    parser.add_argument(
+        "-p",
+        "--profile",
+        default=None,
+        dest="profile_prefix",
+        type=str,
+        metavar="<path>",
+        required=False,
+        help="path prefix to vertical temperature and humidity measurements (HATPRO)",
     )
     parser.add_argument(
         "-e",
