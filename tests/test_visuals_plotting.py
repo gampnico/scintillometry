@@ -242,6 +242,12 @@ class TestVisualsPlotting:
 
     test_location = "Test Location"
     test_date = "03 June 2020"
+    test_timestamp = pd.Timestamp(f"{test_date} 05:20", tz="CET")
+
+    def test_visualsplotting_attributes(self):
+        assert isinstance(self.test_timestamp, pd.Timestamp)
+        assert self.test_timestamp.strftime("%Y-%m-%d %H:%M") == "2020-06-03 05:20"
+        assert self.test_timestamp.tz.zone == "CET"
 
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_setup_plot_data",
@@ -539,19 +545,19 @@ class TestVisualsPlotting:
         test_data = {
             arg_name: conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         }
-        test_idx = "05:20"
+
         if arg_site:
             test_site = f"\nat {arg_site}, "
         else:
             test_site = ",\n"
         test_title = (
             f"Vertical Profile of {arg_name.title()}{test_site}",
-            f"{self.test_date} {test_idx} CET",
+            f"{self.test_date} 05:20 CET",
         )
 
         compare_fig, compare_ax = scintillometry.visuals.plotting.plot_vertical_profile(
             vertical_data=test_data,
-            time_idx=test_idx,
+            time_idx=self.test_timestamp,
             name=arg_name,
             site=arg_site,
         )
@@ -578,7 +584,7 @@ class TestVisualsPlotting:
         """Plots comparison of vertical profiles at specific time."""
 
         test_data = conftest_mock_hatpro_dataset.copy()
-        test_idx = "05:20"
+
         if arg_site:
             test_site = f"\nat {arg_site}, "
         else:
@@ -586,14 +592,14 @@ class TestVisualsPlotting:
         test_keys = ["temperature", "humidity"]
         test_title = (
             f"Vertical Profiles of Temperature and Humidity{test_site}",
-            f"{self.test_date} {test_idx} CET",
+            f"{self.test_date} 05:20 CET",
         )
         (
             compare_fig,
             compare_ax,
         ) = scintillometry.visuals.plotting.plot_vertical_comparison(
             dataset=test_data,
-            time_index=test_idx,
+            time_index=self.test_timestamp,
             keys=test_keys,
             site=arg_site,
         )

@@ -19,7 +19,7 @@ Automates data plotting.
 
 import os
 import re
-
+import math
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -525,48 +525,54 @@ def plot_innflux(iter_data, innflux_data, name="obukhov", site=""):
     return fig, axes
 
 
-def plot_vertical_profile(vertical_data, time_idx, name, site=""):
+def plot_vertical_profile(vertical_data, time_idx, name, site="", y_lim=None):
     """Plots vertical profile of variable.
 
     Args:
         vertical_data (dict[pd.DataFrame]): Contains time series of
             vertical profiles.
-        time_idx (str or pd.Timestamp): The local time for which to plot
-            a vertical profile.
+        time_idx (pd.Timestamp): The local time for which to plot a
+            vertical profile.
         name (str): Name of dependent variable, must be key in
             <vertical_data>.
         site (str): Location of data collection. Default empty string.
     """
 
-    fig = plt.figure(figsize=(4, 8))
-    vertical_profile = vertical_data[name].iloc[
-        vertical_data[name].index.indexer_at_time(time_idx)
-    ]
+    if not y_lim:
+        fig = plt.figure(figsize=(4, 8))
+    else:
+        fig = plt.figure()
+    vertical_profile = vertical_data[name].loc[[time_idx]]
     time_data = get_date_and_timezone(data=vertical_data[name])
-    title_name = label_selector(name)
+    variable_name = label_selector(dependent=name)
 
     plt.plot(
         vertical_profile.values[0],
         vertical_profile.columns,
         color="black",
-        label=title_name,
+        label=variable_name,
     )
+    if not y_lim:
+        plt.ylim(bottom=0)
+    else:
+        plt.ylim(0, y_lim)
+        height = vertical_profile.columns[vertical_profile.columns <= y_lim][-1]
+        xlim_max = math.ceil(vertical_profile[height][0])
+        if xlim_max > 1:
+            plt.xlim(math.floor(vertical_profile[0][0]), xlim_max)
 
-    plt.ylim(bottom=0)
-    label = label_selector(dependent=name)
-    x_label = merge_label_with_unit(label=label)
+    x_label = merge_label_with_unit(label=variable_name)
     y_label = "Height [m]"
     plt.xlabel(x_label)
     plt.ylabel(y_label)
 
-    title = f"Vertical Profile of {title_name[0]}"
+    title = f"Vertical Profile of {variable_name[0]}"
     site_label = get_site_name(site_name=site, dataframe=vertical_data[name])
     if not site_label:
         location = ",\n"
     else:
         location = f"\nat {site_label}, "
-    if not isinstance(time_idx, str):
-        time_idx = time_idx.strftime("%H:%M")
+    time_idx = time_idx.strftime("%H:%M")
     time_label = f"{time_data['date']} {time_idx} {time_data['tzone']}"
     title_string = f"{title}{location}{time_label}"
     plt.title(title_string, fontweight="bold")
@@ -592,14 +598,12 @@ def plot_vertical_comparison(dataset, time_index, keys, site=""):
 
     key_number = len(keys)
     fig, axes = plt.subplots(
-        nrows=1, ncols=key_number, sharey=True, figsize=(4 * key_number, 8)
+        nrows=1, ncols=key_number, sharey=False, figsize=(4 * key_number, 8)
     )
     subplot_labels = []
     for i in range(key_number):
-        vertical_profile = dataset[keys[i]].iloc[
-            dataset[keys[i]].index.indexer_at_time(time_index)
-        ]
-        time_data = get_date_and_timezone(data=dataset[keys[i]])
+        vertical_profile = dataset[keys[i]].loc[[time_index]]
+        time_data = get_date_and_timezone(data=dataset[keys[i]].loc[[time_index]])
         axes[i].plot(
             vertical_profile.values[0],
             vertical_profile.columns,
@@ -621,8 +625,7 @@ def plot_vertical_comparison(dataset, time_index, keys, site=""):
         location = ",\n"
     else:
         location = f"\nat {site_label}, "
-    if not isinstance(time_index, str):
-        time_index = time_index.strftime("%H:%M")
+    time_index = time_index.strftime("%H:%M")
     time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
     title_string = f"{title}{location}{time_label}"
     fig.suptitle(title_string, fontweight="bold")
