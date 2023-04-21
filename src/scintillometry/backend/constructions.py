@@ -489,6 +489,10 @@ class ProfileConstructor(AtmosConstants):
         potential_temperature = self.get_potential_temperature(
             temperature=vertical_data["temperature"], pressure=reduced_pressure
         )
+        grad_potential_temperature = self.get_static_stability(
+            potential_temperature=potential_temperature,
+            scheme="backward",
+        )
 
         derived_measurements = {
             "temperature": vertical_data["temperature"],

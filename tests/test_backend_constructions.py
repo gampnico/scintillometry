@@ -569,6 +569,7 @@ class TestBackendProfileConstructor:
             "virtual_temperature",
             "msl_pressure",
             "potential_temperature",
+            "grad_potential_temperature",
         ]
 
         compare_dataset = self.test_profile.get_vertical_variables(

@@ -124,6 +124,7 @@ class TestMetricsFluxClass:
 
     test_metrics = scintillometry.metrics.calculations.MetricsFlux()
     test_date = "03 June 2020"
+    test_timestamp = pd.Timestamp(f"{test_date} 05:10", tz="CET")
 
     @pytest.mark.dependency(name="TestMetricsFluxClass::test_metrics_flux_init")
     def test_metrics_flux_init(self):
@@ -168,6 +169,7 @@ class TestMetricsFluxClass:
         test_time = pd.Timestamp(f"{self.test_date} {arg_time}", tz="CET")
         assert test_time.strftime("%H:%M") == arg_time
         assert test_time.strftime("%d %B %Y") == self.test_date
+        assert test_time.tz.zone == "CET"
 
         compare_index = self.test_metrics.get_nearest_time_index(
             data=test_frame, time_stamp=test_time
@@ -274,6 +276,7 @@ class TestMetricsFluxClass:
         """Raise error if incorrect switch time algorithm specified."""
 
         _ = conftest_mock_save_figure
+
         test_error = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "vertical": conftest_mock_hatpro_dataset,
@@ -295,6 +298,7 @@ class TestMetricsFluxClass:
         """Raise error if no data available to calculate switch time."""
 
         _ = conftest_mock_save_figure
+
         test_error = {
             "weather": conftest_mock_derived_dataframe[["CT2", "temperature_2m"]]
         }
@@ -334,6 +338,7 @@ class TestMetricsFluxClass:
 
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
+            "timestamp": self.test_timestamp,
         }
         compare_switch = self.test_metrics.get_switch_time(
             data=test_dataset, method="sun", local_time="05:19"
@@ -365,13 +370,16 @@ class TestMetricsFluxClass:
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "vertical": conftest_mock_hatpro_dataset,
+            "timestamp": self.test_timestamp,
         }
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
 
-        assert "potential_temperature" in test_dataset["vertical"]
-        conftest_boilerplate.check_dataframe(
-            dataframe=test_dataset["vertical"]["potential_temperature"]
-        )
+        for key in ["grad_potential_temperature", "potential_temperature"]:
+            assert key in test_dataset["vertical"]
+            conftest_boilerplate.check_dataframe(
+                dataframe=test_dataset["vertical"][key]
+            )
+
         compare_switch = self.test_metrics.get_switch_time(
             data=test_dataset,
             method=arg_method,
@@ -407,13 +415,15 @@ class TestMetricsFluxClass:
         """Plot potential temperature profiles at switch time."""
 
         _ = conftest_mock_save_figure
+
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "vertical": conftest_mock_hatpro_dataset.copy(),
+            "timestamp": self.test_timestamp,
         }
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
         test_time = self.test_metrics.get_switch_time(
-            data=test_dataset, method="static"
+            data=test_dataset, local_time="05:19", method="sun"
         )
         assert isinstance(test_time, pd.Timestamp)
         test_vertical = test_dataset["vertical"]
@@ -427,14 +437,14 @@ class TestMetricsFluxClass:
             assert "grad_potential_temperature" not in test_vertical
             test_title = (
                 f"Vertical Profile of Potential Temperature{test_location}",
-                f"{self.test_date} {test_time.strftime('%H:%M')} CET",
+                f"{self.test_date} 05:20 CET",
             )
         else:
             assert "grad_potential_temperature" in test_vertical
             test_title = (
                 "Vertical Profiles of Potential Temperature ",
                 f"and Gradient of Potential Temperature{test_location}",
-                f"{self.test_date} {test_time.strftime('%H:%M')} CET",
+                f"{self.test_date} 05:20 CET",
             )
             test_labels.append(r"Gradient of Potential Temperature, [K$\cdot$m$^{-1}$]")
 
@@ -478,7 +488,10 @@ class TestMetricsFluxClass:
 
         _ = conftest_mock_save_figure
 
-        test_dataset = {"weather": conftest_mock_weather_dataframe_tz.copy(deep=True)}
+        test_dataset = {
+            "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
+            "timestamp": self.test_timestamp.replace(hour=5, minute=10),
+        }
         if arg_vertical:
             test_dataset["vertical"] = conftest_mock_hatpro_dataset.copy()
             if arg_potential:
@@ -544,6 +557,7 @@ class TestMetricsFluxClass:
         """Plot time series of iteration and comparison to free convection."""
 
         _ = conftest_mock_save_figure
+
         test_frame = conftest_mock_iterated_dataframe.copy(deep=True)
         test_stamp = conftest_mock_iterated_dataframe.index[0]
         if arg_location:
@@ -599,6 +613,7 @@ class TestMetricsFluxClass:
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "interpolated": conftest_mock_merged_dataframe.copy(deep=True),
             "vertical": conftest_mock_hatpro_dataset,
+            "timestamp": self.test_timestamp,
         }
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
         compare_metrics = self.test_metrics.iterate_fluxes(
@@ -680,6 +695,7 @@ class TestMetricsWorkflowClass:
         """
 
         _ = conftest_mock_save_figure
+
         test_class = scintillometry.metrics.calculations.MetricsWorkflow()
         test_data = {
             "bls": conftest_mock_bls_dataframe_tz.copy(deep=True),
@@ -687,10 +703,9 @@ class TestMetricsWorkflowClass:
             "transect": conftest_mock_transect_dataframe.copy(deep=True),
             "interpolated": conftest_mock_merged_dataframe.copy(deep=True),
             "timestamp": conftest_mock_bls_dataframe_tz.index[0],
-            "vertical": conftest_mock_hatpro_dataset,
+            "vertical": conftest_mock_hatpro_dataset.copy(),
         }
 
-        test_data = self.test_metrics.append_vertical_variables(data=test_data)
         test_args = argparse.Namespace(
             regime=arg_regime,
             switch_time=arg_switch_time,
@@ -729,6 +744,7 @@ class TestMetricsWorkflowClass:
         """Raise error when referencing non-existent vertical data."""
 
         _ = conftest_mock_save_figure
+
         test_class = scintillometry.metrics.calculations.MetricsWorkflow()
         test_data = {
             "bls": conftest_mock_bls_dataframe_tz.copy(deep=True),
@@ -772,6 +788,7 @@ class TestMetricsWorkflowClass:
         """Compares input data to InnFLUX data."""
 
         _ = conftest_mock_save_figure
+
         test_metrics = scintillometry.metrics.calculations.MetricsWorkflow()
         test_args = argparse.Namespace(location=arg_location)
         compare_obukhov, compare_shf = test_metrics.compare_innflux(

@@ -237,32 +237,32 @@ class MetricsFlux:
 
             elif "vertical" in data:
                 pt_profile = ProfileConstructor()
-                if method == "static":  # static stability
-                    grad_potential_temperature = pt_profile.get_static_stability(
-                        potential_temperature=data["vertical"]["potential_temperature"],
-                        scheme="uneven",
-                    )
+                # static stability
+                if (
+                    method == "static"
+                    and "grad_potential_temperature" in data["vertical"]
+                ):
+                    grad_potential_temperature = data["vertical"][
+                        "grad_potential_temperature"
+                    ]
                     heights = grad_potential_temperature.columns[
                         grad_potential_temperature.columns <= 2000
                     ]
-                    mean_grad_pot_temperature = grad_potential_temperature[
-                        heights
-                    ].mean(axis=1, skipna=True)
-
-                    local_time = self.match_time_at_threshold(
-                        series=mean_grad_pot_temperature, threshold=0, lessthan=True
+                    negative_grad = (
+                        grad_potential_temperature[heights].lt(0).any(axis=1)
                     )
-                    data["vertical"][
-                        "grad_potential_temperature"
-                    ] = grad_potential_temperature
-
+                    local_time = self.match_time_at_threshold(
+                        series=negative_grad,  # since True == 1
+                        threshold=0,
+                        lessthan=False,
+                    )
                 elif method == "bulk":  # bulk richardson
                     bulk_richardson = pt_profile.get_bulk_richardson(
                         potential_temperature=data["vertical"]["potential_temperature"],
                         meteo_data=weather_data,
                     )
                     local_time = self.match_time_at_threshold(
-                        series=bulk_richardson, threshold=ri_crit
+                        series=bulk_richardson, threshold=ri_crit, lessthan=True
                     )
                     data["vertical"]["bulk_richardson"] = bulk_richardson
 
@@ -281,12 +281,12 @@ class MetricsFlux:
                 raise UnboundLocalError(" ".join(error_msg))
         elif isinstance(local_time, str):
             split_times = local_time.split(sep=":")
-            weather_time = pd.Timestamp(
-                data["weather"].index[0],
-            )
-            local_time = weather_time.replace(
+            start_time = data["timestamp"]
+            local_time = start_time.replace(
                 hour=int(split_times[0]), minute=int(split_times[1])
             )
+
+        print(f"Stability conditions change at: {local_time.strftime('%H:%M %Z')}")
 
         return local_time
 
@@ -312,12 +312,25 @@ class MetricsFlux:
         round_time = self.get_nearest_time_index(
             data=data["potential_temperature"], time_stamp=local_time
         )
+        mil_time = round_time.strftime("%H%M")
         if "grad_potential_temperature" in data:
             fig, ax = scintillometry.visuals.plotting.plot_vertical_comparison(
                 dataset=data,
                 time_index=round_time,
                 keys=["potential_temperature", "grad_potential_temperature"],
                 site=location,
+            )
+            fig_grad, _ = scintillometry.visuals.plotting.plot_vertical_profile(
+                vertical_data=data,
+                name="grad_potential_temperature",
+                time_idx=round_time,
+                site=location,
+                y_lim=300,
+            )
+            scintillometry.visuals.plotting.save_figure(
+                figure=fig_grad,
+                timestamp=local_time,
+                suffix=f"{mil_time}_gradient_potential_temperature_250m",
             )
         else:
             fig, ax = scintillometry.visuals.plotting.plot_vertical_profile(
@@ -327,11 +340,23 @@ class MetricsFlux:
                 site=location,
             )
 
-        mil_time = local_time.strftime("%H%M")
         scintillometry.visuals.plotting.save_figure(
             figure=fig,
-            timestamp=data["potential_temperature"].index[0],
+            timestamp=local_time,
             suffix=f"{mil_time}_potential_temperature_profiles",
+        )
+
+        fig_pot, _ = scintillometry.visuals.plotting.plot_vertical_profile(
+            vertical_data=data,
+            name="potential_temperature",
+            time_idx=round_time,
+            site=location,
+            y_lim=1000,
+        )
+        scintillometry.visuals.plotting.save_figure(
+            figure=fig_pot,
+            timestamp=local_time,
+            suffix=f"{mil_time}_potential_temperature_1000m",
         )
 
         return fig, ax
