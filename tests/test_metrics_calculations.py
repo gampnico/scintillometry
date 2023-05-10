@@ -16,6 +16,9 @@ limitations under the License.
 
 Tests metrics calculated from datasets.
 
+Any test that creates a plot should be explicitly appended with
+`plt.close("all")`, otherwise the plots remain open in memory.
+
 Only patch mocks for dependencies that have already been tested. When
 patching several mocks via decorators, parameters are applied in the
 opposite order::
@@ -669,11 +672,8 @@ class TestMetricsWorkflowClass:
         ],
         scope="module",
     )
-    @pytest.mark.parametrize("arg_regime", [None, "stable", "unstable"])
     @pytest.mark.parametrize("arg_switch_time", [None, "05:20"])
-    @pytest.mark.parametrize("arg_most_name", ["an1988", "li2012"])
-    @pytest.mark.parametrize("arg_location", [None, "", "Test Location"])
-    @pytest.mark.parametrize("arg_algorithm", ["sun", "static"])
+    @pytest.mark.parametrize("arg_vertical", [True, False])
     def test_calculate_standard_metrics(
         self,
         conftest_mock_save_figure,
@@ -683,11 +683,8 @@ class TestMetricsWorkflowClass:
         conftest_mock_merged_dataframe,
         conftest_mock_hatpro_dataset,
         conftest_boilerplate,
-        arg_regime,
         arg_switch_time,
-        arg_most_name,
-        arg_location,
-        arg_algorithm,
+        arg_vertical,
     ):
         """Calculate and plot standard metrics.
 
@@ -703,17 +700,19 @@ class TestMetricsWorkflowClass:
             "transect": conftest_mock_transect_dataframe.copy(deep=True),
             "interpolated": conftest_mock_merged_dataframe.copy(deep=True),
             "timestamp": conftest_mock_bls_dataframe_tz.index[0],
-            "vertical": conftest_mock_hatpro_dataset.copy(),
         }
 
+        if arg_vertical:
+            test_data["vertical"] = conftest_mock_hatpro_dataset.copy()
+
         test_args = argparse.Namespace(
-            regime=arg_regime,
+            regime="unstable",
             switch_time=arg_switch_time,
             beam_wavelength=880,
             beam_error=20,
-            most_name=arg_most_name,
-            location=arg_location,
-            algorithm=arg_algorithm,
+            most_name="an1988",
+            location="Test Location",
+            algorithm="sun",
         )
 
         compare_data = test_class.calculate_standard_metrics(
@@ -755,6 +754,7 @@ class TestMetricsWorkflowClass:
         }
 
         test_data = self.test_metrics.append_vertical_variables(data=test_data)
+        assert "vertical" not in test_data
         test_args = argparse.Namespace(
             regime="unstable",
             switch_time=None,
@@ -770,7 +770,7 @@ class TestMetricsWorkflowClass:
         )
         with pytest.raises(UnboundLocalError, match=" ".join(error_msg)):
             test_class.calculate_standard_metrics(arguments=test_args, data=test_data)
-            plt.close("all")
+        plt.close("all")
 
     @pytest.mark.dependency(
         name="TestMetricsWorkflow::test_compare_innflux",

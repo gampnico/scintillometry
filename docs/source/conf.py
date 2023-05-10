@@ -49,7 +49,7 @@ def setup(app):
 project = "Scintillometry Tools"
 copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
 author = "Scintillometry Tools Contributors"
-release = "0.33.a4"
+release = "0.33.a5"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -80,6 +80,7 @@ rst_prolog = f"""
 .. |Jkg^-1| replace:: J :math:`\\cdot` kg :sup:`-1`
 .. |JK^-1| replace:: J :math:`\\cdot` K :sup:`-1`
 .. |K^-1| replace:: K :sup:`-1`
+.. |Km^-1| replace:: Km :sup:`-1`
 .. |K^2m^-2/3| replace:: K :math:`^{{2}}\\cdot` m :math:`^{{-2/3}}`
 .. |Kms^-1| replace:: K :math:`\\cdot` ms :sup:`-1`
 .. |kg^-1| replace:: kg :sup:`-1`
@@ -100,10 +101,14 @@ rst_prolog = f"""
 .. |Cn2| replace:: :math:`C_{{n}}^{{2}}`
 .. |CT2| replace:: :math:`C_{{T}}^{{2}}`
 .. |Delta| replace:: :math:`\\Delta`
+.. |Dtheta/Dz| replace:: :math:`\\Delta \\theta/\\Delta z`
 .. |dy/dx| replace:: :math:`\\partial y/\\partial x`
 .. |e| replace:: :math:`e`
 .. |epsilon| replace:: :math:`\\epsilon`
 .. |f_CT2| replace:: :math:`f_{{C_{{T}}^{{2}}}}`
+.. |Gamma_d| replace:: :math:`\\Gamma_{{d}}`
+.. |Gamma_e| replace:: :math:`\\Gamma_{{e}}`
+.. |Gamma_m| replace:: :math:`\\Gamma_{{w}}`
 .. |H| replace:: :math:`H`
 .. |H_free| replace:: :math:`H_{{free}}`
 .. |lamda| replace:: :math:`\\lambda`
@@ -123,6 +128,8 @@ rst_prolog = f"""
 .. |rho| replace:: :math:`\\rho`
 .. |rho_v| replace:: :math:`\\rho_{{v}}`
 .. |T| replace:: :math:`T`
+.. |T_sat| replace:: :math:`T_{{sat}}`
+.. |T_unsat| replace:: :math:`T_{{unsat}}`
 .. |T_v| replace:: :math:`T_{{v}}`
 .. |T_z| replace:: :math:`T_{{z}}`
 .. |theta| replace:: :math:`\\theta`
@@ -130,6 +137,7 @@ rst_prolog = f"""
 .. |u| replace:: :math:`u`
 .. |u*| replace:: :math:`u^{{*}}`
 .. |z| replace:: :math:`z`
+.. |z_BL| replace:: :math:`z_{{BL}}`
 .. |z_eff| replace:: :math:`z_{{eff}}`
 .. |z_mean| replace:: :math:`\\bar{{z}}`
 .. |z_scan| replace:: :math:`z_{{scan}}`

@@ -380,7 +380,7 @@ class ProfileConstructor(AtmosConstants):
 
         return gradients
 
-    def get_static_stability(self, potential_temperature, scheme="uneven"):
+    def get_static_stability(self, potential_temperature, scheme="backward"):
         """Determines static stability of atmosphere.
 
         Args:
@@ -388,7 +388,7 @@ class ProfileConstructor(AtmosConstants):
                 measurements for potential temperature.
             scheme (str): Finite differencing method. Supports "uneven"
                 for centred-differencing over a non-uniform mesh, and
-                "backward" for backward-differencing. Default "uneven".
+                "backward" for backward-differencing. Default "backward".
 
         Returns:
             pd.DataFrame: Derived vertical measurements for static
@@ -503,6 +503,7 @@ class ProfileConstructor(AtmosConstants):
             "virtual_temperature": v_temperature,
             "msl_pressure": reduced_pressure,
             "potential_temperature": potential_temperature,
+            "grad_potential_temperature": grad_potential_temperature,
         }
 
         return derived_measurements

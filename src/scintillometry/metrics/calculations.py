@@ -550,9 +550,6 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
                             }
                         }
 
-            site (str): Location of data collection. Default empty
-                string.
-
         Returns:
             dict: Input dictionary with additional keys "derivation",
             "iteration" for derived and iterated data, respectively.
@@ -604,7 +601,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         This wrapper function:
 
         - Plots time series comparing Obukhov lengths and sensible heat
-          fluxes between an input dataframe and InnFLUX measurements.
+          fluxes between an input dataframe and innFLUX measurements.
         - Saves plots to disk.
 
         If this function is imported as a package, mock user arguments
