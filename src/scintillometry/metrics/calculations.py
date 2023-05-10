@@ -23,8 +23,8 @@ import scintillometry.backend.constructions
 import scintillometry.backend.derivations
 import scintillometry.backend.iterations
 import scintillometry.backend.transects
-import scintillometry.visuals.plotting
 from scintillometry.backend.constructions import ProfileConstructor
+from scintillometry.visuals.plotting import FigurePlotter
 
 
 class MetricsTopography:
@@ -66,10 +66,15 @@ class MetricsTopography:
 
 
 class MetricsFlux:
-    """Calculate metrics for fluxes."""
+    """Calculate metrics for fluxes.
+
+    Attributes:
+        plotting (FigurePlotter): Provides methods for plotting figures.
+    """
 
     def __init__(self):
         super().__init__()
+        self.plotting = FigurePlotter()
 
     def construct_flux_dataframe(self, user_args, interpolated_data, z_eff):
         """Compute sensible heat flux for free convection.
@@ -314,46 +319,46 @@ class MetricsFlux:
         )
         mil_time = round_time.strftime("%H%M")
         if "grad_potential_temperature" in data:
-            fig, ax = scintillometry.visuals.plotting.plot_vertical_comparison(
+            fig, ax = self.plotting.plot_vertical_comparison(
                 dataset=data,
                 time_index=round_time,
                 keys=["potential_temperature", "grad_potential_temperature"],
                 site=location,
             )
-            fig_grad, _ = scintillometry.visuals.plotting.plot_vertical_profile(
+            fig_grad, _ = self.plotting.plot_vertical_profile(
                 vertical_data=data,
                 name="grad_potential_temperature",
                 time_idx=round_time,
                 site=location,
                 y_lim=300,
             )
-            scintillometry.visuals.plotting.save_figure(
+            self.plotting.save_figure(
                 figure=fig_grad,
                 timestamp=local_time,
                 suffix=f"{mil_time}_gradient_potential_temperature_250m",
             )
         else:
-            fig, ax = scintillometry.visuals.plotting.plot_vertical_profile(
+            fig, ax = self.plotting.plot_vertical_profile(
                 vertical_data=data,
                 name="potential_temperature",
                 time_idx=round_time,
                 site=location,
             )
 
-        scintillometry.visuals.plotting.save_figure(
+        self.plotting.save_figure(
             figure=fig,
             timestamp=local_time,
             suffix=f"{mil_time}_potential_temperature_profiles",
         )
 
-        fig_pot, _ = scintillometry.visuals.plotting.plot_vertical_profile(
+        fig_pot, _ = self.plotting.plot_vertical_profile(
             vertical_data=data,
             name="potential_temperature",
             time_idx=round_time,
             site=location,
             y_lim=1000,
         )
-        scintillometry.visuals.plotting.save_figure(
+        self.plotting.save_figure(
             figure=fig_pot,
             timestamp=local_time,
             suffix=f"{mil_time}_potential_temperature_1000m",
@@ -471,10 +476,10 @@ class MetricsFlux:
             free convection to on-board software.
         """
 
-        figure_convection, _ = scintillometry.visuals.plotting.plot_convection(
+        figure_convection, _ = self.plotting.plot_convection(
             dataframe=derived_data, stability=user_args.regime, site=location
         )
-        scintillometry.visuals.plotting.save_figure(
+        self.plotting.save_figure(
             figure=figure_convection, timestamp=time_id, suffix="free_convection"
         )
 
@@ -493,16 +498,16 @@ class MetricsFlux:
             site_location (str): Name of scintillometer location.
 
         Returns:
-            tuple[plt.Figure, plt.Figure]: Time series comparing
-            sensible heat fluxes under free convection to on-board
-            software.
+            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
+            series of sensible heat flux calculated through MOST, and a
+            comparison to sensible heat flux under free convection.
         """
 
-        fig_iter, fig_comp = scintillometry.visuals.plotting.plot_iterated_fluxes(
+        plots = self.plotting.plot_iterated_fluxes(
             iteration_data=iterated_data, time_id=time_stamp, location=site_location
         )
 
-        return fig_iter, fig_comp
+        return plots
 
 
 class MetricsWorkflow(MetricsFlux, MetricsTopography):
@@ -610,30 +615,33 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         Args:
             arguments (argparse.Namespace): User arguments.
             innflux_data (pd.DataFrame): Eddy covariance data from
-                InnFLUX.
-            comparison_data (pd.DataFrame): Data to compare to InnFLUX.
-            location (str): Location of data collection. Default empty
-                string.
+                innFLUX.
+            comparison_data (pd.DataFrame): Data to compare to innFLUX.
+
+        Returns:
+            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
+            series comparing Obukhov length and sensible heat flux to
+            innFlux measurements.
         """
 
         data_timestamp = comparison_data.index[0]
-        fig_obu, _ = scintillometry.visuals.plotting.plot_innflux(
+        fig_obukhov, ax_obukhov = self.plotting.plot_innflux(
             iter_data=comparison_data,
             innflux_data=innflux_data,
             name="obukhov",
             site=arguments.location,
         )
-        scintillometry.visuals.plotting.save_figure(
-            figure=fig_obu, timestamp=data_timestamp, suffix="innflux_obukhov"
+        self.plotting.save_figure(
+            figure=fig_obukhov, timestamp=data_timestamp, suffix="innflux_obukhov"
         )
-        fig_shf, _ = scintillometry.visuals.plotting.plot_innflux(
+        fig_shf, ax_shf = self.plotting.plot_innflux(
             iter_data=comparison_data,
             innflux_data=innflux_data,
             name="shf",
             site=arguments.location,
         )
-        scintillometry.visuals.plotting.save_figure(
+        self.plotting.save_figure(
             figure=fig_shf, timestamp=data_timestamp, suffix="innflux_shf"
         )
 
-        return fig_obu, fig_shf
+        return fig_obukhov, ax_obukhov, fig_shf, ax_shf

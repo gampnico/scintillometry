@@ -31,10 +31,13 @@ Metadata::
 import datetime
 from unittest.mock import patch
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pandas.api.types as ptypes
 import pytest
+
+import scintillometry.visuals.plotting
 
 
 class TestBoilerplate:
@@ -239,6 +242,50 @@ class TestBoilerplate:
         compare_index = pd.Index([1, 2, 4])
         self.index_not_equal(index_01=test_index, index_02=compare_index)
 
+    def check_plot(self, plot_params: dict, title: str = ""):
+        """Check properties of figure/axis pairs."""
+
+        assert "plot" in plot_params
+        assert isinstance(plot_params["plot"][0], plt.Figure)
+        assert isinstance(plot_params["plot"][1], plt.Axes)
+        compare_ax = plot_params["plot"][1]
+        if "title" in plot_params:
+            compare_title = f"{plot_params['title']}{title}"
+            assert compare_ax.get_title("center") == compare_title
+        if "x_label" in plot_params:
+            assert compare_ax.xaxis.get_label_text() == plot_params["x_label"]
+        if "y_label" in plot_params:
+            assert compare_ax.yaxis.get_label_text() == plot_params["y_label"]
+
+    @pytest.mark.dependency(name="TestBoilerplate::test_check_plot")
+    def test_check_plot(self):
+        """Validate tests for plot attributes."""
+
+        test_title = ", Inner Scope"
+        plt.close("all")
+        figure_strings = plt.figure()
+        axis_strings = plt.gca()
+        plt.title(f"Test Title{test_title}")
+        plt.xlabel("Test x-label")
+        plt.ylabel("Test y-label")
+
+        figure_none = plt.figure()
+        axis_none = plt.gca()
+
+        test_params = {
+            "strings": {
+                "plot": (figure_strings, axis_strings),
+                "title": "Test Title",
+                "x_label": "Test x-label",
+                "y_label": "Test y-label",
+            },
+            "none": {"plot": (figure_none, axis_none)},
+        }
+
+        for test_pair in test_params.values():
+            self.check_plot(plot_params=test_pair, title=test_title)
+        plt.close("all")
+
     @pytest.mark.dependency(
         name="TestBoilerplate::test_boilerplate_integration",
         depends=[
@@ -255,6 +302,7 @@ class TestBoilerplate:
         self.test_setup_extrapolated()
         self.test_check_timezone()
         self.test_index_not_equal()
+        self.test_check_plot()
 
 
 @pytest.mark.dependency(
@@ -285,7 +333,7 @@ def conftest_mock_check_file_exists():
 def conftest_mock_save_figure():
     """Stops figure being saved to disk."""
 
-    patcher = patch("scintillometry.visuals.plotting.save_figure")
+    patcher = patch.object(scintillometry.visuals.plotting.FigurePlotter, "save_figure")
     mock_exists = patcher.start()
     mock_exists.return_value = None
 

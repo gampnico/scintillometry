@@ -24,6 +24,7 @@ import datetime
 
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
 import pytz
@@ -31,9 +32,67 @@ import pytz
 import scintillometry.visuals.plotting
 
 
-class TestVisualsFormatting:
-    """Tests figure and axis formatting."""
+class TestVisualsBoilerplate:
+    """Boilerplate methods for testing plots."""
 
+    def assert_constant_lines(
+        self, ax: plt.Axes, hlines: dict = None, vlines: dict = None
+    ):
+        """Assert horizontal or vertical lines exist in plot."""
+
+        test_lines = [hlines, vlines]
+        compare_ax_properties = ax.properties()
+        ax.legend()
+        for lines in test_lines:
+            if lines:
+                compare_labels = []
+                for compare_lines in compare_ax_properties["lines"]:
+                    line_label = compare_lines.properties()["label"]
+                    compare_labels.append(line_label)
+                    if line_label.lower() in lines.keys():
+                        assert [
+                            lines[line_label.lower()],
+                            lines[line_label.lower()],
+                        ] in compare_lines.properties()["data"]
+
+                for key in lines.keys():
+                    if not lines[key]:  # if line data is None
+                        assert key.title() not in compare_labels
+                    else:
+                        assert key.title() in compare_labels
+
+    @pytest.mark.dependency(name="TestVisualsBoilerplate::test_assert_constant_lines")
+    @pytest.mark.parametrize("arg_vlines", [{"v_a": 1}, {"v_a": 1, "v_b": 2.1}, None])
+    @pytest.mark.parametrize("arg_hlines", [{"h_a": 1}, {"h_a": 1, "h_b": 2.1}, None])
+    def test_assert_constant_lines(self, arg_hlines, arg_vlines):
+        rng = np.random.default_rng()
+        test_index = np.arange(0, 200, 10)
+        test_data = rng.random(size=len(test_index))
+        test_series = pd.Series(data=test_data, index=test_index)
+
+        plt.figure(figsize=(10, 10))
+        plt.plot(test_index, test_series)
+        if arg_vlines:
+            for vline in arg_vlines:
+                plt.axvline(arg_vlines[vline], label=vline.title())
+        if arg_hlines:
+            for hline in arg_hlines:
+                plt.axhline(arg_hlines[hline], label=hline.title())
+        compare_ax = plt.gca()
+        self.assert_constant_lines(ax=compare_ax, hlines=arg_hlines, vlines=arg_vlines)
+        plt.close("all")
+
+
+class TestVisualsFormatting(TestVisualsBoilerplate):
+    """Tests figure and axis formatting.
+
+    Attributes:
+        test_format (FigureFormat): Figure formatting class.
+        test_location (str): Placeholder for location.
+        test_date (str): Placeholder for date of data collection.
+    """
+
+    test_format = scintillometry.visuals.plotting.FigureFormat()
     test_location = "Test Location"
     test_date = "03 June 2020"
 
@@ -59,12 +118,44 @@ class TestVisualsFormatting:
             "figure.titlesize": test_extra,
         }
 
-        scintillometry.visuals.plotting.initialise_formatting(
+        self.test_format.initialise_formatting(
             small=test_small, medium=test_medium, large=test_large, extra=test_extra
         )
         for param, font_size in test_params.items():
             assert plt.rcParams[param] == font_size
         plt.rcdefaults()
+        plt.close("all")
+
+    @pytest.mark.dependency(name="TestVisualsFormatting::test_parse_formatting_kwargs")
+    @pytest.mark.parametrize("arg_fig", [True, False])
+    def test_parse_formatting_kwargs(self, arg_fig):
+        """Parse kwargs when formatting."""
+
+        if arg_fig:
+            rng = np.random.default_rng()
+            test_index = np.arange(0, 200, 10)
+            test_data = rng.random(size=len(test_index))
+            test_series = pd.Series(data=test_data, index=test_index)
+            plt.figure(figsize=(10, 10))
+            plt.plot(test_index, test_series)
+
+        test_kwargs = {
+            "hlines": {"h_a": 1},
+            "vlines": {"v_a": 1},
+            "title": "Test Title",
+            "y_label": "Test Y-label",
+        }
+
+        compare_ax = plt.gca()
+        self.test_format.parse_formatting_kwargs(axis=compare_ax, **test_kwargs)
+
+        self.assert_constant_lines(
+            ax=compare_ax,
+            hlines=test_kwargs["hlines"],
+            vlines=test_kwargs["vlines"],
+        )
+        assert compare_ax.yaxis.get_label_text() == "Test Y-label"
+        assert compare_ax.get_title() == "Test Title"
         plt.close("all")
 
     @pytest.mark.dependency(name="TestVisualsFormatting::test_get_site_name")
@@ -82,7 +173,7 @@ class TestVisualsFormatting:
         else:
             test_frame = None
 
-        compare_label = scintillometry.visuals.plotting.get_site_name(
+        compare_label = self.test_format.get_site_name(
             site_name=arg_string, dataframe=test_frame
         )
         assert isinstance(compare_label, str)
@@ -109,9 +200,7 @@ class TestVisualsFormatting:
     def test_label_selector(self, arg_label):
         """Construct axis label and title from dependent variable name."""
 
-        test_label = scintillometry.visuals.plotting.label_selector(
-            dependent=arg_label[0]
-        )
+        test_label = self.test_format.label_selector(dependent=arg_label[0])
 
         assert isinstance(test_label, tuple)
         assert all(isinstance(label, str) for label in test_label)
@@ -124,9 +213,7 @@ class TestVisualsFormatting:
         """Get start date and timezone from dataframe."""
 
         test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
-        compare_times = scintillometry.visuals.plotting.get_date_and_timezone(
-            data=test_data
-        )
+        compare_times = self.test_format.get_date_and_timezone(data=test_data)
         assert isinstance(compare_times, dict)
         assert all(key in compare_times for key in ("date", "tzone"))
 
@@ -138,14 +225,19 @@ class TestVisualsFormatting:
 
     @pytest.mark.dependency(name="TestVisualsFormatting::test_title_plot")
     @pytest.mark.parametrize("arg_location", ["", "Test Location", None])
-    def test_title_plot(self, arg_location):
+    @pytest.mark.parametrize("arg_string", [True, False])
+    def test_title_plot(self, arg_location, arg_string):
         """Construct title and legend."""
 
         test_fig = plt.figure(figsize=(26, 6))
         test_title = r"Test Title $X_{sub}$"
+        if not arg_string:
+            test_date = pd.to_datetime(self.test_date)
+        else:
+            test_date = self.test_date
 
-        compare_title = scintillometry.visuals.plotting.title_plot(
-            title=test_title, timestamp=self.test_date, location=arg_location
+        compare_title = self.test_format.title_plot(
+            title=test_title, timestamp=test_date, location=arg_location
         )
 
         assert isinstance(compare_title, str)
@@ -165,9 +257,7 @@ class TestVisualsFormatting:
         """Merge name and unit strings."""
 
         test_label = ("Variable Name", r"$V$", arg_unit)
-        compare_label = scintillometry.visuals.plotting.merge_label_with_unit(
-            label=test_label
-        )
+        compare_label = self.test_format.merge_label_with_unit(label=test_label)
 
         assert isinstance(compare_label, str)
         assert test_label[1] not in compare_label
@@ -186,9 +276,7 @@ class TestVisualsFormatting:
         test_labels = []
         for i in range(arg_labels):
             test_labels.append(f"{i}")
-        compare_label = scintillometry.visuals.plotting.merge_multiple_labels(
-            labels=test_labels
-        )
+        compare_label = self.test_format.merge_multiple_labels(labels=test_labels)
 
         assert isinstance(compare_label, str)
         for label in test_labels:
@@ -217,14 +305,14 @@ class TestVisualsFormatting:
         test_timezone = pytz.timezone(zone="CET")
         test_axis = plt.gca()
         test_formatter = matplotlib.dates.DateFormatter("%H:%M", test_timezone)
-        compare_axis = scintillometry.visuals.plotting.set_xy_labels(
+        compare_axis = self.test_format.set_xy_labels(
             ax=test_axis, timezone=test_timezone, name=arg_name
         )
 
         assert isinstance(compare_axis, plt.Axes)
-        assert compare_axis.xaxis.get_label().get_text() == "Time, CET"
+        assert compare_axis.xaxis.get_label_text() == "Time, CET"
 
-        compare_name = compare_axis.yaxis.get_label().get_text()
+        compare_name = compare_axis.yaxis.get_label_text()
         if arg_name != "shf":
             assert compare_name == arg_name.title()
         else:
@@ -236,10 +324,46 @@ class TestVisualsFormatting:
         assert compare_formatter.fmt == test_formatter.fmt
         plt.close("all")
 
+    @pytest.mark.dependency(
+        name="TestVisualsFormatting::test_plot_constant_lines",
+        depends=[
+            "TestVisualsBoilerplate::test_assert_constant_lines",
+            "TestVisualsFormatting::test_label_selector",
+        ],
+    )
+    @pytest.mark.parametrize("arg_vlines", [{"va": None}, {"va": 1, "vb": 2.1}, None])
+    @pytest.mark.parametrize("arg_hlines", [{"ha": None}, {"ha": 1, "hb": 2.1}, None])
+    def test_plot_constant_lines(self, arg_hlines, arg_vlines):
+        """Plot horizontal and vertical lines."""
 
-class TestVisualsPlotting:
-    """Tests time series plots."""
+        rng = np.random.default_rng()
+        test_index = np.arange(0, 200, 10)
+        test_data = rng.random(size=len(test_index))
+        test_series = pd.Series(data=test_data, index=test_index)
 
+        plt.figure(figsize=(10, 10))
+        plt.plot(test_index, test_series)
+        plt.legend()
+        test_ax = plt.gca()
+        self.test_format.plot_constant_lines(
+            axis=test_ax, hlines=arg_hlines, vlines=arg_vlines
+        )
+        self.assert_constant_lines(ax=test_ax, hlines=arg_hlines, vlines=arg_vlines)
+
+        plt.close("all")
+
+
+class TestVisualsPlotting(TestVisualsBoilerplate):
+    """Tests time series plots.
+
+    Attributes:
+        test_plotting (FigurePlotter): Figure plotting class.
+        test_location (str): Placeholder for location.
+        test_date (str): Placeholder for date of data collection.
+        test_timestamp (pd.Timestamp): Placeholder for index timestamp.
+    """
+
+    test_plotting = scintillometry.visuals.plotting.FigurePlotter()
     test_location = "Test Location"
     test_date = "03 June 2020"
     test_timestamp = pd.Timestamp(f"{test_date} 05:20", tz="CET")
@@ -266,9 +390,7 @@ class TestVisualsPlotting:
             compare_data,
             compare_mean,
             compare_time,
-        ) = scintillometry.visuals.plotting.setup_plot_data(
-            df=test_data, names=arg_names
-        )
+        ) = self.test_plotting.setup_plot_data(data=test_data, names=arg_names)
 
         for dataframe in [compare_data, compare_mean]:
             conftest_boilerplate.check_dataframe(dataframe=dataframe)
@@ -298,7 +420,7 @@ class TestVisualsPlotting:
             test_mean = None
         test_fig = plt.figure(figsize=(6, 6))
         assert isinstance(test_fig, plt.Figure)
-        scintillometry.visuals.plotting.plot_time_series(
+        self.test_plotting.plot_time_series(
             series_data=test_data["CT2"],
             series_mean=test_mean,
             name=arg_name,
@@ -308,7 +430,7 @@ class TestVisualsPlotting:
         plt.legend()
         compare_axes = test_fig.get_axes()
         for ax in compare_axes:
-            assert ax.xaxis.label.get_text() == "time"
+            assert ax.xaxis.get_label_text() == "time"
             compare_legend = ax.get_legend()
             for line in ax.get_lines():
                 if not arg_grey:
@@ -332,23 +454,23 @@ class TestVisualsPlotting:
             "TestVisualsPlotting::test_plot_time_series",
         ],
     )
-    def test_plot_generic(self, conftest_mock_bls_dataframe_tz):
+    def test_plot_generic(self, conftest_mock_bls_dataframe_tz, conftest_boilerplate):
         """Plot time series of variable."""
 
         test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
+        test_title = f"{self.test_location},\n{self.test_date}"
 
-        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_generic(
+        compare_fig, compare_ax = self.test_plotting.plot_generic(
             dataframe=test_data, name="pressure", site=self.test_location
         )
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "x_label": "Time, CET",
+            "y_label": "Pressure, [mbar]",
+            "title": "Pressure at ",
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params, title=test_title)
 
-        assert isinstance(compare_fig, plt.Figure)
-        assert isinstance(compare_ax, plt.Axes)
-        assert compare_ax.xaxis.label.get_text() == "Time, CET"
-        assert compare_ax.yaxis.label.get_text() == "Pressure, [mbar]"
-        assert (
-            compare_ax.get_title()
-            == f"Pressure at {self.test_location},\n{self.test_date}"
-        )
         plt.close("all")
 
     @pytest.mark.dependency(
@@ -362,32 +484,33 @@ class TestVisualsPlotting:
         ],
     )
     @pytest.mark.parametrize("arg_stability", ["unstable", None])
-    def test_plot_convection(self, conftest_mock_bls_dataframe_tz, arg_stability):
+    def test_plot_convection(
+        self, conftest_mock_bls_dataframe_tz, conftest_boilerplate, arg_stability
+    ):
         """Plot SHFs for scintillometer and free convection."""
 
         test_data = conftest_mock_bls_dataframe_tz.copy(deep=True)
         test_data["H_free"] = pd.Series([4.4, 5.5], index=test_data.index)
+        if arg_stability:
+            test_conditions = f"{arg_stability.capitalize()} Conditions"
+        else:
+            test_conditions = "No Height Dependency"
+        test_title = (
+            "Sensible Heat Fluxes from On-Board Software and for Free Convection",
+            f"({test_conditions}),\n{self.test_date}",
+        )
 
-        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_convection(
+        compare_fig, compare_ax = self.test_plotting.plot_convection(
             dataframe=test_data, stability=arg_stability
         )
-        assert isinstance(compare_fig, plt.Figure)
-        assert isinstance(compare_ax, plt.Axes)
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "x_label": "Time, CET",
+            "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+            "title": " ".join(test_title),
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params)
 
-        assert compare_ax.xaxis.label.get_text() == "Time, CET"
-        assert (
-            compare_ax.yaxis.label.get_text()
-            == r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]"
-        )
-        if arg_stability:
-            compare_conditions = f"{arg_stability.capitalize()} Conditions"
-        else:
-            compare_conditions = "No Height Dependency"
-        compare_title = (
-            "Sensible Heat Fluxes from On-Board Software and",
-            f"for Free Convection ({compare_conditions}),\n{self.test_date}",
-        )
-        assert compare_ax.get_title() == " ".join(compare_title)
         plt.close("all")
 
     @pytest.mark.dependency(
@@ -404,7 +527,9 @@ class TestVisualsPlotting:
         "arg_keys", [["wind_speed", "rho_air"], ["wind_speed", "wind_speed"]]
     )
     @pytest.mark.parametrize("arg_site", ["", "Test Location"])
-    def test_plot_comparison(self, conftest_mock_merged_dataframe, arg_keys, arg_site):
+    def test_plot_comparison(
+        self, conftest_mock_merged_dataframe, conftest_boilerplate, arg_keys, arg_site
+    ):
         """Plot comparison between two dataframes."""
 
         test_data_01 = conftest_mock_merged_dataframe.copy(deep=True)
@@ -413,16 +538,6 @@ class TestVisualsPlotting:
             test_labels = ["Wind Speed", "Air Density"]
         else:
             test_labels = ["Wind Speed", "Wind Speed"]
-        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_comparison(
-            df_01=test_data_01,
-            df_02=test_data_02,
-            keys=arg_keys,
-            labels=["Test 01", "Test 02"],
-            site=arg_site,
-        )
-        assert isinstance(compare_fig, plt.Figure)
-        assert isinstance(compare_ax, plt.Axes)
-
         if arg_site:
             test_site = f" at {arg_site}"
         else:
@@ -433,7 +548,21 @@ class TestVisualsPlotting:
         test_title = (
             f"{test_title_label} from Test 01 and Test 02{test_site},\n{self.test_date}"
         )
-        assert compare_ax.get_title() == test_title
+
+        compare_fig, compare_ax = self.test_plotting.plot_comparison(
+            df_01=test_data_01,
+            df_02=test_data_02,
+            keys=arg_keys,
+            labels=["Test 01", "Test 02"],
+            site=arg_site,
+        )
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "x_label": "Time, CET",
+            "title": test_title,
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params)
+
         plt.close("all")
 
     @pytest.mark.dependency(
@@ -449,40 +578,48 @@ class TestVisualsPlotting:
     )
     @pytest.mark.parametrize("arg_location", ["", "Test Location"])
     def test_plot_iterated_fluxes(
-        self, conftest_mock_iterated_dataframe, conftest_mock_save_figure, arg_location
+        self,
+        conftest_mock_iterated_dataframe,
+        conftest_mock_save_figure,
+        conftest_boilerplate,
+        arg_location,
     ):
         """Plot and save iterated fluxes."""
 
         _ = conftest_mock_save_figure  # otherwise figure is saved to disk
 
         test_data = conftest_mock_iterated_dataframe.copy(deep=True)
-        timestamp = test_data.index[0]
-        (
-            compare_shf,
-            compare_comp,
-        ) = scintillometry.visuals.plotting.plot_iterated_fluxes(
-            iteration_data=test_data,
-            time_id=timestamp,
-            location=arg_location,
-        )
-        assert isinstance(compare_shf, plt.Figure)
-        assert isinstance(compare_comp, plt.Figure)
-
         if arg_location:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
-        test_title = (
-            "Sensible Heat Flux",
-            f"{test_location},\n{self.test_date}",
-        )
-        assert compare_shf.gca().get_title() == "".join(test_title)
+        test_title = f"{test_location},\n{self.test_date}"
+        timestamp = test_data.index[0]
 
-        test_title = (
-            "Sensible Heat Flux from Free Convection and Iteration",
-            f"{test_location},\n{self.test_date}",
+        plots = self.test_plotting.plot_iterated_fluxes(
+            iteration_data=test_data,
+            time_id=timestamp,
+            location=arg_location,
         )
-        assert compare_comp.gca().get_title() == "".join(test_title)
+
+        compare_plots = {
+            "shf": {
+                "title": "Sensible Heat Flux",
+                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "xlabel": "Time, CET",
+                "plot": (plots[0], plots[1]),
+            },
+            "comparison": {
+                "title": "Sensible Heat Flux from Free Convection and Iteration",
+                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "xlabel": "Time, CET",
+                "plot": (plots[2], plots[3]),
+            },
+        }
+
+        for params in compare_plots.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
+
         plt.close("all")
 
     @pytest.mark.dependency(
@@ -495,13 +632,12 @@ class TestVisualsPlotting:
             "TestVisualsPlotting::test_setup_plot_data",
         ],
     )
-    @pytest.mark.parametrize("arg_name", ["obukhov", "shf"])
     @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
     def test_plot_innflux(
         self,
         conftest_mock_iterated_dataframe,
         conftest_mock_innflux_dataframe_tz,
-        arg_name,
+        conftest_boilerplate,
         arg_site,
     ):
         """Plots comparison with InnFLUX data."""
@@ -513,32 +649,56 @@ class TestVisualsPlotting:
             test_site = f" at {arg_site}"
         else:
             test_site = ""
-        if arg_name == "obukhov":
-            test_name = "Obukhov Length"
-        else:
-            test_name = "Sensible Heat Flux"
+        test_title = f"{test_site},\n{self.test_date}"
 
-        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_innflux(
+        fig_obukhov, ax_obukhov = self.test_plotting.plot_innflux(
             iter_data=test_iterated,
             innflux_data=test_innflux,
-            name=arg_name,
+            name="obukhov",
+            site=arg_site,
+        )
+        fig_shf, ax_shf = self.test_plotting.plot_innflux(
+            iter_data=test_iterated,
+            innflux_data=test_innflux,
+            name="shf",
             site=arg_site,
         )
 
-        assert isinstance(compare_fig, plt.Figure)
-        assert isinstance(compare_ax, plt.Axes)
+        compare_plots = {
+            "obukhov": {
+                "plot": (fig_obukhov, ax_obukhov),
+                "x_label": "Time, CET",
+                "y_label": "Obukhov Length, [m]",
+                "title": "Obukhov Length from Scintillometer and innFLUX",
+            },
+            "shf": {
+                "plot": (fig_shf, ax_shf),
+                "x_label": "Time, CET",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "title": "Sensible Heat Flux from Scintillometer and innFLUX",
+            },
+        }
+        for params in compare_plots.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
 
-        test_title = (
-            f"{test_name} from Scintillometer and InnFLUX{test_site},\n{self.test_date}"
-        )
-        assert compare_ax.get_title() == test_title
         plt.close("all")
 
-    @pytest.mark.dependency(name="TestVisualsPlotting::test_plot_vertical_profile")
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_vertical_profile",
+        depends=["TestVisualsFormatting::test_plot_constant_lines"],
+    )
     @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
     @pytest.mark.parametrize("arg_name", ["temperature", "test_variable"])
+    @pytest.mark.parametrize("arg_kwargs", [{}, {"hlines": {"test height": 10}}])
+    @pytest.mark.parametrize("arg_y_lim", [None, 2000])
     def test_plot_vertical_profile(
-        self, conftest_mock_hatpro_temperature_dataframe_tz, arg_site, arg_name
+        self,
+        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_boilerplate,
+        arg_site,
+        arg_name,
+        arg_y_lim,
+        arg_kwargs,
     ):
         """Plots vertical profile at specific time."""
 
@@ -554,33 +714,38 @@ class TestVisualsPlotting:
             f"Vertical Profile of {arg_name.title()}{test_site}",
             f"{self.test_date} 05:20 CET",
         )
+        if arg_name != "temperature":
+            test_x_label = arg_name.title()
+        else:
+            test_x_label = "Temperature, [K]"
 
-        compare_fig, compare_ax = scintillometry.visuals.plotting.plot_vertical_profile(
+        compare_fig, compare_ax = self.test_plotting.plot_vertical_profile(
             vertical_data=test_data,
             time_idx=self.test_timestamp,
             name=arg_name,
             site=arg_site,
+            y_lim=arg_y_lim,
+            **arg_kwargs,
         )
 
-        assert isinstance(compare_fig, plt.Figure)
-        assert isinstance(compare_ax, plt.Axes)
-
-        assert compare_ax.yaxis.get_label().get_text() == "Height [m]"
-        compare_x_label = compare_ax.xaxis.get_label().get_text()
-        if arg_name != "temperature":
-            assert compare_x_label == arg_name.title()
-        else:
-            assert compare_x_label == "Temperature, [K]"
-        assert compare_ax.get_title() == "".join(test_title)
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "title": "".join(test_title),
+            "y_label": "Height [m]",
+            "x_label": test_x_label,
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params)
         plt.close("all")
 
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_plot_vertical_comparison",
         depends=["TestVisualsFormatting::test_label_selector"],
-        scope="module",
     )
     @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
-    def test_plot_vertical_comparison(self, conftest_mock_hatpro_dataset, arg_site):
+    @pytest.mark.parametrize("arg_kwargs", [{}, {"hlines": {"test_height": 10}}])
+    def test_plot_vertical_comparison(
+        self, conftest_mock_hatpro_dataset, arg_site, arg_kwargs
+    ):
         """Plots comparison of vertical profiles at specific time."""
 
         test_data = conftest_mock_hatpro_dataset.copy()
@@ -594,25 +759,26 @@ class TestVisualsPlotting:
             f"Vertical Profiles of Temperature and Humidity{test_site}",
             f"{self.test_date} 05:20 CET",
         )
-        (
-            compare_fig,
-            compare_ax,
-        ) = scintillometry.visuals.plotting.plot_vertical_comparison(
+
+        compare_fig, compare_ax = self.test_plotting.plot_vertical_comparison(
             dataset=test_data,
             time_index=self.test_timestamp,
             keys=test_keys,
             site=arg_site,
+            **arg_kwargs,
         )
-
         assert isinstance(compare_fig, plt.Figure)
         assert all(isinstance(ax, plt.Axes) for ax in compare_ax)
-        assert compare_ax[0].yaxis.get_label().get_text() == "Height [m]"
+        assert compare_ax[0].yaxis.get_label_text() == "Height [m]"
         for i in range(len(test_keys)):
-            compare_x_label = compare_ax[i].xaxis.get_label().get_text()
-            test_label = scintillometry.visuals.plotting.label_selector(
-                dependent=test_keys[i]
-            )
+            compare_x_label = compare_ax[i].xaxis.get_label_text()
+            test_label = self.test_plotting.label_selector(dependent=test_keys[i])
             test_x_label = f"{test_label[0]}, [{test_label[2]}]"
             assert test_x_label in compare_x_label
+            if arg_kwargs:
+                compare_ax[i].legend()
+                self.assert_constant_lines(
+                    ax=compare_ax[i], hlines=arg_kwargs["hlines"]
+                )
         assert compare_fig.texts[0].get_text() == "".join(test_title)
         plt.close("all")
