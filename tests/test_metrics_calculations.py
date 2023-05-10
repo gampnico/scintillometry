@@ -555,7 +555,11 @@ class TestMetricsFluxClass:
     @pytest.mark.dependency(name="TestMetricsFluxClass::test_plot_iterated_metrics")
     @pytest.mark.parametrize("arg_location", [None, "", "Test Location"])
     def test_plot_iterated_metrics(
-        self, conftest_mock_save_figure, conftest_mock_iterated_dataframe, arg_location
+        self,
+        conftest_mock_save_figure,
+        conftest_mock_iterated_dataframe,
+        conftest_boilerplate,
+        arg_location,
     ):
         """Plot time series of iteration and comparison to free convection."""
 
@@ -566,31 +570,34 @@ class TestMetricsFluxClass:
         if arg_location:
             test_frame.attrs["name"] = arg_location
             assert "name" in test_frame.attrs
+        if arg_location:
+            test_location = f" at {arg_location}"
+        else:
+            test_location = ""
+        test_title = f"{test_location},\n{self.test_date}"
 
-        compare_iter, compare_comp = self.test_metrics.plot_iterated_metrics(
+        plot_pairs = self.test_metrics.plot_iterated_metrics(
             iterated_data=test_frame,
             time_stamp=test_stamp,
             site_location=arg_location,
         )
 
-        for fig in [compare_iter, compare_comp]:
-            assert isinstance(fig, plt.Figure)
-
-        if arg_location:
-            test_location = f" at {arg_location}"
-        else:
-            test_location = ""
-        test_iter_title = (
-            "Sensible Heat Flux",
-            f"{test_location},\n{self.test_date}",
-        )
-        assert compare_iter.gca().get_title() == "".join(test_iter_title)
-
-        test_comp_title = (
-            "Sensible Heat Flux from Free Convection and Iteration",
-            f"{test_location},\n{self.test_date}",
-        )
-        assert compare_comp.gca().get_title() == "".join(test_comp_title)
+        compare_plots = {
+            "iteration": {
+                "plot": (plot_pairs[0], plot_pairs[1]),
+                "title": "Sensible Heat Flux",
+                "x_label": "Time, CET",
+                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+            },
+            "comparison": {
+                "plot": (plot_pairs[2], plot_pairs[3]),
+                "title": "Sensible Heat Flux from Free Convection and Iteration",
+                "x_label": "Time, CET",
+                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+            },
+        }
+        for params in compare_plots.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
 
         plt.close("all")
 
@@ -783,6 +790,7 @@ class TestMetricsWorkflowClass:
         conftest_mock_save_figure,
         conftest_mock_innflux_dataframe_tz,
         conftest_mock_iterated_dataframe,
+        conftest_boilerplate,
         arg_location,
     ):
         """Compares input data to InnFLUX data."""
@@ -791,30 +799,34 @@ class TestMetricsWorkflowClass:
 
         test_metrics = scintillometry.metrics.calculations.MetricsWorkflow()
         test_args = argparse.Namespace(location=arg_location)
-        compare_obukhov, compare_shf = test_metrics.compare_innflux(
+        if arg_location:
+            test_location = f" at {arg_location}"
+        else:
+            test_location = ""
+        test_title = f"{test_location},\n{self.test_date}"
+
+        fig_obukhov, ax_obukhov, fig_shf, ax_shf = test_metrics.compare_innflux(
             arguments=test_args,
             innflux_data=conftest_mock_innflux_dataframe_tz,
             comparison_data=conftest_mock_iterated_dataframe,
         )
 
-        for fig in [compare_obukhov, compare_shf]:
-            assert isinstance(fig, plt.Figure)
+        compare_params = {
+            "obukhov": {
+                "title": "Obukhov Length from Scintillometer and innFLUX",
+                "y_label": "Obukhov Length, [m]",
+                "x_label": "Time, CET",
+                "plot": (fig_obukhov, ax_obukhov),
+            },
+            "shf": {
+                "title": "Sensible Heat Flux from Scintillometer and innFLUX",
+                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "x_label": "Time, CET",
+                "plot": (fig_shf, ax_shf),
+            },
+        }
 
-        if arg_location:
-            test_location = f" at {arg_location}"
-        else:
-            test_location = ""
-
-        test_iter_title = (
-            "Obukhov Length from Scintillometer and InnFLUX",
-            f"{test_location},\n{self.test_date}",
-        )
-        assert compare_obukhov.gca().get_title() == "".join(test_iter_title)
-
-        test_comp_title = (
-            "Sensible Heat Flux from Scintillometer and InnFLUX",
-            f"{test_location},\n{self.test_date}",
-        )
-        assert compare_shf.gca().get_title() == "".join(test_comp_title)
+        for params in compare_params.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
 
         plt.close("all")
