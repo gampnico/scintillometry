@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scintillometry"
-version = "0.33.a5"
+version = "0.36.a0"
 authors = [
   { name="Scintillometry-Tools Contributors", email="" },
 ]
@@ -31,6 +31,7 @@ dependencies = [
   "mpmath >= 1.2.1",
   "numpy",
   "matplotlib",
+  "kneed",
 ]
 
 [project.optional-dependencies]

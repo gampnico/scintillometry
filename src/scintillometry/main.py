@@ -169,7 +169,7 @@ def user_argumentation():
         type=str,
         required=False,
         default="sun",
-        choices=["sun", "static", "bulk", "eddy"],
+        choices=["sun", "bulk", "lapse", "static"],
         help="algorithm used to calculate switch time. Default 'sun'",
     )
     parser.add_argument(

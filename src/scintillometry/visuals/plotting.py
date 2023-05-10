@@ -17,12 +17,13 @@ limitations under the License.
 Automates data plotting.
 """
 
+import math
 import os
 import re
-import math
-import numpy as np
+
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class FigureFormat:
@@ -786,5 +787,87 @@ class FigurePlotter(FigureFormat):
         time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
         title_string = f"{title}{location}{time_label}"
         figure.suptitle(title_string, fontweight="bold")
+
+        return figure, axes
+
+    def plot_merged_profiles(self, dataset, time_index, site="", y_lim=None, **kwargs):
+        """Plots vertical profiles on the same axis.
+
+        Args:
+            dataset (dict): Dataframes of vertical profiles.
+            time_index (str or pd.Timestamp): The time for which to plot
+                a vertical profile.
+            site (str): Location of data collection. Default empty
+                string.
+            y_lim (float): Y-axis limit. Default None.
+
+        Keyword Args:
+            hlines (dict): Names and y-axis values for which to plot
+                horizontal lines.
+            title (str): Figure title.
+            vlines (dict): Names and x-axis values for which to plot
+                vertical lines.
+            x_label (str): X-axis label. Default None.
+
+        Returns:
+            tuple[plt.Figure, plt.Axes]: Figure and axis of vertical
+            profiles.
+        """
+
+        keys = list(dataset)
+        key_number = len(keys)
+        figure = plt.figure(figsize=(8, 8))
+        subplot_labels = []
+        xlims = []
+        for i in range(key_number):
+            vertical_profile = dataset[keys[i]].loc[[time_index]]
+            time_data = self.get_date_and_timezone(
+                data=dataset[keys[i]].loc[[time_index]]
+            )
+            line_label = self.label_selector(dependent=keys[i])
+            plt.plot(
+                vertical_profile.values[0],
+                vertical_profile.columns,
+                label=line_label[0],
+            )
+            subplot_labels.append(line_label[0])
+
+            if y_lim:
+                heights = vertical_profile.columns[vertical_profile.columns <= y_lim]
+                xlim_max = math.ceil(max(vertical_profile[heights].values[0]))
+                xlims.append(xlim_max)
+                if xlim_max > 1:
+                    xlim_min = math.floor(min(vertical_profile[heights].values[0]))
+                    xlims.append(xlim_min)
+        x_label = self.merge_label_with_unit(label=line_label)
+        plt.xlabel(x_label)
+        plt.ylabel("Height [m]")
+        if not y_lim:
+            plt.ylim(bottom=0)
+        else:
+            plt.ylim(0, y_lim)
+            if xlims:
+                if not np.isclose(min(xlims), max(xlims)):
+                    plt.xlim(min(xlims), max(xlims))
+        plt.legend()
+
+        site_label = self.get_site_name(site_name=site, dataframe=dataset[keys[0]])
+        if not site_label:
+            location = ",\n"
+        else:
+            location = f"\nat {site_label}, "
+        time_index = time_index.strftime("%H:%M")
+        time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
+        title_name = self.merge_multiple_labels(labels=subplot_labels)
+        title = f"Vertical Profiles of {title_name}"
+        title_string = f"{title}{location}{time_label}"
+        plt.title(title_string, fontweight="bold")
+
+        axes = plt.gca()
+        if kwargs:
+            self.parse_formatting_kwargs(axis=axes, **kwargs)
+            if "title" in kwargs:
+                title_string = f"{kwargs['title']}{location}{time_label}"
+                plt.title(title_string, fontweight="bold")
 
         return figure, axes

@@ -101,6 +101,34 @@ class ProfileConstructor(AtmosConstants):
 
         return alt_pressure
 
+    def extrapolate_column(self, dataframe, gradient):
+        """Extrapolates measurements from reference column.
+
+        Applies gradient to the first column of a dataframe to produce
+        data for the remaining columns.
+
+        Args:
+            dataframe (pd.DataFrame): Numeric data with integer column
+                labels.
+            gradient (pd.DataFrame or float): Either a gradient or
+                dataframe of gradients.
+
+        Returns:
+            pd.DataFrame: Extrapolated measurements. The first column
+            remains unchanged.
+        """
+
+        extrapolated = dataframe.copy(deep=True)
+
+        if isinstance(gradient, pd.DataFrame):
+            delta_col = -extrapolated.columns.to_series().diff(periods=-1)
+            extrapolated = extrapolated.add(gradient.multiply(delta_col))
+        else:
+            for col_idx in extrapolated.columns.difference([0]):
+                extrapolated[col_idx] = extrapolated[0] + gradient * col_idx
+
+        return extrapolated
+
     def extrapolate_air_pressure(self, surface_pressure, temperature):
         """Extrapolates reference pressure measurements to scan levels.
 
@@ -243,6 +271,121 @@ class ProfileConstructor(AtmosConstants):
 
         return potential_temperature
 
+    def get_environmental_lapse_rate(self, temperature):
+        """Computes environmental lapse rate.
+
+        Lapse rate is inversely proportional to the temperature
+        gradient.
+
+        Args:
+            temperature (pd.DataFrame): Vertical measurements,
+                temperature, |T| [K].
+
+        Returns:
+            pd.DataFrame: Derived vertical measurements for
+            environmental lapse rate, |Gamma_e| [|Km^-1|]. Values for
+            the last column are all NaN.
+        """
+
+        delta_z = -temperature.columns.to_series().diff(periods=-1)
+        lapse_rate = temperature.diff(periods=-1, axis=1).divide(delta_z)
+
+        return lapse_rate
+
+    def get_moist_adiabatic_lapse_rate(self, mixing_ratio, temperature):
+        """Computes moist adiabatic lapse rate.
+
+        Lapse rate is inversely proportional to the temperature
+        gradient.
+
+        .. math::
+
+            \\Gamma_{{m}} = g \\frac{{
+                \\left ( 1 +
+                \\frac{{H_{{v}}r}}
+                {{\\mathfrak{{R}}_{{d}}T}} \\right )
+            }}
+            {{
+                \\left ( c_{{p}} +
+                \\frac{{H_{{v}}^{{2}}r}}
+                {{\\mathfrak{{R}}_{{d}}T^{{2}}}} \\right)
+            }}
+
+        Args:
+            temperature (pd.DataFrame): Vertical measurements,
+                temperature, |T| [K].
+            mixing_ratio (pd.DataFrame): Vertical measurements, mixing
+                ratio, |r| [|kgkg^-1|].
+
+        Returns:
+            pd.DataFrame: Derived vertical measurements for moist
+            adiabatic lapse rate, |Gamma_m| [|Km^-1|].
+        """
+
+        # 1 + (self.latent_vapour * mixing_ratio) / (self.r_dry * temperature)
+        numerator = (
+            (mixing_ratio.multiply(self.constants.latent_vapour)).divide(
+                (temperature.multiply(self.constants.r_dry))
+            )
+        ).radd(1)
+        # self.cp_dry + (mixing_ratio * (self.latent_vapour**2)) / (
+        #     self.r_vapour * (temperature**2)
+        # )
+        denominator = (
+            (
+                mixing_ratio.multiply(
+                    self.constants.ratio_rmm * self.constants.latent_vapour**2
+                )
+            ).divide(((temperature.pow(2)).multiply(self.constants.r_dry)))
+        ).radd(self.constants.cp_dry)
+
+        lapse_rate = (numerator.divide(denominator)).multiply(self.constants.g)
+
+        return lapse_rate
+
+    def get_lapse_rates(self, temperature, mixing_ratio):
+        """Calculate lapse rates.
+
+        Lapse rates are inversely proportional to the temperature
+        gradient:
+
+        .. math::
+
+            \\Gamma = -\\frac{{\\delta T}}{{\\delta z}}
+
+        Args:
+            temperature (pd.DataFrame): Vertical measurements,
+                temperature, |T| [K].
+            mixing_ratio (pd.DataFrame): Vertical measurements, mixing
+                ratio, |r| [|kgkg^-1|].
+
+        Returns:
+            dict[str, pd.DataFrame]: Derived vertical measurements for
+            the environmental and moist adiabatic lapse rates, |Gamma_e|
+            and |Gamma_m| [|Km^-1|].
+        """
+
+        environmental_lapse = self.get_environmental_lapse_rate(temperature=temperature)
+        moist_adiabatic_lapse = self.get_moist_adiabatic_lapse_rate(
+            mixing_ratio=mixing_ratio,
+            temperature=temperature,
+        )
+
+        unsaturated_temperature = self.extrapolate_column(
+            dataframe=temperature, gradient=-self.dalr
+        )
+        saturated_temperature = self.extrapolate_column(
+            dataframe=temperature, gradient=-moist_adiabatic_lapse
+        )
+        lapse_rates = {
+            "environmental": environmental_lapse,
+            "moist_adiabatic": moist_adiabatic_lapse,
+            "unsaturated": unsaturated_temperature,
+            "saturated": saturated_temperature,
+        }
+
+        return lapse_rates
+
     def non_uniform_differencing(self, dataframe):
         """Computes gradient of data from a non-uniform mesh.
 
@@ -283,13 +426,13 @@ class ProfileConstructor(AtmosConstants):
                 }}{{
                     (\\Delta x_{{i-1}})
                     (\\Delta x_{{i}})
-                    (\\Delta x_{{i-1}} + \\Delta x_{{i-1}})
+                    (\\Delta x_{{i-1}} + \\Delta x_{{i}})
                     + O(\\Delta x_{{i}})^{{2}}
                 }}
 
         Args:
-            dataframe (pd.DataFrame): Non-uniformly spaced measurements for
-                single variable.
+            dataframe (pd.DataFrame): Non-uniformly spaced measurements
+                for single variable.
 
         Returns:
             pd.DataFrame: Derivative of variable with respect to
@@ -298,7 +441,7 @@ class ProfileConstructor(AtmosConstants):
 
         array = dataframe.copy(deep=True)
         delta_x = dataframe.columns.to_series().diff()
-        delta_x[0] = dataframe.columns[1]
+        delta_x.iloc[0] = delta_x.iloc[1]
         derivative = pd.DataFrame(columns=dataframe.columns, index=dataframe.index)
 
         # Set boundary conditions
@@ -337,7 +480,7 @@ class ProfileConstructor(AtmosConstants):
 
         return derivative
 
-    def get_gradient(self, data, method="uneven"):
+    def get_gradient(self, data, method="backward"):
         """Computes spatial gradient of a set of vertical measurements.
 
         Calculates |dy/dx| at each value of independent variable x for
@@ -355,7 +498,8 @@ class ProfileConstructor(AtmosConstants):
                 variable.
             method (str): Finite differencing method. Supports "uneven"
                 for centred-differencing over a non-uniform mesh, and
-                "backward" for backward-differencing. Default "uneven".
+                "backward" for backward-differencing. Default
+                "backward".
 
         Returns:
             pd.DataFrame: Derived spatial gradients |dy/dx| for each
@@ -388,7 +532,8 @@ class ProfileConstructor(AtmosConstants):
                 measurements for potential temperature.
             scheme (str): Finite differencing method. Supports "uneven"
                 for centred-differencing over a non-uniform mesh, and
-                "backward" for backward-differencing. Default "backward".
+                "backward" for backward-differencing. Default
+                "backward".
 
         Returns:
             pd.DataFrame: Derived vertical measurements for static
@@ -494,6 +639,10 @@ class ProfileConstructor(AtmosConstants):
             scheme="backward",
         )
 
+        lapse_rates = self.get_lapse_rates(
+            temperature=vertical_data["temperature"], mixing_ratio=m_ratio
+        )
+
         derived_measurements = {
             "temperature": vertical_data["temperature"],
             "humidity": vertical_data["humidity"],
@@ -504,11 +653,15 @@ class ProfileConstructor(AtmosConstants):
             "msl_pressure": reduced_pressure,
             "potential_temperature": potential_temperature,
             "grad_potential_temperature": grad_potential_temperature,
+            "environmental_lapse_rate": lapse_rates["environmental"],
+            "moist_adiabatic_lapse_rate": lapse_rates["moist_adiabatic"],
+            "unsaturated_temperature": lapse_rates["unsaturated"],
+            "saturated_temperature": lapse_rates["saturated"],
         }
 
         return derived_measurements
 
-    def get_n_squared(self, potential_temperature, scheme="uneven"):
+    def get_n_squared(self, potential_temperature, scheme="backward"):
         """Calculates Brunt-Väisälä frequency, squared.
 
         .. math::
@@ -521,7 +674,8 @@ class ProfileConstructor(AtmosConstants):
                 potential temperature |theta| [K].
             scheme (str): Finite differencing method. Supports "uneven"
                 for centred-differencing over a non-uniform mesh, and
-                "backward" for backward-differencing. Default "uneven".
+                "backward" for backward-differencing. Default
+                "backward".
 
         Returns:
             pd.DataFrame: Derived vertical measurements for

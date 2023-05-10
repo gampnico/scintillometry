@@ -32,10 +32,10 @@ class TestBackendIterationMost:
     """Test class for MOST iteration.
 
     Attributes:
-        test_class (scintillometry.backend.iterations.IterationMost(): An
-            initialised IterationMost object.
+        test_class (IterationMost): An initialised IterationMost object.
         test_coeffs (list[tuple, tuple]): MOST coefficients from Andreas
-        (1988), formatted as [(unstable, unstable), (stable, stable)].
+            (1988), formatted as
+            [(unstable, unstable), (stable, stable)].
     """
 
     test_class = scintillometry.backend.iterations.IterationMost()

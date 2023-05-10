@@ -17,12 +17,14 @@ limitations under the License.
 Calculates metrics from datasets.
 """
 
+import kneed
 import pandas as pd
 
 import scintillometry.backend.constructions
 import scintillometry.backend.derivations
 import scintillometry.backend.iterations
 import scintillometry.backend.transects
+from scintillometry.backend.constants import AtmosConstants
 from scintillometry.backend.constructions import ProfileConstructor
 from scintillometry.visuals.plotting import FigurePlotter
 
@@ -65,7 +67,7 @@ class MetricsTopography:
         return z_params
 
 
-class MetricsFlux:
+class MetricsFlux(AtmosConstants):
     """Calculate metrics for fluxes.
 
     Attributes:
@@ -161,7 +163,7 @@ class MetricsFlux:
 
         return data
 
-    def match_time_at_threshold(self, series, threshold, lessthan=True):
+    def match_time_at_threshold(self, series, threshold, lessthan=True, min_time=None):
         """Gets time index of first value in series exceeding threshold.
 
         Args:
@@ -170,11 +172,16 @@ class MetricsFlux:
             lessthan (bool): If True, finds first value less than
                 threshold. Otherwise, returns first value greater than
                 threshold. Default True.
+            min_time (pd.Timestamp): Time indices below this threshold
+                are discarded. Default None.
 
         Returns:
             pd.Timestamp: Local time of the first value in the series
             that is less than the given threshold.
         """
+
+        if min_time:
+            series = series[series.index >= min_time]
 
         if lessthan:
             series_match = series[series.lt(threshold)]
@@ -187,6 +194,284 @@ class MetricsFlux:
 
         return match_time
 
+    def get_elbow_point(self, series, min_index=None, max_index=None):
+        """Calculate elbow point using Kneedle algorithm.
+
+        Only supports convex curves. Noisier curves may have several
+        elbow points, in which case the function selects the smallest
+        acceptable index.
+
+        Args:
+            series (pd.Series): Numeric data following a convex curve.
+            min_index (Any): Indices below this threshold are discarded.
+                Default None.
+            max_index (Any): Indices above this threshold are discarded.
+                Default None.
+
+        Returns:
+            int: Integer index of elbow point. Returns `None` if no
+            elbow point is found.
+        """
+
+        if not max_index and not min_index:
+            indices = series.index
+        else:
+            if not max_index:
+                max_index = series.index[-1]
+            if not min_index:
+                min_index = series.index[0]
+            indices = series.index[
+                (series.index >= min_index) & (series.index <= max_index)
+            ]
+        if series[indices[-1]] < series[indices[0]]:
+            curve_direction = "decreasing"
+            online_param = "true"
+        else:
+            curve_direction = "increasing"
+            online_param = "true"
+        knee = kneed.KneeLocator(
+            series[indices],
+            indices,
+            S=1.5,
+            curve="convex",
+            online=online_param,
+            direction=curve_direction,
+            interp_method="interp1d",
+        )
+
+        elbows = series[knee.all_elbows_y][
+            series[knee.all_elbows_y] < series[indices].mean()
+        ]
+        if not elbows.empty:
+            elbow_index = min(elbows.index)
+        elif knee.all_elbows_y:
+            elbow_index = min(knee.all_elbows_y)
+        else:
+            elbow_index = None
+
+        return elbow_index
+
+    def get_boundary_height(self, grad_potential, time_index, max_height=2000):
+        """Estimate height of boundary layer from potential temperature.
+
+        Estimates the height of the boundary layer by calculating the
+        elbow point of the gradient potential temperature using the
+        Kneedle algorithm, i.e. where the gradient potential temperature
+        starts to weaken. It is not a substitute for visual inspection.
+
+        Args:
+            grad_potential (pd.DataFrame): Vertical measurements,
+                gradient potential temperature, |Dtheta/Dz| [|Km^-1|].
+            time_index (pd.Timestamp): Local time at which to estimate
+                boundary layer height.
+            max_height (int): Cutoff height for estimating boundary
+                layer height. Default 2000.
+
+        Returns:
+            int: Estimated boundary layer height, |z_BL| [m].
+        """
+
+        time_index = self.get_nearest_time_index(
+            data=grad_potential, time_stamp=time_index
+        )
+        curve = grad_potential.loc[time_index]
+        # set minimum height to 50m to avoid discontinuity errors
+        elbow = self.get_elbow_point(series=curve, min_index=50, max_index=max_height)
+        if not elbow:
+            bl_height = None
+        elif elbow >= max_height:
+            bl_height = None
+        else:
+            bl_height = elbow
+
+        if not bl_height:
+            print("Failed to estimate boundary layer height.")
+        else:
+            print(f"Estimated boundary layer height: {bl_height} m.")
+
+        return bl_height
+
+    def compare_lapse_rates(self, air_temperature, saturated, unsaturated):
+        """Compares parcel temperatures to find instability.
+
+        Args:
+            air_temperature (pd.DataFrame): Vertical measurements,
+                temperature, |T| [K].
+            saturated (pd.DataFrame): Vertical measurements, saturated
+                parcel temperature, |T_sat| [K].
+            unsaturated (pd.DataFrame): Vertical measurements,
+                unsaturated parcel temperature, |T_unsat| [K].
+
+        Returns:
+            tuple[pd.Series[bool], pd.Series[bool]]: Boolean series of
+            absolute and conditional instability for heights |z|.
+        """
+
+        heights = air_temperature.columns[
+            (air_temperature.columns > 0) & (air_temperature.columns <= 2000)
+        ]
+
+        absolute_instability = (
+            air_temperature[heights].gt(unsaturated[heights]).any(axis=1)
+        )
+        conditional_instability = (
+            air_temperature[heights].lt(saturated[heights]).any(axis=1)
+            & air_temperature[heights].gt(saturated[heights]).any(axis=1)
+        ) | air_temperature[heights].gt(unsaturated[heights]).any(axis=1)
+
+        return absolute_instability, conditional_instability
+
+    def plot_lapse_rates(
+        self, vertical_data, dry_adiabat, local_time, bl_height=None, location=""
+    ):
+        """Plots comparison of lapse rates and boundary layer height.
+
+        The figures are saved to disk.
+
+        Args:
+            vertical_data (dict): Vertical measurements for lapse rates
+                and temperatures.
+            dry_adiabat (float): Dry adiabatic lapse rate.
+            local_time (pd.Timestamp): Local time of switch between
+                stability conditions.
+            bl_height (float): Boundary layer height, [m]. Default None.
+            location (str): Location of data collection. Default empty
+                string.
+
+        Returns:
+            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Vertical
+            profiles of lapse rates on a single axis, and vertical
+            profiles of parcel temperatures on a single axis. If a
+            boundary layer height is provided, vertical lines denoting
+            its height are added to the figures.
+        """
+
+        lapse_rates = {
+            "environmental_lapse_rate": vertical_data["environmental_lapse_rate"],
+            "moist_adiabatic_lapse_rate": vertical_data["moist_adiabatic_lapse_rate"],
+        }
+        round_time = self.get_nearest_time_index(
+            data=next(iter(lapse_rates.values())), time_stamp=local_time
+        )
+        fig_lapse, axes_lapse = self.plotting.plot_merged_profiles(
+            dataset=lapse_rates,
+            time_index=round_time,
+            vlines={"dry_adiabatic_lapse_rate": dry_adiabat},
+            hlines={"boundary_layer_height": bl_height},
+            site=location,
+            y_lim=2000,
+            title="Temperature Lapse Rates",
+            x_label=r"Lapse Rate, [Km$^{-1}$]",
+        )
+        self.plotting.save_figure(
+            figure=fig_lapse,
+            timestamp=round_time,
+            suffix=f"{round_time.strftime('%H%M')}_lapse_rates",
+        )
+
+        parcel_temperatures = {
+            "temperature": vertical_data["temperature"],
+            "unsaturated_temperature": vertical_data["unsaturated_temperature"],
+            "saturated_temperature": vertical_data["saturated_temperature"],
+        }
+
+        fig_parcel, axes_parcel = self.plotting.plot_merged_profiles(
+            dataset=parcel_temperatures,
+            time_index=round_time,
+            hlines={"boundary_layer_height": bl_height},
+            site=location,
+            y_lim=2000,
+            title="Vertical Profiles of Parcel Temperature",
+            x_label="Temperature, [K]",
+        )
+        self.plotting.save_figure(
+            figure=fig_parcel,
+            timestamp=round_time,
+            suffix=f"{round_time.strftime('%H%M')}_parcel_temperatures",
+        )
+
+        return fig_lapse, axes_lapse, fig_parcel, axes_parcel
+
+    def get_switch_time_vertical(self, data, method="static", ri_crit=0.25):
+        """Gets local time of switch between stability conditions.
+
+        Pass one of the following to the <method> argument:
+
+        - **eddy**: eddy covariance (NotImplemented)
+        - **static**: static stability from potential temperature
+          profile
+        - **bulk**: bulk Richardson number
+        - **lapse**: temperature lapse rate
+        - **brunt**: Brunt-Väisälä frequency (NotImplemented)
+
+        Args:
+            data (dict): Parsed and localised dataframes, containing
+                vertical measurements to construct a potential
+                temperature profile or calculate lapse rates.
+            method (str): Method to calculate switch time.
+                Default "static".
+            ri_crit (float): Critical bulk Richardson number for CBL.
+                Only used if `method = "bulk"`. For street canyons
+                consider values between 0.5 - 1.0 [#zhao2020]_.
+                Default 0.25 [#jericevic2006]_.
+
+        Returns:
+            pd.Timestamp: Local time of switch between stability
+            conditions.
+
+        Raises:
+            NotImplementedError: Switch time algorithm not implemented
+                for <method>.
+        """
+
+        pt_profile = ProfileConstructor()
+
+        # static stability
+        if method == "static" and "grad_potential_temperature" in data["vertical"]:
+            heights = data["vertical"]["grad_potential_temperature"].columns[
+                data["vertical"]["grad_potential_temperature"].columns <= 2000
+            ]
+            negative_grad = (
+                data["vertical"]["grad_potential_temperature"][heights]
+                .lt(0)
+                .any(axis=1)
+            )
+            local_time = self.match_time_at_threshold(
+                series=negative_grad,  # since True == 1
+                threshold=0,
+                lessthan=False,
+                min_time=data["timestamp"],
+            )
+
+        elif method == "bulk":  # bulk richardson
+            bulk_richardson = pt_profile.get_bulk_richardson(
+                potential_temperature=data["vertical"]["potential_temperature"],
+                meteo_data=data["weather"],
+            )
+            local_time = self.match_time_at_threshold(
+                series=bulk_richardson, threshold=ri_crit, lessthan=True
+            )
+            data["vertical"]["bulk_richardson"] = bulk_richardson
+
+        elif method == "lapse":  # lapse rates
+            _, conditional_instability = self.compare_lapse_rates(
+                air_temperature=data["vertical"]["temperature"],
+                saturated=data["vertical"]["saturated_temperature"].dropna(),
+                unsaturated=data["vertical"]["unsaturated_temperature"].dropna(),
+            )
+            local_time = self.match_time_at_threshold(
+                series=conditional_instability,
+                threshold=0,
+                lessthan=False,
+                min_time=data["timestamp"],
+            )
+
+        else:
+            error_msg = f"Switch time algorithm not implemented for '{method}'."
+            raise NotImplementedError(error_msg)
+
+        return local_time
+
     def get_switch_time(self, data, method="sun", local_time=None, ri_crit=0.25):
         """Gets local time of switch between stability conditions.
 
@@ -198,11 +483,12 @@ class MetricsFlux:
         - **static**: static stability from potential temperature
           profile
         - **bulk**: bulk Richardson number
-        - **lapse**: temperature lapse rate (NotImplemented)
+        - **lapse**: temperature lapse rate
         - **brunt**: Brunt-Väisälä frequency (NotImplemented)
 
-        To manually set the regime switch time, pass a local timestamp
-        to <local_time>. This overrides all other methods.
+        To manually set the regime switch time, pass a localised
+        timestamp or string to <local_time>. This overrides all other
+        methods.
 
         Args:
             data (dict): Parsed and localised dataframes, containing
@@ -210,21 +496,21 @@ class MetricsFlux:
                 eddy covariance data, or global irradiance.
             method (str): Method to calculate switch time.
                 Default "sun".
-            local_time (str): Local time of switch between stability
-                conditions. Overrides <method>.
+            local_time (Union[str, pd.Timestamp]): Local time of switch
+                between stability conditions. Overrides <method>.
+                Default None.
             ri_crit (float): Critical bulk Richardson number for CBL.
                 Only used if `method = "bulk"`. For street canyons
                 consider values between 0.5 - 1.0 [#zhao2020]_.
                 Default 0.25 [#jericevic2006]_.
 
         Returns:
-            str: Local time of switch between stability conditions.
+            pd.Timestamp: Local time of switch between stability
+            conditions.
 
         Raises:
             UnboundLocalError: No data to calculate switch time. Set
                 <local_time> manually with `--switch-time`.
-            NotImplementedError: Switch time algorithm not implemented
-                for <method>.
         """
 
         if not local_time:
@@ -241,43 +527,9 @@ class MetricsFlux:
                 )
 
             elif "vertical" in data:
-                pt_profile = ProfileConstructor()
-                # static stability
-                if (
-                    method == "static"
-                    and "grad_potential_temperature" in data["vertical"]
-                ):
-                    grad_potential_temperature = data["vertical"][
-                        "grad_potential_temperature"
-                    ]
-                    heights = grad_potential_temperature.columns[
-                        grad_potential_temperature.columns <= 2000
-                    ]
-                    negative_grad = (
-                        grad_potential_temperature[heights].lt(0).any(axis=1)
-                    )
-                    local_time = self.match_time_at_threshold(
-                        series=negative_grad,  # since True == 1
-                        threshold=0,
-                        lessthan=False,
-                    )
-                elif method == "bulk":  # bulk richardson
-                    bulk_richardson = pt_profile.get_bulk_richardson(
-                        potential_temperature=data["vertical"]["potential_temperature"],
-                        meteo_data=weather_data,
-                    )
-                    local_time = self.match_time_at_threshold(
-                        series=bulk_richardson, threshold=ri_crit, lessthan=True
-                    )
-                    data["vertical"]["bulk_richardson"] = bulk_richardson
-
-                elif method == "eddy":  # eddy covariance
-                    raise NotImplementedError(
-                        f"Switch time algorithm not implemented for '{method}'."
-                    )
-                else:
-                    error_msg = f"Switch time algorithm not implemented for '{method}'."
-                    raise NotImplementedError(error_msg)
+                local_time = self.get_switch_time_vertical(
+                    data=data, method=method, ri_crit=ri_crit
+                )
             if not local_time:
                 error_msg = (
                     "No data to calculate switch time.",
@@ -295,7 +547,7 @@ class MetricsFlux:
 
         return local_time
 
-    def plot_switch_time_stability(self, data, local_time, location=""):
+    def plot_switch_time_stability(self, data, local_time, location="", bl_height=None):
         """Plot and save profiles of potential temperature and gradient.
 
         Args:
@@ -306,6 +558,7 @@ class MetricsFlux:
                 stability conditions.
             location (str): Location of data collection. Default empty
                 string.
+            bl_height (int): Boundary layer height. Default None.
 
         Returns:
             tuple[plt.Figure, plt.Axes]: Vertical profile of potential
@@ -318,51 +571,48 @@ class MetricsFlux:
             data=data["potential_temperature"], time_stamp=local_time
         )
         mil_time = round_time.strftime("%H%M")
+
+        fig, ax = self.plotting.plot_vertical_profile(
+            vertical_data=data,
+            name="potential_temperature",
+            time_idx=round_time,
+            site=location,
+            y_lim=2000,
+            hlines={"boundary_layer_height": bl_height},
+        )
+        self.plotting.save_figure(
+            figure=fig,
+            timestamp=local_time,
+            suffix=f"{mil_time}_potential_temperature_2km",
+        )
+
         if "grad_potential_temperature" in data:
             fig, ax = self.plotting.plot_vertical_comparison(
                 dataset=data,
                 time_index=round_time,
                 keys=["potential_temperature", "grad_potential_temperature"],
                 site=location,
+                hlines={"boundary_layer_height": bl_height},
             )
+            self.plotting.save_figure(
+                figure=fig,
+                timestamp=local_time,
+                suffix=f"{mil_time}_potential_temperature_profiles",
+            )
+
             fig_grad, _ = self.plotting.plot_vertical_profile(
                 vertical_data=data,
                 name="grad_potential_temperature",
                 time_idx=round_time,
                 site=location,
-                y_lim=300,
+                y_lim=2000,
+                hlines={"boundary_layer_height": bl_height},
             )
             self.plotting.save_figure(
                 figure=fig_grad,
                 timestamp=local_time,
-                suffix=f"{mil_time}_gradient_potential_temperature_250m",
+                suffix=f"{mil_time}_gradient_potential_temperature_2km",
             )
-        else:
-            fig, ax = self.plotting.plot_vertical_profile(
-                vertical_data=data,
-                name="potential_temperature",
-                time_idx=round_time,
-                site=location,
-            )
-
-        self.plotting.save_figure(
-            figure=fig,
-            timestamp=local_time,
-            suffix=f"{mil_time}_potential_temperature_profiles",
-        )
-
-        fig_pot, _ = self.plotting.plot_vertical_profile(
-            vertical_data=data,
-            name="potential_temperature",
-            time_idx=round_time,
-            site=location,
-            y_lim=1000,
-        )
-        self.plotting.save_figure(
-            figure=fig_pot,
-            timestamp=local_time,
-            suffix=f"{mil_time}_potential_temperature_1000m",
-        )
 
         return fig, ax
 
@@ -380,27 +630,48 @@ class MetricsFlux:
                 eddy covariance data, or global irradiance.
             method (str): Method to calculate switch time.
                 Default "sun".
-            switch_time (str): Local time of switch between stability
-                conditions. Overrides <method>.
+            switch_time (Union[str, pd.Timestamp]): Local time of switch
+                between stability conditions. Overrides <method>.
+                Default None.
             location (str): Location of data collection. Default empty
                 string.
 
         Returns:
-            str: Local time of switch between stability conditions.
+            pd.Timestamp: Local time of switch between stability
+            conditions.
         """
 
         switch_time = self.get_switch_time(
             data=datasets, method=method, local_time=switch_time
         )
         if "vertical" in datasets:
-            if "potential_temperature" in datasets["vertical"]:
-                self.plot_switch_time_stability(
-                    data=datasets["vertical"], local_time=switch_time, location=location
+            vertical_data = datasets["vertical"]
+            if "grad_potential_temperature" in vertical_data:
+                layer_height = self.get_boundary_height(
+                    grad_potential=vertical_data["grad_potential_temperature"],
+                    time_index=switch_time,
+                    max_height=2000,
                 )
+                self.plot_switch_time_stability(
+                    data=vertical_data,
+                    local_time=switch_time,
+                    location=location,
+                    bl_height=layer_height,
+                )
+                if "environmental_lapse_rate" in vertical_data:
+                    self.plot_lapse_rates(
+                        vertical_data=datasets["vertical"],
+                        dry_adiabat=self.dalr,
+                        bl_height=layer_height,
+                        local_time=switch_time,
+                        location=location,
+                    )
 
         return switch_time
 
-    def iterate_fluxes(self, user_args, z_parameters, datasets, most_id, location=""):
+    def iterate_fluxes(
+        self, user_args, z_parameters, datasets, most_id="an1988", location=""
+    ):
         """Compute sensible heat fluxes with MOST through iteration.
 
         Trades speed from vectorisation for more accurate convergence.
@@ -413,6 +684,8 @@ class MetricsFlux:
             datasets (dict): Contains parsed, tz-aware dataframes, with
                 at least |CT2|, wind speed, air density, and
                 temperature.
+            most_id (str): MOST coefficients for unstable and stable
+                conditions. Default "an1988".
             location (str): Location of data collection. Default empty
                 string.
 
@@ -472,18 +745,18 @@ class MetricsFlux:
             string.
 
         Returns:
-            plt.Figure: Time series comparing sensible heat fluxes under
-            free convection to on-board software.
+            tuple[plt.Figure, plt.Axes]: Time series comparing sensible
+            heat fluxes under free convection to on-board software.
         """
 
-        figure_convection, _ = self.plotting.plot_convection(
+        fig_convection, ax_convection = self.plotting.plot_convection(
             dataframe=derived_data, stability=user_args.regime, site=location
         )
         self.plotting.save_figure(
-            figure=figure_convection, timestamp=time_id, suffix="free_convection"
+            figure=fig_convection, timestamp=time_id, suffix="free_convection"
         )
 
-        return figure_convection
+        return fig_convection, ax_convection
 
     def plot_iterated_metrics(self, iterated_data, time_stamp, site_location=""):
         """Plot and save time series and comparison of iterated fluxes.

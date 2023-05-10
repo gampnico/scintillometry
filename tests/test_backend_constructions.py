@@ -38,6 +38,7 @@ Use the `conftest_boilerplate` fixture to avoid duplicating tests.
 
 import numpy as np
 import pandas as pd
+import pandas.api.types as ptypes
 import pytest
 
 import scintillometry.backend.constants
@@ -76,8 +77,7 @@ class TestBackendProfileConstructor:
     )
     def test_get_water_vapour_pressure(
         self,
-        conftest_mock_hatpro_humidity_dataframe,
-        conftest_mock_hatpro_temperature_dataframe,
+        conftest_mock_hatpro_dataset,
         conftest_mock_hatpro_scan_levels,
         conftest_boilerplate,
     ):
@@ -85,13 +85,13 @@ class TestBackendProfileConstructor:
 
         assert isinstance(self.test_profile.constants.r_vapour, (float, int))
         test_wvp = (
-            conftest_mock_hatpro_humidity_dataframe
-            * conftest_mock_hatpro_temperature_dataframe
+            conftest_mock_hatpro_dataset["humidity"]
+            * conftest_mock_hatpro_dataset["temperature"]
             * self.test_profile.constants.r_vapour
         )
         compare_wvp = self.test_profile.get_water_vapour_pressure(
-            abs_humidity=conftest_mock_hatpro_humidity_dataframe,
-            temperature=conftest_mock_hatpro_temperature_dataframe,
+            abs_humidity=conftest_mock_hatpro_dataset["humidity"],
+            temperature=conftest_mock_hatpro_dataset["temperature"],
         )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_wvp)
@@ -190,8 +190,7 @@ class TestBackendProfileConstructor:
     def test_get_mixing_ratio(
         self,
         conftest_mock_weather_dataframe_tz,
-        conftest_mock_hatpro_humidity_dataframe_tz,
-        conftest_mock_hatpro_temperature_dataframe_tz,
+        conftest_mock_hatpro_dataset,
         conftest_mock_hatpro_scan_levels,
         conftest_boilerplate,
     ):
@@ -202,9 +201,11 @@ class TestBackendProfileConstructor:
             series=test_weather["pressure"].multiply(100),
             levels=conftest_mock_hatpro_scan_levels,
         )
-        test_wvp = conftest_mock_hatpro_humidity_dataframe_tz.multiply(
-            conftest_mock_hatpro_temperature_dataframe_tz
-        ).multiply(self.test_profile.constants.r_vapour)
+        test_wvp = (
+            conftest_mock_hatpro_dataset["humidity"]
+            .multiply(conftest_mock_hatpro_dataset["temperature"])
+            .multiply(self.test_profile.constants.r_vapour)
+        )
         test_ratio = (test_wvp * self.test_profile.constants.r_dry) / (
             self.test_profile.constants.r_vapour * test_pressure
         )
@@ -329,6 +330,109 @@ class TestBackendProfileConstructor:
         assert np.allclose(compare_potential, test_potential)
 
     @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_environmental_lapse_rate"
+    )
+    def test_get_environmental_lapse_rate(
+        self,
+        conftest_mock_hatpro_dataset,
+        conftest_boilerplate,
+    ):
+        """Calculate environmental lapse rate."""
+
+        test_temperature = conftest_mock_hatpro_dataset["temperature"].copy(deep=True)
+        test_dz = -test_temperature.columns.to_series().diff(periods=-1)
+        assert np.isnan(test_dz.iloc[-1])
+        assert not np.isnan(test_dz.iloc[:-1]).any()
+        assert (test_dz.iloc[:-1] > 0).all().all()
+        assert len(test_dz) == len(test_temperature.columns)
+        test_dt = test_temperature.diff(periods=-1, axis=1)
+        conftest_boilerplate.check_dataframe(dataframe=test_dt.iloc[:, :-1])
+        test_lapse = test_dt / test_dz
+        conftest_boilerplate.check_dataframe(dataframe=test_lapse.iloc[:, :-1])
+
+        compare_lapse = self.test_profile.get_environmental_lapse_rate(
+            temperature=test_temperature
+        )
+        conftest_boilerplate.check_dataframe(dataframe=compare_lapse.iloc[:, :-1])
+        assert np.allclose(compare_lapse.iloc[:, :-1], test_lapse.iloc[:, :-1])
+
+    @pytest.mark.dependency(
+        name="TestBackendProfileConstructor::test_get_moist_adiabatic_lapse_rate"
+    )
+    def test_get_moist_adiabatic_lapse_rate(
+        self,
+        conftest_mock_hatpro_dataset,
+        conftest_mock_hatpro_scan_levels,
+        conftest_mock_weather_dataframe_tz,
+        conftest_boilerplate,
+    ):
+        """Calculate moist adiabatic lapse rate."""
+
+        test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
+        test_pressure = conftest_boilerplate.setup_extrapolated(
+            series=test_weather["pressure"].asfreq("10T").multiply(100),
+            levels=conftest_mock_hatpro_scan_levels,
+        )
+        test_hatpro = conftest_mock_hatpro_dataset.copy()
+        test_wvp = self.test_profile.get_water_vapour_pressure(
+            abs_humidity=test_hatpro["humidity"], temperature=test_hatpro["temperature"]
+        )
+        test_ratio = self.test_profile.get_mixing_ratio(
+            wv_pressure=test_wvp, d_pressure=test_pressure
+        )
+        for frame in [test_wvp, test_ratio]:
+            conftest_boilerplate.check_dataframe(dataframe=frame)
+        numerator = 1 + (
+            (self.test_profile.constants.latent_vapour * test_ratio)
+            / (self.test_profile.constants.r_dry * test_hatpro["temperature"])
+        )
+        denominator = self.test_profile.constants.cp + (
+            (test_ratio * self.test_profile.constants.latent_vapour**2)
+            / (self.test_profile.constants.r_vapour * test_hatpro["temperature"] ** 2)
+        )
+        test_malr = self.test_profile.constants.g * (numerator / denominator)
+
+        compare_malr = self.test_profile.get_moist_adiabatic_lapse_rate(
+            mixing_ratio=test_ratio, temperature=test_hatpro["temperature"]
+        )
+
+        conftest_boilerplate.check_dataframe(dataframe=compare_malr)
+        assert np.allclose(compare_malr, test_malr)
+
+    @pytest.mark.dependency(name="TestBackendProfileConstructor::test_get_lapse_rates")
+    def test_get_lapse_rates(
+        self,
+        conftest_mock_weather_dataframe_tz,
+        conftest_mock_hatpro_dataset,
+        conftest_mock_hatpro_scan_levels,
+        conftest_boilerplate,
+    ):
+        """Calculate lapse rates."""
+
+        test_dataset = {
+            "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
+            "vertical": conftest_mock_hatpro_dataset.copy(),
+        }
+        test_pressure = test_dataset["weather"]["pressure"].asfreq("10T").multiply(100)
+        test_ratio = conftest_boilerplate.setup_extrapolated(
+            series=test_pressure.divide(test_pressure + 1),
+            levels=conftest_mock_hatpro_scan_levels,
+        )
+        test_dataset["vertical"]["mixing_ratio"] = test_ratio
+
+        compare_rates = self.test_profile.get_lapse_rates(
+            temperature=test_dataset["vertical"]["temperature"],
+            mixing_ratio=test_dataset["vertical"]["mixing_ratio"],
+        )
+        assert isinstance(compare_rates, dict)
+        for key in ["environmental", "moist_adiabatic"]:
+            assert key in compare_rates
+        conftest_boilerplate.check_dataframe(
+            dataframe=compare_rates["environmental"].iloc[:, :-1]
+        )
+        conftest_boilerplate.check_dataframe(dataframe=compare_rates["moist_adiabatic"])
+
+    @pytest.mark.dependency(
         name="TestBackendProfileConstructor::test_non_uniform_differencing"
     )
     def test_non_uniform_differencing(
@@ -341,10 +445,11 @@ class TestBackendProfileConstructor:
 
         test_dataframe = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_cols = test_dataframe.columns
-        test_diff = test_cols.to_series().diff()
+        test_diff = -test_cols.to_series().diff(periods=-1)
         assert isinstance(test_diff, pd.Series)
-        assert np.isnan(test_diff[0])
-        assert not test_diff[1:].isnull().all()
+        assert np.isnan(test_diff.iloc[-1])
+        test_diff.iloc[-1] = test_diff.iloc[-2]
+        assert not test_diff.isnull().any()
 
         test_gradient = test_dataframe.copy(deep=True)
         for i in range(1, len(test_cols)):
@@ -424,7 +529,8 @@ class TestBackendProfileConstructor:
         compare_gradient = self.test_profile.get_gradient(
             data=test_dataframe, method=arg_method
         )
-
+        for i in compare_gradient.columns:
+            assert ptypes.is_numeric_dtype(compare_gradient[i])
         conftest_boilerplate.check_dataframe(dataframe=compare_gradient)
         assert all(
             key in compare_gradient.columns for key in conftest_mock_hatpro_scan_levels
@@ -526,7 +632,7 @@ class TestBackendProfileConstructor:
 
         test_temperature = conftest_mock_hatpro_temperature_dataframe_tz.copy(deep=True)
         test_grad_pot_temperature = self.test_profile.get_gradient(
-            data=test_temperature, method="uneven"
+            data=test_temperature, method="backward"
         )
 
         test_brunt = (self.test_profile.constants.g / test_temperature) * (
@@ -534,7 +640,7 @@ class TestBackendProfileConstructor:
         )
 
         compare_brunt = self.test_profile.get_n_squared(
-            potential_temperature=test_temperature, scheme="uneven"
+            potential_temperature=test_temperature, scheme="backward"
         )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_brunt)
@@ -570,6 +676,8 @@ class TestBackendProfileConstructor:
             "msl_pressure",
             "potential_temperature",
             "grad_potential_temperature",
+            "environmental_lapse_rate",
+            "moist_adiabatic_lapse_rate",
         ]
 
         compare_dataset = self.test_profile.get_vertical_variables(
@@ -581,7 +689,10 @@ class TestBackendProfileConstructor:
         assert isinstance(compare_dataset, dict)
         assert all(key in compare_dataset for key in test_keys)
         for key in test_keys:
-            conftest_boilerplate.check_dataframe(compare_dataset[key])
+            if key != "environmental_lapse_rate":
+                conftest_boilerplate.check_dataframe(compare_dataset[key])
+            else:
+                conftest_boilerplate.check_dataframe(compare_dataset[key].iloc[:, :-1])
             assert isinstance(compare_dataset[key].index, pd.DatetimeIndex)
 
             pd.testing.assert_index_equal(

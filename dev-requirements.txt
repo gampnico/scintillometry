@@ -4,6 +4,7 @@ scipy>=1.10
 mpmath>=1.2.1
 numpy
 matplotlib
+kneed
 pytest>=7.0
 pytest-dependency>=0.5
 coverage>=7.1

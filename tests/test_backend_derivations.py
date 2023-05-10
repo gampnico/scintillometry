@@ -26,7 +26,17 @@ import scintillometry.backend.derivations
 
 
 class TestBackendDerivations:
-    """Test class for path weighting functions."""
+    """Test class for path weighting functions.
+
+
+    Attributes:
+        test_data (dict): Placeholder data for single timestamp.
+        test_frame (pd.DataFrame): TZ-aware labelled data for single
+            timestamp.
+        test_index (pd.DatetimeIndex): Single placeholder timestamp for
+            data collection.
+        test_z_eff (np.float64): Placeholder for effective path height.
+    """
 
     test_data = {
         "Cn2": [1.9115e-16],
@@ -39,7 +49,6 @@ class TestBackendDerivations:
     # all dataframes are in the same TZ in main.
     test_index = pd.DatetimeIndex(data=["2020-06-03T00:10:00Z"], tz="CET")
     test_frame.index = test_index
-
     test_z_eff = np.float64(25.628)
 
     @pytest.mark.dependency(name="TestBackendDerivations::test_derive_ct2")

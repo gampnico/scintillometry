@@ -782,3 +782,53 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
                 )
         assert compare_fig.texts[0].get_text() == "".join(test_title)
         plt.close("all")
+
+    @pytest.mark.dependency(
+        name="TestVisualsPlotting::test_plot_merged_profiles",
+        depends=["TestVisualsFormatting::test_plot_constant_lines"],
+    )
+    @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
+    @pytest.mark.parametrize("arg_kwargs", [{}, {"x_label": "Temperature, T [K]"}])
+    @pytest.mark.parametrize("arg_y_lim", [None, 2000])
+    def test_plot_merged_profiles(
+        self,
+        conftest_mock_hatpro_dataset,
+        conftest_boilerplate,
+        arg_site,
+        arg_kwargs,
+        arg_y_lim,
+    ):
+        """Plots vertical profile at specific time."""
+
+        test_data = conftest_mock_hatpro_dataset.copy()
+        test_index = self.test_timestamp
+        if arg_site:
+            test_site = f"\nat {arg_site}, "
+        else:
+            test_site = ",\n"
+        test_title = (
+            f"Vertical Profiles of Temperature and Humidity{test_site}",
+            f"{self.test_date} 05:20 CET",
+        )
+        if not arg_kwargs:
+            test_x_label = r"Humidity, [kg$\cdot$m$^{-3}$]"
+        else:
+            test_x_label = "Temperature, T [K]"
+
+        compare_fig, compare_ax = self.test_plotting.plot_merged_profiles(
+            dataset=test_data,
+            time_index=test_index,
+            site=arg_site,
+            y_lim=arg_y_lim,
+            **arg_kwargs,
+        )
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "title": "".join(test_title),
+            "x_label": test_x_label,
+            "y_label": "Height [m]",
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params)
+        assert len(compare_ax.properties()["lines"]) == len(test_data.keys())
+
+        plt.close("all")

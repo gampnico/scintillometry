@@ -51,6 +51,8 @@ class AtmosConstants(object):
 
         cp (float): Specific heat capacity of air at constant pressure,
             |c_p| [|JK^-1| |kg^-1|].
+        dalr (float): Dry adiabatic lapse rate |Gamma_d| [|Km^-1|]. The
+            lapse rate is positive.
         g (float): Gravitational acceleration [|ms^-2|].
         k (float): von Kármán's constant.
         kelvin (float): 0°C in kelvins.
@@ -109,7 +111,9 @@ class AtmosConstants(object):
 
         # Physical constants
         self.cp = 1004.67
+        self.cp_dry = 1003.5
         self.g = 9.81
+        self.dalr = self.g / self.cp
         self.kelvin = 273.15
         self.k = 0.4
         self.latent_vapour = 2.45e6

@@ -47,6 +47,7 @@ opposite order::
 
 import argparse
 
+import kneed
 import matplotlib.pyplot as plt
 import mpmath
 import numpy as np
@@ -123,6 +124,7 @@ class TestMetricsFluxClass:
     Attributes:
         test_metrics (MetricsFlux): Heat flux calculation class.
         test_date (str): Placeholder for date of data collection.
+        test_timestamp (pd.Timestamp): Placeholder for index timestamp.
     """
 
     test_metrics = scintillometry.metrics.calculations.MetricsFlux()
@@ -241,19 +243,25 @@ class TestMetricsFluxClass:
     @pytest.mark.dependency(name="TestMetricsFluxClass::test_match_time_at_threshold")
     @pytest.mark.parametrize("arg_lessthan", [True, False])
     @pytest.mark.parametrize("arg_empty", [True, False])
+    @pytest.mark.parametrize("arg_timestamp", [True, None])
     def test_match_time_at_threshold(
-        self, conftest_mock_weather_dataframe_tz, arg_lessthan, arg_empty
+        self, conftest_mock_weather_dataframe_tz, arg_lessthan, arg_empty, arg_timestamp
     ):
         """Derive and append vertical measurements to dataset."""
 
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
         if arg_empty:
             test_weather["global_irradiance"] = 20
+        if not arg_timestamp:
+            test_timestamp = None
+        else:
+            test_timestamp = self.test_timestamp
 
         compare_time = self.test_metrics.match_time_at_threshold(
             series=test_weather["global_irradiance"],
             threshold=20,
             lessthan=arg_lessthan,
+            min_time=test_timestamp,
         )
 
         if not arg_empty:
@@ -264,6 +272,123 @@ class TestMetricsFluxClass:
                 assert compare_time.strftime("%H:%M") == "05:19"
         else:
             assert compare_time is None
+
+    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_elbow_point")
+    @pytest.mark.parametrize("arg_min_index", [None, 0, 50])
+    @pytest.mark.parametrize("arg_max_index", [None, 180, 190])
+    @pytest.mark.parametrize("arg_curve", [1, -1])
+    def test_get_elbow_point(self, arg_min_index, arg_max_index, arg_curve):
+        """Estimate elbow point of curve."""
+
+        test_heights = np.arange(0, 200, 10)
+        test_data = pd.DataFrame(columns=test_heights)
+        test_data.loc[self.test_timestamp] = 10 / np.arange(0.1, 2.1, 0.1) ** 2
+        test_curve = test_data.loc[self.test_timestamp]
+        assert np.allclose(test_curve.index, test_heights)
+        if arg_curve > 0:
+            test_direction = "decreasing"
+        else:
+            test_direction = "increasing"
+        if not arg_max_index:
+            max_index = test_curve.index[-1]
+        else:
+            max_index = arg_max_index
+        if not arg_min_index:
+            min_index = test_curve.index[0]
+        else:
+            min_index = arg_min_index
+
+        test_indices = test_curve.index[
+            (test_curve.index >= min_index) & (test_curve.index <= max_index)
+        ]
+        test_knee = kneed.KneeLocator(
+            test_curve[test_indices] * arg_curve,
+            test_indices,
+            S=1.5,
+            curve="convex",
+            online="true",
+            direction=test_direction,
+            interp_method="interp1d",
+        )
+        elbows = test_curve[test_knee.all_elbows_y][
+            test_curve[test_knee.all_elbows_y] < test_curve[test_indices].mean()
+        ]
+        if not elbows.empty:
+            test_elbow = min(elbows.index)
+        else:
+            test_elbow = min(test_knee.all_elbows_y)
+
+        compare_elbow = self.test_metrics.get_elbow_point(
+            series=test_curve * arg_curve,
+            min_index=arg_min_index,
+            max_index=arg_max_index,
+        )
+        assert ptypes.is_int64_dtype(compare_elbow)
+        assert np.isclose(compare_elbow, test_elbow)
+
+    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_boundary_height")
+    def test_get_boundary_height(self, capsys):
+        """Estimate boundary layer height."""
+
+        test_heights = np.arange(0, 200, 10)
+        test_curve = pd.DataFrame(columns=test_heights)
+        test_curve.loc[self.test_timestamp] = 10 / np.arange(0.1, 2.1, 0.1) ** 2
+        test_intersect = 90
+
+        compare_height = self.test_metrics.get_boundary_height(
+            grad_potential=test_curve,
+            time_index=self.test_timestamp,
+            max_height=180,
+        )
+        compare_print = capsys.readouterr()
+        assert "Estimated boundary layer height: 90 m." in compare_print.out
+        assert isinstance(compare_height, np.int64)
+        assert compare_height == test_intersect
+
+    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_boundary_height_error")
+    def test_get_boundary_height_error(self, capsys):
+        """Warn if boundary layer height not found."""
+
+        test_heights = np.arange(0, 200, 10)
+        test_curve = pd.DataFrame(columns=test_heights)
+        test_curve.loc[self.test_timestamp] = 10 / np.arange(0.1, 2.1, 0.1) ** 2
+
+        with pytest.warns(RuntimeWarning):
+            compare_height = self.test_metrics.get_boundary_height(
+                grad_potential=test_curve,
+                time_index=self.test_timestamp,
+                max_height=50,
+            )
+            compare_print = capsys.readouterr()
+            assert compare_height is None
+            assert "Failed to estimate boundary layer height." in compare_print.out
+
+    @pytest.mark.dependency(
+        name="TestMetricsFluxClass::test_compare_lapse_rates",
+        depends=["TestMetricsFluxClass::test_append_vertical_variables"],
+    )
+    def test_compare_lapse_rates(
+        self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_dataset
+    ):
+        """Find instability from lapse rates."""
+
+        test_dataset = {
+            "weather": conftest_mock_weather_dataframe_tz,
+            "vertical": conftest_mock_hatpro_dataset.copy(),
+        }
+        test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
+
+        compare_stabilities = self.test_metrics.compare_lapse_rates(
+            air_temperature=test_dataset["vertical"]["temperature"],
+            saturated=test_dataset["vertical"]["saturated_temperature"],
+            unsaturated=test_dataset["vertical"]["unsaturated_temperature"],
+        )
+
+        assert isinstance(compare_stabilities, tuple)
+        for series in compare_stabilities:
+            assert isinstance(series, pd.Series)
+            assert ptypes.is_bool_dtype(series)
+        plt.close("all")
 
     @pytest.mark.dependency(
         name="TestMetricsFluxClass::test_get_switch_time_error_method"
@@ -336,15 +461,23 @@ class TestMetricsFluxClass:
         assert compare_switch.tz.zone == "CET"
 
     @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_switch_time_convert")
-    def test_get_switch_time_convert(self, conftest_mock_weather_dataframe_tz):
+    @pytest.mark.parametrize("arg_string", [True, False])
+    def test_get_switch_time_convert(
+        self, conftest_mock_weather_dataframe_tz, arg_string
+    ):
         """Convert local time string to timestamp."""
 
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "timestamp": self.test_timestamp,
         }
+        if not arg_string:
+            test_time = pd.Timestamp(f"{self.test_date} 05:19", tz="CET")
+        else:
+            test_time = "05:19"
+
         compare_switch = self.test_metrics.get_switch_time(
-            data=test_dataset, method="sun", local_time="05:19"
+            data=test_dataset, method="sun", local_time=test_time
         )
         assert isinstance(compare_switch, pd.Timestamp)
         assert compare_switch.strftime("%H:%M") == "05:19"
@@ -358,17 +491,49 @@ class TestMetricsFluxClass:
             "TestMetricsFluxClass::test_get_switch_time_fallback",
         ],
     )
-    @pytest.mark.parametrize("arg_local_time", ["05:19", None])
-    @pytest.mark.parametrize("arg_method", ["sun", "static", "bulk"])
+    @pytest.mark.parametrize("arg_method", ["static", "lapse", "bulk"])
     def test_get_switch_time_vertical(
         self,
         conftest_mock_weather_dataframe_tz,
         conftest_mock_hatpro_dataset,
         conftest_boilerplate,
-        arg_local_time,
         arg_method,
     ):
-        """Get time where stability conditions change."""
+        """Get stability switch time using vertical data."""
+
+        test_dataset = {
+            "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
+            "vertical": conftest_mock_hatpro_dataset,
+            "timestamp": self.test_timestamp,
+        }
+        test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
+
+        for key in ["grad_potential_temperature", "potential_temperature"]:
+            assert key in test_dataset["vertical"]
+            conftest_boilerplate.check_dataframe(
+                dataframe=test_dataset["vertical"][key]
+            )
+
+        compare_switch = self.test_metrics.get_switch_time_vertical(
+            data=test_dataset, method=arg_method, ri_crit=0.25
+        )
+
+        assert isinstance(compare_switch, pd.Timestamp)
+        assert compare_switch.strftime("%H:%M") == "05:10"
+
+    @pytest.mark.dependency(
+        name="TestMetricsFluxClass::test_get_switch_time_vertical_wrapper",
+        depends=["TestMetricsFluxClass::test_get_switch_time_vertical"],
+    )
+    @pytest.mark.parametrize("arg_local_time", ["05:19", None])
+    def test_get_switch_time_vertical_wrapper(
+        self,
+        conftest_mock_weather_dataframe_tz,
+        conftest_mock_hatpro_dataset,
+        conftest_boilerplate,
+        arg_local_time,
+    ):
+        """Use wrapper to get switch time from vertical data."""
 
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
@@ -384,19 +549,14 @@ class TestMetricsFluxClass:
             )
 
         compare_switch = self.test_metrics.get_switch_time(
-            data=test_dataset,
-            method=arg_method,
-            local_time=arg_local_time,
-            ri_crit=0.25,
+            data=test_dataset, method="static", local_time=arg_local_time, ri_crit=0.25
         )
 
         assert isinstance(compare_switch, pd.Timestamp)
         if arg_local_time:
             assert compare_switch.strftime("%H:%M") == arg_local_time
-        elif arg_method in ["static", "bulk"]:
-            assert compare_switch.strftime("%H:%M") == "05:10"
         else:
-            assert compare_switch.strftime("%H:%M") == "05:19"
+            assert compare_switch.strftime("%H:%M") == "05:10"
 
     @pytest.mark.dependency(
         name="TestMetricsFluxClass::test_plot_switch_time_stability",
@@ -459,33 +619,80 @@ class TestMetricsFluxClass:
         if not arg_gradient:
             assert isinstance(compare_ax, plt.Axes)
             assert compare_ax.get_title() == "".join(test_title)
-            assert compare_ax.yaxis.get_label().get_text() == "Height [m]"
+            assert compare_ax.yaxis.get_label_text() == "Height [m]"
         else:
             assert isinstance(compare_ax, np.ndarray)
             assert all(isinstance(ax, plt.Axes) for ax in compare_ax)
             assert compare_fig.texts[0].get_text() == "".join(test_title)
-            assert compare_ax[0].yaxis.get_label().get_text() == "Height [m]"
+            assert compare_ax[0].yaxis.get_label_text() == "Height [m]"
             for i in range(len(compare_ax)):
-                assert compare_ax[i].xaxis.get_label().get_text() == test_labels[i]
+                assert compare_ax[i].xaxis.get_label_text() == test_labels[i]
 
         plt.close("all")
 
-    @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_calculate_switch_time",
-        depends=[
-            "TestMetricsFluxClass::test_get_switch_time_vertical",
-            "TestMetricsFluxClass::test_plot_switch_time_stability",
-        ],
-    )
-    @pytest.mark.parametrize("arg_vertical", [True, False])
-    @pytest.mark.parametrize("arg_potential", [True, False])
-    def test_calculate_switch_time(
+    @pytest.mark.dependency(name="TestMetricsFluxClass::test_plot_lapse_rates")
+    @pytest.mark.parametrize("arg_height", [None, 100])
+    @pytest.mark.parametrize("arg_location", [None, "Test Location"])
+    def test_plot_lapse_rates(
         self,
         conftest_mock_weather_dataframe_tz,
         conftest_mock_hatpro_dataset,
         conftest_mock_save_figure,
-        arg_vertical,
-        arg_potential,
+        conftest_boilerplate,
+        arg_location,
+        arg_height,
+    ):
+        """Plot comparison of lapse rates and boundary layer height."""
+
+        _ = conftest_mock_save_figure
+
+        test_dataset = {
+            "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
+            "vertical": conftest_mock_hatpro_dataset.copy(),
+            "timestamp": self.test_timestamp,
+        }
+        test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
+        for key in ["grad_potential_temperature", "environmental_lapse_rate"]:
+            assert key in test_dataset["vertical"]
+        if arg_location:
+            test_location = f"\nat {arg_location}, "
+        else:
+            test_location = ",\n"
+        test_title = f"{test_location}{self.test_date} 05:10 CET"
+
+        fig_lapse, ax_lapse, fig_parcel, ax_parcel = self.test_metrics.plot_lapse_rates(
+            vertical_data=test_dataset["vertical"],
+            dry_adiabat=self.test_metrics.dalr,
+            local_time=self.test_timestamp,
+            location=arg_location,
+            bl_height=arg_height,
+        )
+
+        compare_params = {
+            "lapse": {
+                "title": "Temperature Lapse Rates",
+                "x_label": r"Lapse Rate, [Km$^{-1}$]",
+                "y_label": "Height [m]",
+                "plot": (fig_lapse, ax_lapse),
+            },
+            "parcel": {
+                "title": "Vertical Profiles of Parcel Temperature",
+                "x_label": "Temperature, [K]",
+                "y_label": "Height [m]",
+                "plot": (fig_parcel, ax_parcel),
+            },
+        }
+
+        for params in compare_params.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
+
+        plt.close("all")
+
+    @pytest.mark.dependency(
+        name="TestMetricsFluxClass::test_calculate_switch_time_no_vertical",
+    )
+    def test_calculate_switch_time_no_vertical(
+        self, conftest_mock_weather_dataframe_tz, conftest_mock_save_figure
     ):
         """Plot potential temperature profiles at switch time."""
 
@@ -495,37 +702,83 @@ class TestMetricsFluxClass:
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "timestamp": self.test_timestamp.replace(hour=5, minute=10),
         }
-        if arg_vertical:
-            test_dataset["vertical"] = conftest_mock_hatpro_dataset.copy()
-            if arg_potential:
-                test_dataset = self.test_metrics.append_vertical_variables(
-                    data=test_dataset
-                )
-
-        test_title = (
-            "Vertical Profile of Potential Temperature,",
-            f"\n{self.test_date} 05:10 CET",
-        )
 
         compare_switch = self.test_metrics.calculate_switch_time(
             datasets=test_dataset, method="sun", switch_time="05:10", location=""
         )
         assert isinstance(compare_switch, pd.Timestamp)
         assert compare_switch.strftime("%H:%M") == "05:10"
+        assert 1 not in plt.get_fignums()
 
-        if arg_vertical and arg_potential:
-            assert 1 in plt.get_fignums()
-            compare_fig = plt.gca()
-            assert compare_fig.title.get_text() == "".join(test_title)
+        plt.close("all")
+
+    @pytest.mark.dependency(
+        name="TestMetricsFluxClass::test_calculate_switch_time",
+        depends=[
+            "TestMetricsFluxClass::test_get_switch_time_vertical",
+            "TestMetricsFluxClass::test_plot_switch_time_stability",
+            "TestMetricsFluxClass::test_plot_lapse_rates",
+        ],
+    )
+    @pytest.mark.filterwarnings("ignore:No knee/elbow found")
+    @pytest.mark.parametrize("arg_potential", [True, False])
+    @pytest.mark.parametrize("arg_lapse", [True, False])
+    def test_calculate_switch_time(
+        self,
+        conftest_mock_weather_dataframe_tz,
+        conftest_mock_hatpro_dataset,
+        conftest_mock_save_figure,
+        arg_potential,
+        arg_lapse,
+    ):
+        """Calculate and plot switch time."""
+
+        _ = conftest_mock_save_figure
+
+        test_dataset = {
+            "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
+            "timestamp": self.test_timestamp.replace(hour=5, minute=10),
+        }
+        test_dataset["vertical"] = conftest_mock_hatpro_dataset.copy()
+        test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
+
+        if not arg_potential:
+            test_dataset["vertical"].pop("grad_potential_temperature")
+            assert "grad_potential_temperature" not in test_dataset["vertical"]
         else:
+            assert "grad_potential_temperature" in test_dataset["vertical"]
+
+        if not arg_lapse:
+            test_dataset["vertical"].pop("environmental_lapse_rate")
+            assert "environmental_lapse_rate" not in test_dataset["vertical"]
+        else:
+            assert "environmental_lapse_rate" in test_dataset["vertical"]
+
+        plt.close("all")
+        compare_switch = self.test_metrics.calculate_switch_time(
+            datasets=test_dataset, method="sun", switch_time="05:10", location=""
+        )
+        assert isinstance(compare_switch, pd.Timestamp)
+        assert compare_switch.strftime("%H:%M") == "05:10"
+
+        compare_fignums = len(plt.get_fignums())
+        if not arg_potential:
             assert 1 not in plt.get_fignums()
+        elif arg_potential and arg_lapse:
+            assert compare_fignums == 5
+        else:
+            assert compare_fignums == 3
 
         plt.close("all")
 
     @pytest.mark.dependency(name="TestMetricsFluxClass::test_plot_derived_metrics")
     @pytest.mark.parametrize("arg_regime", ["stable", "unstable", None])
     def test_plot_derived_metrics(
-        self, conftest_mock_save_figure, conftest_mock_derived_dataframe, arg_regime
+        self,
+        conftest_mock_save_figure,
+        conftest_mock_derived_dataframe,
+        conftest_boilerplate,
+        arg_regime,
     ):
         """Plot time series of heat fluxes for free convection."""
 
@@ -535,21 +788,26 @@ class TestMetricsFluxClass:
         test_args = test_args = argparse.Namespace(
             regime=arg_regime, beam_wavelength=880, beam_error=20
         )
-        compare_fig = self.test_metrics.plot_derived_metrics(
+        if arg_regime:
+            test_conditions = f"{arg_regime.capitalize()} Conditions"
+        else:
+            test_conditions = "No Height Dependency"
+        test_title = (
+            "Sensible Heat Fluxes from On-Board Software and",
+            f"for Free Convection ({test_conditions}),\n{self.test_date}",
+        )
+
+        compare_fig, compare_ax = self.test_metrics.plot_derived_metrics(
             user_args=test_args, derived_data=test_frame, time_id=test_frame.index[0]
         )
-        assert isinstance(compare_fig, plt.Figure)
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "x_label": "Time, CET",
+            "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+            "title": " ".join(test_title),
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params)
 
-        compare_ax = plt.gca()
-        if arg_regime:
-            compare_conditions = f"{arg_regime.capitalize()} Conditions"
-        else:
-            compare_conditions = "No Height Dependency"
-        compare_title = (
-            "Sensible Heat Fluxes from On-Board Software and",
-            f"for Free Convection ({compare_conditions}),\n{self.test_date}",
-        )
-        assert compare_ax.get_title() == " ".join(compare_title)
         plt.close("all")
 
     @pytest.mark.dependency(name="TestMetricsFluxClass::test_plot_iterated_metrics")
@@ -605,6 +863,7 @@ class TestMetricsFluxClass:
         name="TestMetricsFluxClass::test_iterate_fluxes",
         depends=["TestMetricsFluxClass::test_append_vertical_variables"],
     )
+    @pytest.mark.filterwarnings("ignore:No knee/elbow found")
     def test_iterate_fluxes(
         self,
         conftest_mock_save_figure,
@@ -679,6 +938,7 @@ class TestMetricsWorkflowClass:
         ],
         scope="module",
     )
+    @pytest.mark.filterwarnings("ignore:No knee/elbow found")
     @pytest.mark.parametrize("arg_switch_time", [None, "05:20"])
     @pytest.mark.parametrize("arg_vertical", [True, False])
     def test_calculate_standard_metrics(
@@ -722,9 +982,18 @@ class TestMetricsWorkflowClass:
             algorithm="sun",
         )
 
+        plt.close("all")
+
         compare_data = test_class.calculate_standard_metrics(
             arguments=test_args, data=test_data
         )
+
+        assert 1 in plt.get_fignums()
+        if arg_vertical:
+            assert len(plt.get_fignums()) == 8
+        else:
+            assert len(plt.get_fignums()) == 3
+
         plt.close("all")
 
         assert isinstance(compare_data, dict)
