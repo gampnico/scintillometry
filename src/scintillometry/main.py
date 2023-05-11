@@ -26,12 +26,11 @@ Required arguments:
 
 Optional switches:
     -h, --help              Show this help message and exit.
-    -q, --specific-humidity     Derive fluxes from specific humidity.
     -z, --dry-run           Dry run of model.
     -v, --verbose           Verbose mode.
 
 Optional arguments:
-    -e, --eddy <str>            Path to eddy covariance data (InnFLUX).
+    -e, --eddy <str>            Path to eddy covariance data (innFLUX).
     -p, --profile <str>         Path prefix to vertical temperature and
                                     humidity measurements (HATPRO).
     -l, --local-timezone <str>      Convert to local timezone.
@@ -69,7 +68,6 @@ def user_argumentation():
 
     Optional switches:
         -h, --help          Show this help message and exit.
-        -q, --specific-humidity    Derive fluxes from specific humidity.
         -z, --dry-run       Dry run of model.
         -v, --verbose       Verbose mode.
 
@@ -124,14 +122,6 @@ def user_argumentation():
         help="path to topographical path transect",
     )
     # Switches
-    parser.add_argument(
-        "-q",
-        "--specific-humidity",
-        action="store_true",
-        default=None,
-        dest="specific_humidity",
-        help="derive fluxes from specific humidity",
-    )
     parser.add_argument(
         "-z",
         "--dry-run",
@@ -190,7 +180,7 @@ def user_argumentation():
         type=str,
         metavar="<path>",
         required=False,
-        help="path to eddy covariance data (InnFLUX)",
+        help="path to eddy covariance data (innFLUX)",
     )
     parser.add_argument(
         "-l",
@@ -278,47 +268,135 @@ def user_argumentation():
     return arguments
 
 
-def main():
-    args = user_argumentation()
-    print(args)
-    if args.specific_humidity:
-        raise NotImplementedError(
-            "Deriving fluxes from specific humidity is not yet implemented."
-        )
+def perform_data_parsing(**kwargs):
+    """Parses data from command line arguments.
 
-    # Import and parse BLS450, ZAMG, transect data
-    parsed_datasets = DataParser.wrangle_data(
-        bls_path=args.input,
-        transect_path=args.transect_path,
-        calibrate=args.calibration,
-        tzone=args.timezone,
-        station_id=args.station_id,
+    Keyword Arguments:
+        bls_path (str): Path to a raw .mnd data file using FORMAT-1.
+        transect_path (str): Path to processed transect. The data must
+            be formatted as <path_height>, <normalised_path_position>.
+            The normalised path position maps to:
+            [0: receiver location, 1: transmitter location].
+        calibration (list): Contains the incorrect and correct path
+            lengths. Format as [incorrect, correct].
+        station_id (str): ZAMG weather station ID (Klima-ID).
+            Default 11803.
+        timezone (str): Local timezone during the scintillometer's
+            operation. Default "CET".
+        profile_prefix (str): Path to vertical measurements. For HATPRO
+            Retrieval data there should be two HATPRO files ending with
+            "humidity" and "temp". The path should be identical for both
+            files, e.g.::
+
+                ./path/to/file_humidity.csv
+                ./path/to/file_temp.csv
+
+            would require `file_path = "./path/to/file_"`. Default None.
+
+    Returns:
+        dict: Parsed and labelled datasets for scintillometry
+        measurements, weather observations, and topography.
+    """
+
+    # Parse BLS, weather, and topographical data
+    datasets = DataParser.wrangle_data(
+        bls_path=kwargs["input"],
+        transect_path=kwargs["transect_path"],
+        calibrate=kwargs["calibration"],
+        station_id=kwargs["station_id"],
+        tzone=kwargs["timezone"],
     )
 
     # Parse vertical measurements
-    if args.profile_prefix:
-        parsed_datasets["vertical"] = DataParser.parse_vertical(
-            file_path=args.profile_prefix,
-            device="hatpro",
+    if kwargs["profile_prefix"]:
+        datasets["vertical"] = DataParser.parse_vertical(
+            file_path=kwargs["profile_prefix"],
+            source="hatpro",
             levels=None,
-            tzone=args.timezone,
+            tzone=kwargs["timezone"],
         )
 
+    return datasets
+
+
+def perform_analysis(datasets, **kwargs):
+    """Analyses flux data.
+
+    Calculates and plots parsed data, and optionally compares it to
+    third-party data.
+
+    Defaults for keyword arguments only apply if the kwargs are passed
+    via command line arguments.
+
+    Arguments:
+        datasets (dict): Parsed and labelled datasets for scintillometry
+            measurements, weather observations, topography, and
+            optionally vertical measurements.
+
+    Keyword Args:
+        eddy_path (str): Path to eddy covariance measurements.
+            Default None.
+        regime (str): Target stability condition. Default None.
+        timezone (str): Local timezone of the measurement period.
+            Default "CET".
+        most_name (str): MOST coefficients for unstable and stable
+            conditions. Default "an1988".
+        method (str): Method to calculate switch time. Default "sun".
+        switch_time (Union[str, pd.Timestamp]): Local time of switch
+            between stability conditions. Overrides <method>.
+            Default None.
+        location (str): Location of data collection. Default empty
+            string.
+        beam_wavelength (int): Transmitter beam wavelength, nm.
+            Default 880 nm.
+        beam_error (int): Transmitter beam error, nm. Default 20 nm.
+
+    Returns:
+        dict: Passes input datasets. If a path to eddy covariance data
+        is provided, adds the key "eddy" containing the parsed eddy
+        covariance data.
+    """
+
     metrics_class = MetricsCalculations.MetricsWorkflow()
-    metrics_data = metrics_class.calculate_standard_metrics(
-        arguments=args, data=parsed_datasets
-    )
-    if args.eddy_path:
-        innflux_frame = DataParser.parse_innflux(
-            file_name=args.eddy_path,
-            tzone=args.timezone,
-            headers=None,
+    metrics_data = metrics_class.calculate_standard_metrics(data=datasets, **kwargs)
+    if kwargs["eddy_path"]:
+        eddy_frame = DataParser.parse_eddy_covariance(
+            file_path=kwargs["eddy_path"], tzone=kwargs["timezone"], source="innflux"
         )
-        metrics_class.compare_innflux(
-            arguments=args,
-            innflux_data=innflux_frame,
-            comparison_data=metrics_data["iteration"],
+        metrics_data["eddy"] = eddy_frame
+        metrics_class.compare_eddy(
+            own_data=metrics_data["iteration"],
+            ext_data=eddy_frame,
+            source="innflux",
+            location=kwargs["location"],
         )
+
+    return metrics_data
+
+
+def main():
+    """Parses command line arguments and executes analysis.
+
+    Converts command line arguments into kwargs. Imports and parses
+    scintillomter, weather, and transect data. If the appropriate
+    arguments are specified:
+
+        - Parses vertical measurements
+        - Calculates sensible heat fluxes
+        - Compares calculated fluxes to external data.
+
+    The majority of kwarg expansions should occur in this module. Do not
+    rely on kwargs for passing arguments between backend modules.
+    """
+
+    arguments = user_argumentation()
+    kwarg_args = vars(arguments)
+
+    parsed_datasets = perform_data_parsing(**kwarg_args)
+    if not arguments.dry_run:
+        perform_analysis(datasets=parsed_datasets, **kwarg_args)
+    else:
+        print("Dry run - no analysis available.")
 
 
 if __name__ == "__main__":

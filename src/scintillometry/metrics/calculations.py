@@ -35,7 +35,7 @@ class MetricsTopography:
     def __init__(self):
         super().__init__()
 
-    def get_z_params(self, user_args, transect):
+    def get_z_params(self, transect, regime=None):
         """Get effective and mean path heights of transect.
 
         Computes effective and mean path heights of transect under
@@ -46,8 +46,8 @@ class MetricsTopography:
         Select the stability conditions using ``--r, --regime <str>``.
 
         Args:
-            user_args (argparse.Namespace): Namespace of user arguments.
             transect (pd.DataFrame): Parsed path transect data.
+            regime (str): Target stability condition. Default None.
 
         Returns:
             dict[float, float]: Tuples of effective and mean path height
@@ -59,9 +59,9 @@ class MetricsTopography:
         )
 
         scintillometry.backend.transects.print_z_parameters(
-            z_eff=z_params[str(user_args.regime)][0],
-            z_mean=z_params[str(user_args.regime)][1],
-            stability=user_args.regime,
+            z_eff=z_params[str(regime)][0],
+            z_mean=z_params[str(regime)][1],
+            stability=regime,
         )
 
         return z_params
@@ -78,7 +78,9 @@ class MetricsFlux(AtmosConstants):
         super().__init__()
         self.plotting = FigurePlotter()
 
-    def construct_flux_dataframe(self, user_args, interpolated_data, z_eff):
+    def construct_flux_dataframe(
+        self, interpolated_data, z_eff, beam_wavelength=880, beam_error=20
+    ):
         """Compute sensible heat flux for free convection.
 
         Computes sensible heat flux for free convection, plots a
@@ -94,6 +96,14 @@ class MetricsFlux(AtmosConstants):
                 parsed and localised weather and scintillometer data
                 with matching temporal resolution.
             z_eff (np.floating): Effective path height, z_eff| [m].
+            beam_wavelength (int): Transmitter beam wavelength, nm.
+                Default 880 nm.
+            beam_error (int): Transmitter beam error, nm. Default 20 nm.
+
+        Keyword Args:
+            beam_wavelength (int): Transmitter beam wavelength, nm.
+                Default 880 nm.
+            beam_error (int): Transmitter beam error, nm. Default 20 nm.
 
         Returns:
             pd.DataFrame: Interpolated dataframe with additional column
@@ -104,7 +114,7 @@ class MetricsFlux(AtmosConstants):
         flux_data = scintillometry.backend.derivations.compute_fluxes(
             input_data=interpolated_data,
             effective_height=z_eff[0],
-            beam_params=(user_args.beam_wavelength, user_args.beam_error),
+            beam_params=(beam_wavelength, beam_error),
         )
 
         return flux_data
@@ -670,14 +680,19 @@ class MetricsFlux(AtmosConstants):
         return switch_time
 
     def iterate_fluxes(
-        self, user_args, z_parameters, datasets, most_id="an1988", location=""
+        self,
+        z_parameters,
+        datasets,
+        most_id="an1988",
+        algorithm="sun",
+        switch_time=None,
+        location="",
     ):
         """Compute sensible heat fluxes with MOST through iteration.
 
         Trades speed from vectorisation for more accurate convergence.
 
         Args:
-            user_args (argparse.Namespace): Namespace of user arguments.
             z_parameters (dict[float, float]): Tuples of effective and
                 mean path height |z_eff| and |z_mean| [m], with
                 stability conditions as keys.
@@ -686,6 +701,11 @@ class MetricsFlux(AtmosConstants):
                 temperature.
             most_id (str): MOST coefficients for unstable and stable
                 conditions. Default "an1988".
+            algorithm (str): Method to calculate switch time.
+                Default "sun".
+            switch_time (Union[str, pd.Timestamp]): Local time of switch
+                between stability conditions. Overrides <method>.
+                Default None.
             location (str): Location of data collection. Default empty
                 string.
 
@@ -696,13 +716,12 @@ class MetricsFlux(AtmosConstants):
         """
 
         most_class = scintillometry.backend.iterations.IterationMost()
-
         interpolated_data = datasets["interpolated"]
 
         switch_time = self.calculate_switch_time(
             datasets=datasets,
-            method=user_args.algorithm,
-            switch_time=user_args.switch_time,
+            method=algorithm,
+            switch_time=switch_time,
             location=location,
         )
         round_time = self.get_nearest_time_index(
@@ -731,16 +750,16 @@ class MetricsFlux(AtmosConstants):
 
         return iteration_data
 
-    def plot_derived_metrics(self, user_args, derived_data, time_id, location=""):
+    def plot_derived_metrics(self, derived_data, time_id, regime=None, location=""):
         """Plot and save derived fluxes.
 
         Args:
-            user_args (argparse.Namespace): Namespace of user arguments.
             derived_data (pd.DataFrame): Interpolated tz-aware dataframe
                 with column for sensible heat flux under free
                 convection.
             time_id (pd.Timestamp): Start time of scintillometer data
                 collection.
+            regime (str): Stability condition. Default None.
             location (str): Location of data collection. Default empty
             string.
 
@@ -750,7 +769,7 @@ class MetricsFlux(AtmosConstants):
         """
 
         fig_convection, ax_convection = self.plotting.plot_convection(
-            dataframe=derived_data, stability=user_args.regime, site=location
+            dataframe=derived_data, stability=regime, site=location
         )
         self.plotting.save_figure(
             figure=fig_convection, timestamp=time_id, suffix="free_convection"
@@ -789,7 +808,18 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
     def __init__(self):
         super().__init__()
 
-    def calculate_standard_metrics(self, arguments, data):
+    def calculate_standard_metrics(
+        self,
+        data,
+        regime=None,
+        most_name="an1988",
+        method="sun",
+        switch_time=None,
+        location="",
+        beam_wavelength=880,
+        beam_error=20,
+        **kwargs,
+    ):
         """Calculates and plots metrics from wrangled data.
 
         This wrapper function:
@@ -809,7 +839,6 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         with an argparse.Namespace object.
 
         Args:
-            arguments (argparse.Namespace): User arguments.
             data (dict): Contains BLS, weather, and transect dataframes,
                 an interpolated dataframe at 60s resolution containing
                 merged BLS and weather data, a pd.Timestamp object of
@@ -828,26 +857,40 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
                             }
                         }
 
+            regime (str): Target stability condition. Default None.
+            most_name (str): MOST coefficients for unstable and stable
+                conditions. Default "an1988".
+            method (str): Method to calculate switch time.
+                Default "sun".
+            switch_time (Union[str, pd.Timestamp]): Local time of switch
+                between stability conditions. Overrides <method>.
+                Default None.
+            location (str): Location of data collection. Default empty
+                string.
+            beam_wavelength (int): Transmitter beam wavelength, nm.
+                Default 880 nm.
+            beam_error (int): Transmitter beam error, nm. Default 20 nm.
+
         Returns:
             dict: Input dictionary with additional keys "derivation",
             "iteration" for derived and iterated data, respectively.
         """
 
         data_timestamp = data["timestamp"]
-        z_params = self.get_z_params(user_args=arguments, transect=data["transect"])
+        z_params = self.get_z_params(transect=data["transect"], regime=regime)
 
         # Compute free convection
         derived_dataframe = self.construct_flux_dataframe(
-            user_args=arguments,
             interpolated_data=data["interpolated"],
             z_eff=z_params["None"],
+            beam_wavelength=beam_wavelength,
+            beam_error=beam_error,
         )
 
         self.plot_derived_metrics(
-            user_args=arguments,
             derived_data=derived_dataframe,
             time_id=data_timestamp,
-            location=arguments.location,
+            location=location,
         )
 
         if "vertical" in data:
@@ -855,17 +898,18 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
 
         # Compute fluxes through iteration
         iterated_dataframe = self.iterate_fluxes(
-            user_args=arguments,
             z_parameters=z_params,
             datasets=data,
-            most_id=arguments.most_name,
-            location=arguments.location,
+            most_id=most_name,
+            algorithm=method,
+            switch_time=switch_time,
+            location=location,
         )
 
         self.plot_iterated_metrics(
             iterated_data=iterated_dataframe,
             time_stamp=data_timestamp,
-            site_location=arguments.location,
+            site_location=location,
         )
 
         data["derivation"] = derived_dataframe
@@ -873,8 +917,8 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
 
         return data
 
-    def compare_innflux(self, arguments, innflux_data, comparison_data):
-        """Compares data to InnFLUX.
+    def compare_innflux(self, own_data, innflux_data, location=""):
+        """Compares SHF and Obukhov lengths to InnFLUX measurements.
 
         This wrapper function:
 
@@ -887,9 +931,12 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
 
         Args:
             arguments (argparse.Namespace): User arguments.
+            own_data (pd.DataFrame): Labelled data for SHF and Obukhov
+                length.
             innflux_data (pd.DataFrame): Eddy covariance data from
                 innFLUX.
-            comparison_data (pd.DataFrame): Data to compare to innFLUX.
+            location (str): Location of data collection. Default empty
+                string.
 
         Returns:
             tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
@@ -897,24 +944,65 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
             innFlux measurements.
         """
 
-        data_timestamp = comparison_data.index[0]
+        data_timestamp = own_data.index[0]
         fig_obukhov, ax_obukhov = self.plotting.plot_innflux(
-            iter_data=comparison_data,
+            iter_data=own_data,
             innflux_data=innflux_data,
             name="obukhov",
-            site=arguments.location,
+            site=location,
         )
         self.plotting.save_figure(
             figure=fig_obukhov, timestamp=data_timestamp, suffix="innflux_obukhov"
         )
         fig_shf, ax_shf = self.plotting.plot_innflux(
-            iter_data=comparison_data,
+            iter_data=own_data,
             innflux_data=innflux_data,
             name="shf",
-            site=arguments.location,
+            site=location,
         )
         self.plotting.save_figure(
             figure=fig_shf, timestamp=data_timestamp, suffix="innflux_shf"
         )
+
+        return fig_obukhov, ax_obukhov, fig_shf, ax_shf
+
+    def compare_eddy(self, own_data, ext_data, source="innflux", location=""):
+        """Compares data to an external source of eddy covariance data.
+
+        Plots and saves time series comparing Obukhov lengths and
+        sensible heat fluxes between an input dataframe and external
+        eddy covariance measurements.
+
+        If this function is imported as a package, mock user arguments
+        with an argparse.Namespace object.
+
+        Args:
+            arguments (argparse.Namespace): User arguments.
+            own_data (pd.DataFrame): Labelled data.
+            ext_data (pd.DataFrame): Eddy covariance data from an
+                external source.
+            location (str): Location of data collection. Default empty
+                string.
+
+        Returns:
+            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
+            series comparing Obukhov length and sensible heat flux to
+            innFlux measurements.
+
+        Raises:
+            NotImplementedError: <source> measurements are not
+                supported. Use "innflux".
+
+        """
+
+        if source.lower() == "innflux":
+            fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.compare_innflux(
+                own_data=own_data, innflux_data=ext_data, location=location
+            )
+        else:
+            error_msg = (
+                f"{source.title()} measurements are not supported. Use 'innflux'."
+            )
+            raise NotImplementedError(error_msg)
 
         return fig_obukhov, ax_obukhov, fig_shf, ax_shf

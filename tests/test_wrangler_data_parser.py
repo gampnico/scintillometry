@@ -769,21 +769,67 @@ class TestDataParsingInnflux:
             read_csv_mock.return_value = conftest_mock_innflux_dataframe
             compare_dataframe = scintillometry.wrangler.data_parser.parse_innflux(
                 file_name="/path/innflux/file.csv",
-                tzone=arg_timezone,
+                timezone=arg_timezone,
             )
             read_csv_mock.assert_called_once()
         else:
             compare_dataframe = scintillometry.wrangler.data_parser.parse_innflux(
                 file_name="./tests/test_data/test_data_v7_results.mat",
-                tzone=arg_timezone,
+                timezone=arg_timezone,
             )
 
         conftest_boilerplate.check_dataframe(dataframe=compare_dataframe)
         conftest_boilerplate.check_timezone(
             dataframe=compare_dataframe, tzone=arg_timezone
         )
-
         assert compare_dataframe.index.resolution == "minute"
+
+    @pytest.mark.dependency(
+        name="TestDataParsingInnflux::test_parse_eddy_covariance_error"
+    )
+    @pytest.mark.parametrize("arg_source", ["wrong source", "wrong_SOURCE"])
+    def test_parse_eddy_covariance_error(self, arg_source):
+        """Raise error if eddy covariance source is unsupported."""
+
+        test_source = arg_source.title()
+        error_msg = f"{test_source} measurements are not supported. Use 'innflux'."
+
+        with pytest.raises(NotImplementedError, match=error_msg):
+            scintillometry.wrangler.data_parser.parse_eddy_covariance(
+                file_path="/path/to/file", source=test_source, tzone=None
+            )
+
+    @pytest.mark.dependency(
+        name="TestDataParsingInnflux::test_parse_eddy_covariance",
+        depends=[
+            "TestDataParsingInnflux::test_parse_innflux",
+            "TestDataParsingInnflux::test_parse_eddy_covariance_error",
+        ],
+    )
+    @pytest.mark.parametrize("arg_timezone", ["CET", None])
+    @patch("pandas.read_csv")
+    def test_parse_eddy_covariance(
+        self,
+        read_csv_mock: Mock,
+        conftest_mock_innflux_dataframe,
+        conftest_mock_check_file_exists,
+        conftest_boilerplate,
+        arg_timezone,
+    ):
+        """Parse eddy covariance data."""
+
+        _ = conftest_mock_check_file_exists
+        read_csv_mock.return_value = conftest_mock_innflux_dataframe
+
+        compare_dataframe = scintillometry.wrangler.data_parser.parse_eddy_covariance(
+            file_path="/path/to/file", source="innflux", tzone=arg_timezone
+        )
+        read_csv_mock.assert_called_once()
+
+        conftest_boilerplate.check_dataframe(dataframe=compare_dataframe)
+        conftest_boilerplate.check_timezone(
+            dataframe=compare_dataframe, tzone=arg_timezone
+        )
 
 
 class TestDataParsingHatpro:
@@ -904,18 +950,18 @@ class TestDataParsingHatpro:
         assert all(compare_data["humidity"]) < 0.007  # should be in |kgm^-3|
 
     @pytest.mark.dependency(name="TestDataParsingHatpro::test_parse_vertical_error")
-    @pytest.mark.parametrize("arg_device", ["wrong device", "wrong_DEVICE"])
-    def test_parse_vertical_error(self, conftest_mock_hatpro_scan_levels, arg_device):
-        """Raise error if vertical measurement device is unsupported."""
+    @pytest.mark.parametrize("arg_source", ["wrong source", "wrong_SOURCE"])
+    def test_parse_vertical_error(self, conftest_mock_hatpro_scan_levels, arg_source):
+        """Raise error if vertical measurement source is unsupported."""
 
-        test_device = arg_device.title()
+        test_source = arg_source.title()
         test_levels = conftest_mock_hatpro_scan_levels
-        error_msg = f"{test_device} measurements are not supported. Use 'hatpro'."
+        error_msg = f"{test_source} measurements are not supported. Use 'hatpro'."
 
         with pytest.raises(NotImplementedError, match=error_msg):
             scintillometry.wrangler.data_parser.parse_vertical(
                 file_path="/path/to/file",
-                device=arg_device,
+                source=test_source,
                 levels=test_levels,
                 tzone=None,
             )
@@ -950,7 +996,7 @@ class TestDataParsingHatpro:
 
         compare_data = scintillometry.wrangler.data_parser.parse_vertical(
             file_path="/path/to/file",
-            device="hatpro",
+            source="hatpro",
             levels=test_levels,
             tzone=arg_timezone,
         )

@@ -84,12 +84,9 @@ class TestMetricsTopographyClass:
         """Get effective and mean path heights of transect."""
 
         test_metrics = scintillometry.metrics.calculations.MetricsTopography()
-        test_args = argparse.Namespace(regime=arg_regime)
-        assert isinstance(test_args, argparse.Namespace)
-        assert test_args.regime == arg_regime
 
         compare_metrics = test_metrics.get_z_params(
-            user_args=test_args, transect=conftest_mock_transect_dataframe
+            transect=conftest_mock_transect_dataframe, regime=arg_regime
         )
 
         assert isinstance(compare_metrics, dict)
@@ -143,19 +140,23 @@ class TestMetricsFluxClass:
         depends=["TestBackendDerivations::test_compute_fluxes"],
         scope="session",
     )
-    @pytest.mark.parametrize("arg_regime", ["stable", "unstable", None])
-    def test_construct_flux_dataframe(self, conftest_mock_merged_dataframe, arg_regime):
+    @pytest.mark.parametrize("arg_kwargs", [(880, 20), None])
+    def test_construct_flux_dataframe(self, conftest_mock_merged_dataframe, arg_kwargs):
         """Compute sensible heat flux for free convection."""
 
-        test_args = argparse.Namespace(
-            regime=arg_regime, beam_wavelength=880, beam_error=20
-        )
         test_frame = conftest_mock_merged_dataframe[["CT2", "H_convection"]]
+        if arg_kwargs:
+            test_kwargs = {
+                "beam_wavelength": arg_kwargs[0],
+                "beam_error": arg_kwargs[1],
+            }
+        else:
+            test_kwargs = {}
 
         compare_metrics = self.test_metrics.construct_flux_dataframe(
-            user_args=test_args,
             interpolated_data=conftest_mock_merged_dataframe,
             z_eff=(100, 200),
+            **test_kwargs,
         )
         for key in ["CT2", "H_free", "H_convection"]:
             assert key in compare_metrics.columns
@@ -785,9 +786,6 @@ class TestMetricsFluxClass:
         _ = conftest_mock_save_figure
 
         test_frame = conftest_mock_derived_dataframe
-        test_args = test_args = argparse.Namespace(
-            regime=arg_regime, beam_wavelength=880, beam_error=20
-        )
         if arg_regime:
             test_conditions = f"{arg_regime.capitalize()} Conditions"
         else:
@@ -798,7 +796,10 @@ class TestMetricsFluxClass:
         )
 
         compare_fig, compare_ax = self.test_metrics.plot_derived_metrics(
-            user_args=test_args, derived_data=test_frame, time_id=test_frame.index[0]
+            derived_data=test_frame,
+            time_id=test_frame.index[0],
+            regime=arg_regime,
+            location="",
         )
         compare_params = {
             "plot": (compare_fig, compare_ax),
@@ -875,9 +876,6 @@ class TestMetricsFluxClass:
 
         _ = conftest_mock_save_figure  # otherwise figure is saved to disk
 
-        test_args = argparse.Namespace(
-            switch_time="05:20", beam_wavelength=880, beam_error=20, algorithm="sun"
-        )
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "interpolated": conftest_mock_merged_dataframe.copy(deep=True),
@@ -886,10 +884,12 @@ class TestMetricsFluxClass:
         }
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
         compare_metrics = self.test_metrics.iterate_fluxes(
-            user_args=test_args,
             z_parameters={"stable": (100, 150), "unstable": (2, 150)},
             datasets=test_dataset,
             most_id="an1988",
+            algorithm="sun",
+            switch_time="05:20",
+            location="",
         )
         compare_keys = [
             "u_star",
@@ -911,10 +911,12 @@ class TestMetricsWorkflowClass:
 
     Attributes:
         test_metrics (MetricsFlux): Heat flux calculation class.
+        test_workflow (MetricsWorkflow): Workflow for metrics.
         test_date (str): Placeholder for date of data collection.
     """
 
     test_metrics = scintillometry.metrics.calculations.MetricsFlux()
+    test_workflow = scintillometry.metrics.calculations.MetricsWorkflow()
     test_date = "03 June 2020"
 
     @pytest.mark.dependency(name="TestMetricsWorkflowClass::test_metrics_workflow_init")
@@ -926,7 +928,7 @@ class TestMetricsWorkflowClass:
         assert isinstance(test_class, type(self.test_metrics))
 
     @pytest.mark.dependency(
-        name="TestMetricsWorkflow::test_calculate_standard_metrics",
+        name="TestMetricsWorkflowClass::test_calculate_standard_metrics",
         depends=[
             "TestMetricsWorkflowClass::test_metrics_workflow_init",
             "TestMetricsTopographyClass::test_get_z_params",
@@ -960,7 +962,6 @@ class TestMetricsWorkflowClass:
 
         _ = conftest_mock_save_figure
 
-        test_class = scintillometry.metrics.calculations.MetricsWorkflow()
         test_data = {
             "bls": conftest_mock_bls_dataframe_tz.copy(deep=True),
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
@@ -984,7 +985,7 @@ class TestMetricsWorkflowClass:
 
         plt.close("all")
 
-        compare_data = test_class.calculate_standard_metrics(
+        compare_data = self.test_workflow.calculate_standard_metrics(
             arguments=test_args, data=test_data
         )
 
@@ -1005,8 +1006,8 @@ class TestMetricsWorkflowClass:
             )
 
     @pytest.mark.dependency(
-        name="TestMetricsWorkflow::test_calculate_standard_metrics_no_vertical",
-        depends=["TestMetricsWorkflow::test_calculate_standard_metrics"],
+        name="TestMetricsWorkflowClass::test_calculate_standard_metrics_no_vertical",
+        depends=["TestMetricsWorkflowClass::test_calculate_standard_metrics"],
     )
     def test_calculate_standard_metrics_no_vertical(
         self,
@@ -1020,7 +1021,6 @@ class TestMetricsWorkflowClass:
 
         _ = conftest_mock_save_figure
 
-        test_class = scintillometry.metrics.calculations.MetricsWorkflow()
         test_data = {
             "bls": conftest_mock_bls_dataframe_tz.copy(deep=True),
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
@@ -1031,25 +1031,18 @@ class TestMetricsWorkflowClass:
 
         test_data = self.test_metrics.append_vertical_variables(data=test_data)
         assert "vertical" not in test_data
-        test_args = argparse.Namespace(
-            regime="unstable",
-            switch_time=None,
-            beam_wavelength=880,
-            beam_error=20,
-            most_name="an1988",
-            location=None,
-            algorithm="static",
-        )
         error_msg = (
             "No data to calculate switch time.",
             "Set <local_time> manually with `--switch-time`.",
         )
         with pytest.raises(UnboundLocalError, match=" ".join(error_msg)):
-            test_class.calculate_standard_metrics(arguments=test_args, data=test_data)
+            self.test_workflow.calculate_standard_metrics(
+                data=test_data, method="static"
+            )
         plt.close("all")
 
     @pytest.mark.dependency(
-        name="TestMetricsWorkflow::test_compare_innflux",
+        name="TestMetricsWorkflowClass::test_compare_innflux",
         depends=["TestMetricsWorkflowClass::test_metrics_workflow_init"],
         scope="class",
     )
@@ -1066,18 +1059,16 @@ class TestMetricsWorkflowClass:
 
         _ = conftest_mock_save_figure
 
-        test_metrics = scintillometry.metrics.calculations.MetricsWorkflow()
-        test_args = argparse.Namespace(location=arg_location)
         if arg_location:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
         test_title = f"{test_location},\n{self.test_date}"
 
-        fig_obukhov, ax_obukhov, fig_shf, ax_shf = test_metrics.compare_innflux(
-            arguments=test_args,
+        fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.test_workflow.compare_innflux(
             innflux_data=conftest_mock_innflux_dataframe_tz,
-            comparison_data=conftest_mock_iterated_dataframe,
+            own_data=conftest_mock_iterated_dataframe,
+            location=arg_location,
         )
 
         compare_params = {
@@ -1095,6 +1086,75 @@ class TestMetricsWorkflowClass:
             },
         }
 
+        for params in compare_params.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
+
+        plt.close("all")
+
+    @pytest.mark.dependency(name="TestMetricsWorkflowClass::test_compare_eddy_error")
+    def test_compare_eddy_error(
+        self,
+        conftest_mock_save_figure,
+        conftest_mock_innflux_dataframe_tz,
+        conftest_mock_iterated_dataframe,
+    ):
+        """Compares input data to external eddy covariance data."""
+
+        _ = conftest_mock_save_figure
+        test_source = "Wrong Source"
+        error_msg = f"{test_source} measurements are not supported. Use 'innflux'."
+
+        with pytest.raises(NotImplementedError, match=error_msg):
+            self.test_workflow.compare_eddy(
+                own_data=conftest_mock_iterated_dataframe.copy(deep=True),
+                ext_data=conftest_mock_innflux_dataframe_tz.copy(deep=True),
+                source=test_source,
+                location="Test Location",
+            )
+        plt.close("all")
+
+    @pytest.mark.dependency(
+        name="TestMetricsWorkflowClass::test_compare_eddy",
+        depends=[
+            "TestMetricsWorkflowClass::test_compare_innflux",
+            "TestMetricsWorkflowClass::test_compare_eddy_error",
+        ],
+    )
+    def test_compare_eddy(
+        self,
+        conftest_mock_save_figure,
+        conftest_mock_innflux_dataframe_tz,
+        conftest_mock_iterated_dataframe,
+        conftest_boilerplate,
+    ):
+        """Compares input data to external eddy covariance data."""
+
+        _ = conftest_mock_save_figure
+
+        test_location = "Test Location"
+        test_title = f" at {test_location},\n{self.test_date}"
+
+        fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.test_workflow.compare_eddy(
+            own_data=conftest_mock_iterated_dataframe,
+            ext_data=conftest_mock_innflux_dataframe_tz,
+            source="innflux",
+            location="Test Location",
+        )
+
+        compare_params = {
+            "obukhov": {
+                "title": "Obukhov Length from Scintillometer and innFLUX",
+                "y_label": "Obukhov Length, [m]",
+                "x_label": "Time, CET",
+                "plot": (fig_obukhov, ax_obukhov),
+            },
+            "shf": {
+                "title": "Sensible Heat Flux from Scintillometer and innFLUX",
+                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "x_label": "Time, CET",
+                "plot": (fig_shf, ax_shf),
+            },
+        }
         for params in compare_params.values():
             conftest_boilerplate.check_plot(plot_params=params, title=test_title)
 

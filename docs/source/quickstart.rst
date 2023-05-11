@@ -84,12 +84,11 @@ Required arguments:
 
 Optional switches:
    -h, --help                 Show this help message and exit.
-   -q, --specific-humidity    Derive fluxes from specific humidity.
    -z, --dry-run              Dry run of model.
    -v, --verbose              Verbose mode.
 
 Optional arguments:
-   -e, --eddy <str>                 Path to eddy covariance data (InnFLUX).
+   -e, --eddy <str>                 Path to eddy covariance data (innFLUX).
    -p, --profile <str>              Path to temperature and humidity profiles
                                        (HATPRO).
    -t, --timezone <str>             Convert to local timezone. Default "CET".

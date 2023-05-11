@@ -74,6 +74,8 @@ committing:
 
    make tests
 
+Tests can take a couple of minutes to run.
+
 After adding changes with ``git add``, run:
 
 .. code-block:: bash

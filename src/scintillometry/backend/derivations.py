@@ -128,7 +128,7 @@ def compute_fluxes(input_data, effective_height, beam_params=None):
         effective_height (np.floating): Effective path height,
             |z_eff| [m].
         beam_params (tuple[int, int]): Wavelength and wavelength error
-            interval in nanometres. For BLS this is typically (850, 20).
+            interval in nanometres. For BLS this is typically (880, 20).
 
     Returns:
         pd.DataFrame: Updated dataframe containing derived values for

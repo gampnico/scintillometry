@@ -207,13 +207,13 @@ def convert_time_index(data, tzone=None):
     return data
 
 
-def parse_scintillometer(file_path, timezone=None, calibration=None):
+def parse_scintillometer(file_path, timezone="CET", calibration=None):
     """Parses .mnd files into dataframes.
 
     Args:
         filename (str): Path to a raw .mnd data file using FORMAT-1.
         timezone (str): Local timezone during the scintillometer's
-            operation. Default None.
+            operation. Default "CET".
         calibration (list): Contains the incorrect and correct path
             lengths, [m]. Format as [incorrect, correct].
 
@@ -280,7 +280,7 @@ def parse_transect(file_path):
 
 
 def parse_zamg_data(
-    timestamp, klima_id, data_dir="./ext/data/raw/ZAMG/", timezone=None
+    timestamp, klima_id, data_dir="./ext/data/raw/ZAMG/", timezone="CET"
 ):
     """Parses ZAMG climate records.
 
@@ -289,7 +289,7 @@ def parse_zamg_data(
         klima_id (str): ZAMG weather station ID (Klima-ID).
         data_dir (str): Location of ZAMG data files.
         timezone (str): Local timezone during the scintillometer's
-            operation. Default None.
+            operation. Default "CET".
 
     Returns:
         pd.DataFrame: Parsed ZAMG records.
@@ -544,7 +544,7 @@ def parse_innflux_csv(file_path, header_list=None):
     return dataframe
 
 
-def parse_innflux(file_name, tzone=None, headers=None):
+def parse_innflux(file_name, timezone=None, headers=None):
     """Parses InnFLUX eddy covariance data.
 
     The input data should be pre-processed from raw eddy covariance
@@ -561,12 +561,12 @@ def parse_innflux(file_name, tzone=None, headers=None):
 
     Args:
         file_name (str): Path to innFLUX data.
-        tzone (str): Local timezone during the scintillometer's
+        timezone (str): Local timezone during the scintillometer's
             operation. Default None.
         headers (list): List of column headers for data. Default None.
 
     Returns:
-        pd.DataFrame: Parsed and localised InnFLUX data.
+        pd.DataFrame: Parsed and localised innFLUX data.
     """
 
     check_file_exists(file_name)
@@ -582,12 +582,46 @@ def parse_innflux(file_name, tzone=None, headers=None):
 
     dataframe = change_index_frequency(data=dataframe, frequency="60S")
 
-    if tzone:
-        dataframe = dataframe.tz_localize(tzone)
+    if timezone:
+        dataframe = dataframe.tz_localize(timezone)
     else:
         dataframe = dataframe.tz_localize("UTC")
 
     return dataframe
+
+
+def parse_eddy_covariance(file_path, tzone=None, source="innflux"):
+    """Parses eddy covariance measurements.
+
+    Currently only supports innFLUX.
+
+    Args:
+        file_path (str): Path to eddy covariance measurements.
+        source (str): Data source of eddy covariance measurements. Only
+        supports innFLUX. Default "innflux".
+        tzone (str): Local timezone of the measurement period. Default
+            None.
+
+    Returns:
+        dict[pd.DataFrame, pd.DataFrame]: Parsed eddy covariance
+            measurements.
+
+    Raises:
+        NotImplementedError: <source> measurements are not supported.
+            Use "innflux".
+    """
+
+    if source.lower() == "innflux":
+        eddy_data = parse_innflux(
+            file_name=file_path,
+            timezone=tzone,
+            headers=None,
+        )
+    else:
+        error_msg = f"{source.title()} measurements are not supported. Use 'innflux'."
+        raise NotImplementedError(error_msg)
+
+    return eddy_data
 
 
 def construct_hatpro_levels(levels=None):
@@ -630,21 +664,18 @@ def construct_hatpro_levels(levels=None):
     return scan
 
 
-def load_hatpro(file_name, levels, tzone, station_elevation=612.0):
+def load_hatpro(file_name, levels, tzone="CET", station_elevation=612.0):
     """Load raw HATPRO data into dataframe.
 
     Args:
         file_name (str): Path to raw HATPRO data.
         levels (list[int]): Height of HATPRO scan level, |z_scan| [m].
         tzone (str): Local timezone during the scintillometer's
-            operation. Default None.
+            operation. Default "CET".
         station_elevation (float): Station elevation, |z_stn| [m].
             Default 612.0 m.
     Returns:
         pd.DataFrame: Contains tz-aware and pre-processed HATPRO data.
-
-    Raises:
-        FileNotFoundError: No file found with path: <fname>.
     """
 
     check_file_exists(file_name)
@@ -669,7 +700,7 @@ def load_hatpro(file_name, levels, tzone, station_elevation=612.0):
     return data
 
 
-def parse_hatpro(file_prefix, scan_heights=None, timezone=None, elevation=612.0):
+def parse_hatpro(file_prefix, timezone="CET", scan_heights=None, elevation=612.0):
     """Parses HATPRO Retrieval data.
 
     Args:
@@ -682,10 +713,10 @@ def parse_hatpro(file_prefix, scan_heights=None, timezone=None, elevation=612.0)
                 ./path/to/file_temp.csv
 
             would require `file_prefix = "./path/to/file_"`.
+        timezone (str): Local timezone during HATPRO operation.
+            Default "CET".
         scan_heights (list[int]): Heights of HATPRO measurement levels,
             |z_scan| [m].
-        timezone (str): Local timezone during HATPRO operation.
-            Default None.
         elevation (float): Station elevation, |z_stn| [m].
             Default 612.0 m.
 
@@ -720,7 +751,7 @@ def parse_hatpro(file_prefix, scan_heights=None, timezone=None, elevation=612.0)
 
 
 def parse_vertical(
-    file_path, device="hatpro", levels=None, tzone=None, station_elevation=612.0
+    file_path, source="hatpro", tzone="CET", levels=None, station_elevation=612.0
 ):
     """Parses vertical measurements.
 
@@ -736,12 +767,12 @@ def parse_vertical(
                 ./path/to/file_temp.csv
 
             would require `file_path = "./path/to/file_"`.
-        device (str): Instrument used for vertical measurements. Only
+        source (str): Instrument used for vertical measurements. Only
             supports HATPRO. Default "hatpro".
         levels (list[int]): Heights of HATPRO measurements,
             |z_scan| [m].
         tzone (str): Local timezone during the radiometer's operation.
-            Default None.
+            Default "CET".
         station_elevation (float): Station elevation, |z_stn| [m].
             Default 612.0 m.
 
@@ -750,19 +781,19 @@ def parse_vertical(
         temperature |T| [K], and absolute humidity |rho_v| [|gm^-3|].
 
     Raises:
-        NotImplementedError: <device> measurements are not supported.
+        NotImplementedError: <source> measurements are not supported.
             Use "hatpro".
     """
 
-    if not device.lower() == "hatpro":
-        error_msg = f"{device.title()} measurements are not supported. Use 'hatpro'."
-        raise NotImplementedError(error_msg)
-    else:
+    if source.lower() == "hatpro":
         vert_data = parse_hatpro(
             file_prefix=file_path,
             scan_heights=levels,
             timezone=tzone,
             elevation=station_elevation,
         )
+    else:
+        error_msg = f"{source.title()} measurements are not supported. Use 'hatpro'."
+        raise NotImplementedError(error_msg)
 
     return vert_data
