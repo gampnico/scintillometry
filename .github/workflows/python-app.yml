@@ -6,9 +6,9 @@ name: Pytest and Linting
 
 on:
   push:
-    branches: ["main", "release-**"]
+    branches: ["main", "develop", "release-**"]
   pull_request:
-    branches: ["main", "release-**"]
+    branches: ["main", "develop", "release-**"]
 
 permissions:
   contents: read
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.8", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v3

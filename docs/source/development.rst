@@ -45,12 +45,18 @@ With Python 3.9+, optionally install `Scalene`_ to profile your code.
 Contribution Guidelines
 ------------------------
 
+Follow `Git-Flow`_ where possible, but please feel free to create feature
+branches that branch off from ``develop``.
+
+Prefix branches with ``feat-``, ``feature-``, or ``hotfix-``, followed by the
+issue number and a description, e.g. ``feat-I3-description``.
+
 Avoid excess conflicts by following these guidelines:
 
    - Write commit messages in the style of `conventional commits`_.
    - Write tests before committing features.
    - Push many small commits instead of a single large one.
-   - Push new features to new branches. Never push to main.
+   - Push new features to ``develop``. Never push to ``main``.
    - Push documentation separately. Don't push built documentation.
    - Follow the `Google Style Guide`_.
    - Format all code with `black`_, line length 88.
@@ -59,6 +65,7 @@ Avoid excess conflicts by following these guidelines:
    - Break lines in Markdown only at the end of paragraphs.
    - Spaces, not tabs.
 
+.. _`Git-Flow`: https://nvie.com/posts/a-successful-git-branching-model/
 .. _`conventional commits`: https://www.conventionalcommits.org/en/v1.0.0/
 .. _`Google Style Guide`: https://google.github.io/styleguide/pyguide.html
 .. _`black`: https://black.readthedocs.io/en/stable/

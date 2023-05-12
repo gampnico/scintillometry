@@ -123,7 +123,7 @@ scalene:	## Profile with scalene (Python 3.9+)
 		-t "CET" -v
 
 .PHONY:	pkg
-pkg:	tests doc --build	## Run test, build documentation, build package
+pkg:	tests docs --build	## Run test, build documentation, build package
 
 --install-deps:	--check-python --hook-manager	# Private: install core dependencies only
 		@echo "\nInstalling dependencies (core)..."

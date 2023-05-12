@@ -22,11 +22,12 @@ import pandas as pd
 import pandas.api.types as ptypes
 import pytest
 
+import scintillometry.backend.constants
 import scintillometry.backend.derivations
 
 
 class TestBackendDerivations:
-    """Test class for path weighting functions.
+    """Test class for derivations of scintillometer data.
 
 
     Attributes:
@@ -38,6 +39,9 @@ class TestBackendDerivations:
         test_z_eff (np.float64): Placeholder for effective path height.
     """
 
+    test_derive_scintillometer = (
+        scintillometry.backend.derivations.DeriveScintillometer()
+    )
     test_data = {
         "Cn2": [1.9115e-16],
         "CT2": [4.513882047592982e-10],
@@ -51,12 +55,23 @@ class TestBackendDerivations:
     test_frame.index = test_index
     test_z_eff = np.float64(25.628)
 
+    @pytest.mark.dependency(name="TestDeriveScintillometer::test_scintillometer_init")
+    def test_scintillometer_init(self):
+        """Inherit methods from parent."""
+
+        test_class = scintillometry.backend.derivations.DeriveScintillometer()
+        assert test_class
+        assert test_class.constants
+        assert isinstance(
+            test_class.constants, scintillometry.backend.constants.AtmosConstants
+        )
+
     @pytest.mark.dependency(name="TestBackendDerivations::test_derive_ct2")
     def test_derive_ct2(self):
         """Derive CT2 from Cn2, temperature, pressure."""
 
         test_ct2 = self.test_frame[["Cn2", "temperature_2m", "pressure"]].copy()
-        compare_ct2 = scintillometry.backend.derivations.derive_ct2(dataframe=test_ct2)
+        compare_ct2 = self.test_derive_scintillometer.derive_ct2(dataframe=test_ct2)
         assert isinstance(compare_ct2, pd.DataFrame)
         assert "CT2" in compare_ct2.columns
         for key in test_ct2.columns:
@@ -73,7 +88,7 @@ class TestBackendDerivations:
         """Compute kinematic SHF."""
 
         test_kshf = self.test_frame[["CT2", "temperature_2m"]].copy()
-        compare_kshf = scintillometry.backend.derivations.kinematic_shf(
+        compare_kshf = self.test_derive_scintillometer.kinematic_shf(
             dataframe=test_kshf, z_eff=self.test_z_eff
         )
         assert isinstance(compare_kshf, pd.DataFrame)
@@ -91,7 +106,7 @@ class TestBackendDerivations:
         """Compute surface SHF with free convection."""
 
         test_sshf = self.test_frame[["CT2", "temperature_2m", "pressure", "Q_0"]].copy()
-        compare_sshf = scintillometry.backend.derivations.free_convection_shf(
+        compare_sshf = self.test_derive_scintillometer.free_convection_shf(
             dataframe=test_sshf
         )
         compare_keys = ["rho_air", "H_free"]
@@ -120,7 +135,7 @@ class TestBackendDerivations:
         """Compute kinematic and surface sensible heat fluxes."""
 
         test_fluxes = self.test_frame[["Cn2", "temperature_2m", "pressure"]].copy()
-        compare_fluxes = scintillometry.backend.derivations.compute_fluxes(
+        compare_fluxes = self.test_derive_scintillometer.compute_fluxes(
             input_data=test_fluxes,
             effective_height=self.test_z_eff,
             beam_params=arg_beam_params,

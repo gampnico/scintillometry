@@ -55,15 +55,18 @@ import pandas as pd
 import pandas.api.types as ptypes
 import pytest
 
+import scintillometry.backend.constants
+import scintillometry.backend.constructions
+import scintillometry.backend.derivations
+import scintillometry.backend.iterations
 import scintillometry.metrics.calculations
+import scintillometry.visuals.plotting
 
 
-class TestMetricsTopographyClass:
+class TestMetricsTopography:
     """Test class for topography metrics."""
 
-    @pytest.mark.dependency(
-        name="TestMetricsTopographyClass::test_metrics_topography_init"
-    )
+    @pytest.mark.dependency(name="TestMetricsTopography::test_metrics_topography_init")
     def test_metrics_topography_init(self):
         """Boilerplate implementation in case of future changes."""
 
@@ -71,21 +74,23 @@ class TestMetricsTopographyClass:
         assert test_class
 
     @pytest.mark.dependency(
-        name="TestMetricsTopographyClass::test_get_z_params",
+        name="TestMetricsTopography::test_get_path_height_parameters",
         depends=[
-            "TestBackendTransects::test_get_all_z_parameters",
-            "TestBackendTransects::test_print_z_parameters",
-            "TestMetricsTopographyClass::test_metrics_topography_init",
+            "TestBackendTransectParameters::test_get_all_path_heights",
+            "TestBackendTransectParameters::test_print_path_heights",
+            "TestMetricsTopography::test_metrics_topography_init",
         ],
         scope="session",
     )
     @pytest.mark.parametrize("arg_regime", ["stable", "unstable", None])
-    def test_get_z_params(self, capsys, conftest_mock_transect_dataframe, arg_regime):
+    def test_get_path_height_parameters(
+        self, capsys, conftest_mock_transect_dataframe, arg_regime
+    ):
         """Get effective and mean path heights of transect."""
 
         test_metrics = scintillometry.metrics.calculations.MetricsTopography()
 
-        compare_metrics = test_metrics.get_z_params(
+        compare_metrics = test_metrics.get_path_height_parameters(
             transect=conftest_mock_transect_dataframe, regime=arg_regime
         )
 
@@ -115,7 +120,7 @@ class TestMetricsTopographyClass:
         )
 
 
-class TestMetricsFluxClass:
+class TestMetricsFlux:
     """Test class for flux metrics.
 
     Attributes:
@@ -128,15 +133,36 @@ class TestMetricsFluxClass:
     test_date = "03 June 2020"
     test_timestamp = pd.Timestamp(f"{test_date} 05:10", tz="CET")
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_metrics_flux_init")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_metrics_flux_init")
     def test_metrics_flux_init(self):
         """Boilerplate implementation in case of future changes."""
 
         test_class = scintillometry.metrics.calculations.MetricsFlux()
-        assert test_class
+        assert test_class.constants
+        assert isinstance(
+            test_class.constants, scintillometry.backend.constants.AtmosConstants
+        )
+        assert test_class.derivation
+        assert isinstance(
+            test_class.derivation,
+            scintillometry.backend.derivations.DeriveScintillometer,
+        )
+        assert test_class.construction
+        assert isinstance(
+            test_class.construction,
+            scintillometry.backend.constructions.ProfileConstructor,
+        )
+        assert test_class.iteration
+        assert isinstance(
+            test_class.iteration, scintillometry.backend.iterations.IterationMost
+        )
+        assert test_class.plotting
+        assert isinstance(
+            test_class.plotting, scintillometry.visuals.plotting.FigurePlotter
+        )
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_construct_flux_dataframe",
+        name="TestMetricsFlux::test_construct_flux_dataframe",
         depends=["TestBackendDerivations::test_compute_fluxes"],
         scope="session",
     )
@@ -164,7 +190,7 @@ class TestMetricsFluxClass:
         assert not np.allclose(compare_metrics["CT2"], test_frame["CT2"])
         assert np.allclose(compare_metrics["H_convection"], test_frame["H_convection"])
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_nearest_time_index")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_nearest_time_index")
     @pytest.mark.parametrize("arg_time", ["05:19", "05:20", "05:21"])
     def test_get_nearest_time_index(
         self, conftest_mock_hatpro_humidity_dataframe_tz, arg_time
@@ -185,7 +211,7 @@ class TestMetricsFluxClass:
         assert compare_index.strftime("%d %B %Y") == self.test_date
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_append_vertical_variables_missing"
+        name="TestMetricsFlux::test_append_vertical_variables_missing"
     )
     def test_append_vertical_variables_missing(self):
         """Pass unmodified dataset if vertical data is missing."""
@@ -198,7 +224,7 @@ class TestMetricsFluxClass:
         assert "weather" in compare_dataset
         assert isinstance(compare_dataset["weather"], pd.DataFrame)
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_append_vertical_variables")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_append_vertical_variables")
     def test_append_vertical_variables(
         self,
         conftest_mock_weather_dataframe_tz,
@@ -241,7 +267,7 @@ class TestMetricsFluxClass:
                 compare_dataset["vertical"][key].index, test_dataset["weather"].index
             )
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_match_time_at_threshold")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_match_time_at_threshold")
     @pytest.mark.parametrize("arg_lessthan", [True, False])
     @pytest.mark.parametrize("arg_empty", [True, False])
     @pytest.mark.parametrize("arg_timestamp", [True, None])
@@ -274,7 +300,7 @@ class TestMetricsFluxClass:
         else:
             assert compare_time is None
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_elbow_point")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_elbow_point")
     @pytest.mark.parametrize("arg_min_index", [None, 0, 50])
     @pytest.mark.parametrize("arg_max_index", [None, 180, 190])
     @pytest.mark.parametrize("arg_curve", [1, -1])
@@ -327,7 +353,7 @@ class TestMetricsFluxClass:
         assert ptypes.is_int64_dtype(compare_elbow)
         assert np.isclose(compare_elbow, test_elbow)
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_boundary_height")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_boundary_height")
     def test_get_boundary_height(self, capsys):
         """Estimate boundary layer height."""
 
@@ -346,7 +372,7 @@ class TestMetricsFluxClass:
         assert isinstance(compare_height, np.int64)
         assert compare_height == test_intersect
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_boundary_height_error")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_boundary_height_error")
     def test_get_boundary_height_error(self, capsys):
         """Warn if boundary layer height not found."""
 
@@ -365,8 +391,8 @@ class TestMetricsFluxClass:
             assert "Failed to estimate boundary layer height." in compare_print.out
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_compare_lapse_rates",
-        depends=["TestMetricsFluxClass::test_append_vertical_variables"],
+        name="TestMetricsFlux::test_compare_lapse_rates",
+        depends=["TestMetricsFlux::test_append_vertical_variables"],
     )
     def test_compare_lapse_rates(
         self, conftest_mock_weather_dataframe_tz, conftest_mock_hatpro_dataset
@@ -391,9 +417,7 @@ class TestMetricsFluxClass:
             assert ptypes.is_bool_dtype(series)
         plt.close("all")
 
-    @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_get_switch_time_error_method"
-    )
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_switch_time_error_method")
     @pytest.mark.parametrize("arg_method", ["incorrect_method", "eddy", None])
     def test_get_switch_time_error_method(
         self,
@@ -417,9 +441,7 @@ class TestMetricsFluxClass:
                 data=test_error, method=arg_method, local_time=None
             )
 
-    @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_get_switch_time_error_data"
-    )
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_switch_time_error_data")
     @pytest.mark.parametrize("arg_method", ["sun", "bulk"])
     def test_get_switch_time_error_data(
         self, conftest_mock_derived_dataframe, conftest_mock_save_figure, arg_method
@@ -442,10 +464,10 @@ class TestMetricsFluxClass:
             )
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_get_switch_time_fallback",
+        name="TestMetricsFlux::test_get_switch_time_fallback",
         depends=[
-            "TestMetricsFluxClass::test_get_switch_time_error_data",
-            "TestMetricsFluxClass::test_get_switch_time_error_method",
+            "TestMetricsFlux::test_get_switch_time_error_data",
+            "TestMetricsFlux::test_get_switch_time_error_method",
         ],
     )
     def test_get_switch_time_fallback(self, conftest_mock_weather_dataframe_tz):
@@ -461,7 +483,7 @@ class TestMetricsFluxClass:
         assert compare_switch.strftime("%H:%M") == "05:19"
         assert compare_switch.tz.zone == "CET"
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_get_switch_time_convert")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_switch_time_convert")
     @pytest.mark.parametrize("arg_string", [True, False])
     def test_get_switch_time_convert(
         self, conftest_mock_weather_dataframe_tz, arg_string
@@ -486,10 +508,10 @@ class TestMetricsFluxClass:
         assert compare_switch.tz.zone == "CET"
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_get_switch_time_vertical",
+        name="TestMetricsFlux::test_get_switch_time_vertical",
         depends=[
-            "TestMetricsFluxClass::test_append_vertical_variables",
-            "TestMetricsFluxClass::test_get_switch_time_fallback",
+            "TestMetricsFlux::test_append_vertical_variables",
+            "TestMetricsFlux::test_get_switch_time_fallback",
         ],
     )
     @pytest.mark.parametrize("arg_method", ["static", "lapse", "bulk"])
@@ -523,8 +545,8 @@ class TestMetricsFluxClass:
         assert compare_switch.strftime("%H:%M") == "05:10"
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_get_switch_time_vertical_wrapper",
-        depends=["TestMetricsFluxClass::test_get_switch_time_vertical"],
+        name="TestMetricsFlux::test_get_switch_time_vertical_wrapper",
+        depends=["TestMetricsFlux::test_get_switch_time_vertical"],
     )
     @pytest.mark.parametrize("arg_local_time", ["05:19", None])
     def test_get_switch_time_vertical_wrapper(
@@ -560,10 +582,10 @@ class TestMetricsFluxClass:
             assert compare_switch.strftime("%H:%M") == "05:10"
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_plot_switch_time_stability",
+        name="TestMetricsFlux::test_plot_switch_time_stability",
         depends=[
-            "TestMetricsFluxClass::test_append_vertical_variables",
-            "TestMetricsFluxClass::test_get_switch_time_vertical",
+            "TestMetricsFlux::test_append_vertical_variables",
+            "TestMetricsFlux::test_get_switch_time_vertical",
         ],
     )
     @pytest.mark.parametrize("arg_gradient", ["grad_potential_temperature", False])
@@ -631,7 +653,7 @@ class TestMetricsFluxClass:
 
         plt.close("all")
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_plot_lapse_rates")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_plot_lapse_rates")
     @pytest.mark.parametrize("arg_height", [None, 100])
     @pytest.mark.parametrize("arg_location", [None, "Test Location"])
     def test_plot_lapse_rates(
@@ -663,7 +685,7 @@ class TestMetricsFluxClass:
 
         fig_lapse, ax_lapse, fig_parcel, ax_parcel = self.test_metrics.plot_lapse_rates(
             vertical_data=test_dataset["vertical"],
-            dry_adiabat=self.test_metrics.dalr,
+            dry_adiabat=self.test_metrics.constants.dalr,
             local_time=self.test_timestamp,
             location=arg_location,
             bl_height=arg_height,
@@ -690,7 +712,7 @@ class TestMetricsFluxClass:
         plt.close("all")
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_calculate_switch_time_no_vertical",
+        name="TestMetricsFlux::test_calculate_switch_time_no_vertical",
     )
     def test_calculate_switch_time_no_vertical(
         self, conftest_mock_weather_dataframe_tz, conftest_mock_save_figure
@@ -714,11 +736,11 @@ class TestMetricsFluxClass:
         plt.close("all")
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_calculate_switch_time",
+        name="TestMetricsFlux::test_calculate_switch_time",
         depends=[
-            "TestMetricsFluxClass::test_get_switch_time_vertical",
-            "TestMetricsFluxClass::test_plot_switch_time_stability",
-            "TestMetricsFluxClass::test_plot_lapse_rates",
+            "TestMetricsFlux::test_get_switch_time_vertical",
+            "TestMetricsFlux::test_plot_switch_time_stability",
+            "TestMetricsFlux::test_plot_lapse_rates",
         ],
     )
     @pytest.mark.filterwarnings("ignore:No knee/elbow found")
@@ -772,7 +794,7 @@ class TestMetricsFluxClass:
 
         plt.close("all")
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_plot_derived_metrics")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_plot_derived_metrics")
     @pytest.mark.parametrize("arg_regime", ["stable", "unstable", None])
     def test_plot_derived_metrics(
         self,
@@ -811,7 +833,7 @@ class TestMetricsFluxClass:
 
         plt.close("all")
 
-    @pytest.mark.dependency(name="TestMetricsFluxClass::test_plot_iterated_metrics")
+    @pytest.mark.dependency(name="TestMetricsFlux::test_plot_iterated_metrics")
     @pytest.mark.parametrize("arg_location", [None, "", "Test Location"])
     def test_plot_iterated_metrics(
         self,
@@ -861,8 +883,8 @@ class TestMetricsFluxClass:
         plt.close("all")
 
     @pytest.mark.dependency(
-        name="TestMetricsFluxClass::test_iterate_fluxes",
-        depends=["TestMetricsFluxClass::test_append_vertical_variables"],
+        name="TestMetricsFlux::test_iterate_fluxes",
+        depends=["TestMetricsFlux::test_append_vertical_variables"],
     )
     @pytest.mark.filterwarnings("ignore:No knee/elbow found")
     def test_iterate_fluxes(
@@ -906,7 +928,7 @@ class TestMetricsFluxClass:
         plt.close("all")
 
 
-class TestMetricsWorkflowClass:
+class TestMetricsWorkflow:
     """Test class for metrics workflow.
 
     Attributes:
@@ -919,7 +941,7 @@ class TestMetricsWorkflowClass:
     test_workflow = scintillometry.metrics.calculations.MetricsWorkflow()
     test_date = "03 June 2020"
 
-    @pytest.mark.dependency(name="TestMetricsWorkflowClass::test_metrics_workflow_init")
+    @pytest.mark.dependency(name="TestMetricsWorkflow::test_metrics_workflow_init")
     def test_metrics_workflow_init(self):
         """Boilerplate implementation in case of future changes."""
 
@@ -928,15 +950,15 @@ class TestMetricsWorkflowClass:
         assert isinstance(test_class, type(self.test_metrics))
 
     @pytest.mark.dependency(
-        name="TestMetricsWorkflowClass::test_calculate_standard_metrics",
+        name="TestMetricsWorkflow::test_calculate_standard_metrics",
         depends=[
-            "TestMetricsWorkflowClass::test_metrics_workflow_init",
-            "TestMetricsTopographyClass::test_get_z_params",
-            "TestMetricsFluxClass::test_construct_flux_dataframe",
-            "TestMetricsFluxClass::test_plot_derived_metrics",
-            "TestMetricsFluxClass::test_append_vertical_variables",
-            "TestMetricsFluxClass::test_iterate_fluxes",
-            "TestMetricsFluxClass::test_plot_iterated_metrics",
+            "TestMetricsWorkflow::test_metrics_workflow_init",
+            "TestMetricsTopography::test_get_path_height_parameters",
+            "TestMetricsFlux::test_construct_flux_dataframe",
+            "TestMetricsFlux::test_plot_derived_metrics",
+            "TestMetricsFlux::test_append_vertical_variables",
+            "TestMetricsFlux::test_iterate_fluxes",
+            "TestMetricsFlux::test_plot_iterated_metrics",
         ],
         scope="module",
     )
@@ -1006,8 +1028,8 @@ class TestMetricsWorkflowClass:
             )
 
     @pytest.mark.dependency(
-        name="TestMetricsWorkflowClass::test_calculate_standard_metrics_no_vertical",
-        depends=["TestMetricsWorkflowClass::test_calculate_standard_metrics"],
+        name="TestMetricsWorkflow::test_calculate_standard_metrics_no_vertical",
+        depends=["TestMetricsWorkflow::test_calculate_standard_metrics"],
     )
     def test_calculate_standard_metrics_no_vertical(
         self,
@@ -1042,8 +1064,8 @@ class TestMetricsWorkflowClass:
         plt.close("all")
 
     @pytest.mark.dependency(
-        name="TestMetricsWorkflowClass::test_compare_innflux",
-        depends=["TestMetricsWorkflowClass::test_metrics_workflow_init"],
+        name="TestMetricsWorkflow::test_compare_innflux",
+        depends=["TestMetricsWorkflow::test_metrics_workflow_init"],
         scope="class",
     )
     @pytest.mark.parametrize("arg_location", [None, "", "Test Location"])
@@ -1091,7 +1113,7 @@ class TestMetricsWorkflowClass:
 
         plt.close("all")
 
-    @pytest.mark.dependency(name="TestMetricsWorkflowClass::test_compare_eddy_error")
+    @pytest.mark.dependency(name="TestMetricsWorkflow::test_compare_eddy_error")
     def test_compare_eddy_error(
         self,
         conftest_mock_save_figure,
@@ -1114,10 +1136,10 @@ class TestMetricsWorkflowClass:
         plt.close("all")
 
     @pytest.mark.dependency(
-        name="TestMetricsWorkflowClass::test_compare_eddy",
+        name="TestMetricsWorkflow::test_compare_eddy",
         depends=[
-            "TestMetricsWorkflowClass::test_compare_innflux",
-            "TestMetricsWorkflowClass::test_compare_eddy_error",
+            "TestMetricsWorkflow::test_compare_innflux",
+            "TestMetricsWorkflow::test_compare_eddy_error",
         ],
     )
     def test_compare_eddy(
