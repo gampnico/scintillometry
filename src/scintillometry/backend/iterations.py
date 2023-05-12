@@ -52,7 +52,7 @@ import tqdm
 from scintillometry.backend.constants import AtmosConstants
 
 
-class IterationMost(AtmosConstants):
+class IterationMost:
     """Classic MOST Iteration.
 
     A detailed description of the iterative scheme is available in the
@@ -63,8 +63,7 @@ class IterationMost(AtmosConstants):
     slightly with other third-party implementations.
 
     Attributes:
-        constants (AtmosConstants): Class containing atmospheric
-            constants.
+        constants (AtmosConstants): Inherited atmospheric constants.
     """
 
     def __init__(self):
@@ -249,7 +248,7 @@ class IterationMost(AtmosConstants):
         """
 
         friction_velocity = (
-            self.k
+            self.constants.k
             * u
             / (
                 mpmath.ln(z_u / r_length)
@@ -272,7 +271,9 @@ class IterationMost(AtmosConstants):
             mpmath.mpf: Obukhov Length, |LOb| [m].
         """
 
-        obukhov_length = (temp * (u_star**2)) / (self.g * self.k * theta_star)
+        obukhov_length = (temp * (u_star**2)) / (
+            self.constants.g * self.constants.k * theta_star
+        )
 
         return obukhov_length
 
@@ -377,7 +378,7 @@ class IterationMost(AtmosConstants):
         dataframe["shf"] = (
             (-1)
             * dataframe["rho_air"]
-            * self.cp
+            * self.constants.cp
             * dataframe["u_star"]
             * dataframe["theta_star"]
         )

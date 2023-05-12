@@ -34,7 +34,13 @@ import pandas as pd
 from scintillometry.backend.constants import AtmosConstants
 
 
-class ProfileConstructor(AtmosConstants):
+class ProfileConstructor:
+    """Constructs vertical profiles.
+
+    Attributes:
+        constants (AtmosConstants): Inherited atmospheric constants.
+    """
+
     def __init__(self):
         super().__init__()
         self.constants = AtmosConstants()
@@ -58,7 +64,7 @@ class ProfileConstructor(AtmosConstants):
         """
 
         # abs_humidity * temperature * self.r_vapour
-        wvp = abs_humidity.multiply(temperature).multiply(self.r_vapour)
+        wvp = abs_humidity.multiply(temperature).multiply(self.constants.r_vapour)
 
         return wvp
 
@@ -94,9 +100,9 @@ class ProfileConstructor(AtmosConstants):
         # pressure * np.exp(
         #     (-self.g * (z_target - z_ref)) / (air_temperature * self.r_dry)
         # )
-        gdz = -self.g * (z_target - z_ref)
+        gdz = -self.constants.g * (z_target - z_ref)
         alt_pressure = pressure.multiply(
-            np.exp((air_temperature.multiply(self.r_dry)).rdiv(gdz))
+            np.exp((air_temperature.multiply(self.constants.r_dry)).rdiv(gdz))
         )
 
         return alt_pressure
@@ -183,8 +189,8 @@ class ProfileConstructor(AtmosConstants):
         """
 
         # (wv_pressure * self.r_dry) / (d_pressure * self.r_vapour)
-        m_ratio = (wv_pressure.multiply(self.r_dry)).divide(
-            (d_pressure).multiply(self.r_vapour)
+        m_ratio = (wv_pressure.multiply(self.constants.r_dry)).divide(
+            (d_pressure).multiply(self.constants.r_vapour)
         )
 
         return m_ratio
@@ -237,7 +243,7 @@ class ProfileConstructor(AtmosConstants):
         # station_pressure * np.exp(
         #     elevation / (virtual_temperature * (self.r_dry / np.abs(self.g)))
         # )
-        alpha = self.r_dry / np.abs(self.g)
+        alpha = self.constants.r_dry / np.abs(self.constants.g)
         mslp = station_pressure.multiply(
             (np.exp(virtual_temperature.multiply(alpha).rdiv(elevation)))
         )
@@ -264,9 +270,9 @@ class ProfileConstructor(AtmosConstants):
         """
 
         # temperature * (self.ref_pressure / pressure) ** (self.r_dry / self.cp)
-        factor = self.r_dry / self.cp
+        factor = self.constants.r_dry / self.constants.cp
         potential_temperature = temperature.multiply(
-            (pressure.rdiv(self.ref_pressure)).pow(factor)
+            (pressure.rdiv(self.constants.ref_pressure)).pow(factor)
         )
 
         return potential_temperature
@@ -372,7 +378,7 @@ class ProfileConstructor(AtmosConstants):
         )
 
         unsaturated_temperature = self.extrapolate_column(
-            dataframe=temperature, gradient=-self.dalr
+            dataframe=temperature, gradient=-self.constants.dalr
         )
         saturated_temperature = self.extrapolate_column(
             dataframe=temperature, gradient=-moist_adiabatic_lapse
@@ -571,7 +577,9 @@ class ProfileConstructor(AtmosConstants):
         )
 
         # delta_theta * delta_z * self.g
-        numerator = delta_theta.multiply((heights[-1] - heights[0])).multiply(self.g)
+        numerator = delta_theta.multiply((heights[-1] - heights[0])).multiply(
+            self.constants.g
+        )
         # mean_potential_temperature * (wind_speed ** 2)
         denominator = (
             potential_temperature[heights]
@@ -686,6 +694,8 @@ class ProfileConstructor(AtmosConstants):
             data=potential_temperature, method=scheme
         )
 
-        n_squared = potential_temperature.rdiv(self.g).multiply(grad_pot_temperature)
+        n_squared = potential_temperature.rdiv(self.constants.g).multiply(
+            grad_pot_temperature
+        )
 
         return n_squared

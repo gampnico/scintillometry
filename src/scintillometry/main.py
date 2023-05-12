@@ -298,18 +298,21 @@ def perform_data_parsing(**kwargs):
         measurements, weather observations, and topography.
     """
 
+    data_parser = DataParser.WranglerParsing()
+
     # Parse BLS, weather, and topographical data
-    datasets = DataParser.wrangle_data(
+    datasets = data_parser.stitch.wrangle_data(
         bls_path=kwargs["input"],
         transect_path=kwargs["transect_path"],
         calibrate=kwargs["calibration"],
         station_id=kwargs["station_id"],
         tzone=kwargs["timezone"],
+        source="zamg",
     )
 
     # Parse vertical measurements
     if kwargs["profile_prefix"]:
-        datasets["vertical"] = DataParser.parse_vertical(
+        datasets["vertical"] = data_parser.vertical.parse_vertical(
             file_path=kwargs["profile_prefix"],
             source="hatpro",
             levels=None,
@@ -358,9 +361,10 @@ def perform_analysis(datasets, **kwargs):
     """
 
     metrics_class = MetricsCalculations.MetricsWorkflow()
+    data_parser = DataParser.WranglerParsing()
     metrics_data = metrics_class.calculate_standard_metrics(data=datasets, **kwargs)
     if kwargs["eddy_path"]:
-        eddy_frame = DataParser.parse_eddy_covariance(
+        eddy_frame = data_parser.eddy.parse_eddy_covariance(
             file_path=kwargs["eddy_path"], tzone=kwargs["timezone"], source="innflux"
         )
         metrics_data["eddy"] = eddy_frame

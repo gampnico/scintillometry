@@ -20,22 +20,27 @@ Calculates metrics from datasets.
 import kneed
 import pandas as pd
 
-import scintillometry.backend.constructions
-import scintillometry.backend.derivations
-import scintillometry.backend.iterations
-import scintillometry.backend.transects
+from scintillometry.backend.iterations import IterationMost
 from scintillometry.backend.constants import AtmosConstants
 from scintillometry.backend.constructions import ProfileConstructor
+from scintillometry.backend.derivations import DeriveScintillometer
+from scintillometry.backend.transects import TransectParameters
 from scintillometry.visuals.plotting import FigurePlotter
 
 
 class MetricsTopography:
-    """Calculate metrics for topographical data."""
+    """Calculate metrics for topographical data.
+
+    Attributes:
+        transect (TransectParameters): Inherited methods for calculating
+            path heights.
+    """
 
     def __init__(self):
         super().__init__()
+        self.transect = TransectParameters()
 
-    def get_z_params(self, transect, regime=None):
+    def get_path_height_parameters(self, transect, regime=None):
         """Get effective and mean path heights of transect.
 
         Computes effective and mean path heights of transect under
@@ -54,11 +59,9 @@ class MetricsTopography:
             |z_eff| and |z_mean| [m], with stability conditions as keys.
         """
 
-        z_params = scintillometry.backend.transects.get_all_z_parameters(
-            path_transect=transect
-        )
+        z_params = self.transect.get_all_path_heights(path_transect=transect)
 
-        scintillometry.backend.transects.print_z_parameters(
+        self.transect.print_path_heights(
             z_eff=z_params[str(regime)][0],
             z_mean=z_params[str(regime)][1],
             stability=regime,
@@ -67,16 +70,27 @@ class MetricsTopography:
         return z_params
 
 
-class MetricsFlux(AtmosConstants):
+class MetricsFlux:
     """Calculate metrics for fluxes.
 
     Attributes:
-        plotting (FigurePlotter): Provides methods for plotting figures.
+        constants (AtmosConstants): Inherited atmospheric constants.
+        plotting (FigurePlotter): Inherited methods for plotting figures.
+        derivation (DeriveScintillometer): Inherited methods for
+            deriving parameters and fluxes from scintillometer.
+        construction (ProfileConstructor): Inherited methods for
+            constructing vertical profiles.
+        iteration (IterationMost): Inherited methods for MOST iterative
+            method.
     """
 
     def __init__(self):
         super().__init__()
+        self.constants = AtmosConstants()
         self.plotting = FigurePlotter()
+        self.derivation = DeriveScintillometer()
+        self.construction = ProfileConstructor()
+        self.iteration = IterationMost()
 
     def construct_flux_dataframe(
         self, interpolated_data, z_eff, beam_wavelength=880, beam_error=20
@@ -111,7 +125,7 @@ class MetricsFlux(AtmosConstants):
             values for  |CT2| [|K^2m^-2/3|].
         """
 
-        flux_data = scintillometry.backend.derivations.compute_fluxes(
+        flux_data = self.derivation.compute_fluxes(
             input_data=interpolated_data,
             effective_height=z_eff[0],
             beam_params=(beam_wavelength, beam_error),
@@ -164,10 +178,8 @@ class MetricsFlux(AtmosConstants):
             Otherwise the dictionary is returned unmodified.
         """
 
-        profile = scintillometry.backend.constructions.ProfileConstructor()
-
         if "vertical" in data:
-            data["vertical"] = profile.get_vertical_variables(
+            data["vertical"] = self.construction.get_vertical_variables(
                 vertical_data=data["vertical"], meteo_data=data["weather"]
             )
 
@@ -434,8 +446,6 @@ class MetricsFlux(AtmosConstants):
                 for <method>.
         """
 
-        pt_profile = ProfileConstructor()
-
         # static stability
         if method == "static" and "grad_potential_temperature" in data["vertical"]:
             heights = data["vertical"]["grad_potential_temperature"].columns[
@@ -454,7 +464,7 @@ class MetricsFlux(AtmosConstants):
             )
 
         elif method == "bulk":  # bulk richardson
-            bulk_richardson = pt_profile.get_bulk_richardson(
+            bulk_richardson = self.construction.get_bulk_richardson(
                 potential_temperature=data["vertical"]["potential_temperature"],
                 meteo_data=data["weather"],
             )
@@ -671,7 +681,7 @@ class MetricsFlux(AtmosConstants):
                 if "environmental_lapse_rate" in vertical_data:
                     self.plot_lapse_rates(
                         vertical_data=datasets["vertical"],
-                        dry_adiabat=self.dalr,
+                        dry_adiabat=self.constants.dalr,
                         bl_height=layer_height,
                         local_time=switch_time,
                         location=location,
@@ -715,7 +725,6 @@ class MetricsFlux(AtmosConstants):
             velocity |u*|, and temperature scale |theta*|.
         """
 
-        most_class = scintillometry.backend.iterations.IterationMost()
         interpolated_data = datasets["interpolated"]
 
         switch_time = self.calculate_switch_time(
@@ -730,7 +739,7 @@ class MetricsFlux(AtmosConstants):
         iteration_stable = interpolated_data.iloc[
             interpolated_data.index.indexer_between_time("00:00", round_time)
         ].copy(deep=True)
-        iteration_stable = most_class.most_method(
+        iteration_stable = self.iteration.most_method(
             dataframe=iteration_stable,
             eff_h=z_parameters["stable"][0],
             stability="stable",
@@ -740,7 +749,7 @@ class MetricsFlux(AtmosConstants):
         iteration_unstable = interpolated_data.iloc[
             interpolated_data.index.indexer_between_time(round_time, "23:59")
         ].copy(deep=True)
-        iteration_unstable = most_class.most_method(
+        iteration_unstable = self.iteration.most_method(
             dataframe=iteration_unstable,
             eff_h=z_parameters["unstable"][0],
             stability="unstable",
@@ -877,7 +886,9 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         """
 
         data_timestamp = data["timestamp"]
-        z_params = self.get_z_params(transect=data["transect"], regime=regime)
+        z_params = self.get_path_height_parameters(
+            transect=data["transect"], regime=regime
+        )
 
         # Compute free convection
         derived_dataframe = self.construct_flux_dataframe(
