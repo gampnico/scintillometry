@@ -896,6 +896,7 @@ class WranglerStitch:
 
     def __init__(self):
         super().__init__()
+        self.constants = AtmosConstants()
 
     def merge_scintillometry_weather(self, scintillometry, weather):
         """Merges parsed scintillometry and weather dataframes.
@@ -923,9 +924,7 @@ class WranglerStitch:
 
         # adjust units
         if (weather["temperature_2m"].lt(100)).any():  # if True data in Celsius
-            merged["temperature_2m"] = (
-                merged["temperature_2m"] + AtmosConstants().kelvin
-            )
+            merged["temperature_2m"] = merged["temperature_2m"] + self.constants.kelvin
         if (weather["pressure"].gt(2000)).any():  # if True data in Pa
             merged["pressure"] = merged["pressure"] / 100  # Pa -> hPa
 

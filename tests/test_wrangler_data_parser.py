@@ -57,6 +57,7 @@ import pandas as pd
 import pandas.api.types as ptypes
 import pytest
 
+import scintillometry.backend.constants
 import scintillometry.wrangler.data_parser
 
 
@@ -1071,10 +1072,14 @@ class TestWranglerStitch:
 
     @pytest.mark.dependency(name="TestWranglerStitch::test_stitch_init")
     def test_stitch_init(self):
-        """Boilerplate implementation for future inheritance."""
+        """Inherit methods from parent."""
 
         test_class = scintillometry.wrangler.data_parser.WranglerStitch()
         assert test_class
+        assert test_class.constants
+        assert isinstance(
+            test_class.constants, scintillometry.backend.constants.AtmosConstants
+        )
 
     @pytest.mark.dependency(
         name="TestWranglerStitch::test_merge_scintillometry_weather",
