@@ -22,6 +22,8 @@ This repository is a complete rewrite of gampnico/ss19-feldkurs. If you have any
 
 This package started life as part of a field course. If you spot any missing citations or licenses please [open an issue](https://github.com/gampnico/scintillometry-tools/issues).
 
+Comprehensive documentation is available [via ReadTheDocs](https://scintillometry.readthedocs.io/en/latest/).
+
 # Processing Scintillometry Data in Complex Terrain
 
 Scintillometry-Tools is configured for scintillometer experiments in Austria using public or local data (ZAMG, InnFLUX), but is easily modified to work with other data sources. Note that external data sources may have different licensing constraints.
