@@ -1,4 +1,4 @@
-.. Copyright 2023 Scintillometry-Tools Contributors.
+.. Copyright 2023 Scintillometry Contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -28,14 +28,14 @@ Install with development dependencies:
 
 .. code-block:: bash
 
-   git clone https://github.com/gampnico/scintillometry-tools.git
+   git clone https://github.com/gampnico/scintillometry.git
    make install-dev
 
 If conda is unavailable:
 
 .. code-block:: bash
 
-   git clone https://github.com/gampnico/scintillometry-tools.git
+   git clone https://github.com/gampnico/scintillometry.git
    pip install -e .[dev]
 
 With Python 3.9+, optionally install `Scalene`_ to profile your code.

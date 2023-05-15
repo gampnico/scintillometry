@@ -1,4 +1,4 @@
-.. Copyright 2023 Scintillometry-Tools Contributors.
+.. Copyright 2023 Scintillometry Contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ Using the Tools
 Installation
 ------------
 
-Scintillometry-Tools supports installation with conda, mamba, and pip.
+*Scintillometry* supports installation with conda, mamba, and pip.
 
 Install with Conda/Mamba
 ************************
@@ -29,7 +29,7 @@ Create or activate your preferred conda environment then run:
 
 .. code-block:: bash
 
-   git clone https://github.com/gampnico/scintillometry-tools.git
+   git clone https://github.com/gampnico/scintillometry.git
    make install
 
 Install the package with optional dependencies:
@@ -41,7 +41,7 @@ Install the package with optional dependencies:
    make install-all     # install with tests and build local documentation
    make install-dev     # install with dependencies for development
 
-Installation uses conda if mamba is unavailable. Micromamba may also work, but is not currently supported. Whilst dependencies are installed with conda/mamba, the scintillometry-tools package is installed as an editable with pip.
+Installation uses conda if mamba is unavailable. Micromamba may also work, but is not currently supported. Whilst dependencies are installed with conda/mamba, the *Scintillometry* package is installed as an editable with pip.
 
 Install with Pip
 ****************
@@ -50,7 +50,7 @@ If conda/mamba are not your package managers, then run:
 
 .. code-block:: bash
 
-   git clone https://github.com/gampnico/scintillometry-tools.git
+   git clone https://github.com/gampnico/scintillometry.git
    pip install -e .
 
 Install the package with optional dependencies:
@@ -107,7 +107,7 @@ Optional arguments:
 Import as Package
 -----------------
 
-Scintillometry-Tools and its submodules can be imported as a Python module:
+*Scintillometry* and its submodules can be imported as a Python module:
 
 .. code-block:: python
 

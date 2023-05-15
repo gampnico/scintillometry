@@ -46,9 +46,9 @@ def setup(app):
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "Scintillometry Tools"
-copyright = f"2019-{date.today().year}, Scintillometry Tools Contributors"
-author = "Scintillometry Tools Contributors"
+project = "Scintillometry"
+copyright = f"2019-{date.today().year}, Scintillometry Contributors"
+author = "Scintillometry Contributors"
 release = "1.0.0"
 
 # -- General configuration ---------------------------------------------------

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "scintillometry"
 version = "1.0.0"
 authors = [
-  { name="Scintillometry-Tools Contributors", email="" },
+  { name="Scintillometry Contributors", email="" },
 ]
 description = "Analyse data & 2D flux footprints from Scintec's BLS scintillometers."
 readme = "README.md"
@@ -15,7 +15,7 @@ license = {file = "LICENSE"}
 classifiers = [
     "Private :: Do Not Upload",
     "License :: OSI Approved :: Apache Software License",
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 4 - Beta",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -56,9 +56,9 @@ dev=[
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/gampnico/scintillometry-tools"
-"Bug Tracker" = "https://github.com/gampnico/scintillometry-tools/issues"
-"Documentation" = "https://scintillometry-tools.readthedocs.io/en/latest/"
+"Homepage" = "https://github.com/gampnico/scintillometry"
+"Bug Tracker" = "https://github.com/gampnico/scintillometry/issues"
+"Documentation" = "https://scintillometry.readthedocs.io/en/latest/"
 
 [tool.pytest.ini_options]
 addopts = [

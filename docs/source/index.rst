@@ -1,4 +1,4 @@
-.. Copyright 2023 Scintillometry-Tools Contributors.
+.. Copyright 2023 Scintillometry Contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 Analyse data & 2D flux footprints from Scintec's BLS scintillometers.
 =====================================================================
 
-Scintillometry-Tools is a Python framework for studying scintillometer data
+Scintillometry is a Python framework for studying scintillometer data
 with direct integration of topographical and meteorological data. The framework
 can be used via console or imported into a Python script.
 

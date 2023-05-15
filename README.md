@@ -1,4 +1,4 @@
-<!-- Copyright 2023 Scintillometry-Tools Contributors.
+<!-- Copyright 2023 Scintillometry Contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,34 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. -->
 
-# Scintillometry Tools
+# Scintillometry
 
-[![Pytest and Flake8](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/gampnico/scintillometry-tools/actions/workflows/python-app.yml)
+[![Pytest and Flake8](https://github.com/gampnico/scintillometry/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/gampnico/scintillometry/actions/workflows/python-app.yml)
 
 Analyse data & 2D flux footprints from Scintec's BLS scintillometers.
 
 This repository is a complete rewrite of gampnico/ss19-feldkurs. If you have any existing forks or local clones, **please delete them**. The legacy code no longer works. No user features will be lost, but rewriting may take some time. Contributions are always welcome.
 
-This package started life as part of a field course. If you spot any missing citations or licenses please [open an issue](https://github.com/gampnico/scintillometry-tools/issues).
+This package started life as part of a field course. If you spot any missing citations or licenses please [open an issue](https://github.com/gampnico/scintillometry/issues).
 
-Comprehensive documentation is available [via ReadTheDocs](https://scintillometry-tools.readthedocs.io/en/latest/).
+Comprehensive documentation is available [via ReadTheDocs](https://scintillometry.readthedocs.io/en/latest/).
 
 # Processing Scintillometry Data in Complex Terrain
 
-Scintillometry-Tools is configured for scintillometer experiments in Austria using public or local data (ZAMG, InnFLUX), but is easily modified to work with other data sources. Note that external data sources may have different licensing constraints.
+*Scintillometry* is configured for scintillometer experiments in Austria using public or local data (ZAMG, InnFLUX), but is easily modified to work with other data sources. Note that external data sources may have different licensing constraints.
 
 The package is currently in alpha and may change or break often. Support is only available for Python 3.8+ on debian-based Linux distros.
 
 ## Installation
 
-Scintillometry-Tools supports package installation with pip, or from source as an editable with pip or conda. **Installing as an editable is recommended**, as it allows you to call command line arguments directly on the package instead of writing a frontend.
+*Scintillometry* supports package installation with pip, or from source as an editable with pip or conda. **Installing as an editable is recommended**, as it allows you to call command line arguments directly on the package instead of writing a frontend.
 
 ### Install from Source with Conda/Mamba
 
 Create or activate your preferred conda environment and run:
 
 ```bash
-git clone https://github.com/gampnico/scintillometry-tools.git
+git clone https://github.com/gampnico/scintillometry.git
 make install
 ```
 
@@ -69,7 +69,7 @@ Note that this installation method does not provide documentation or a Makefile,
 To install from source (recommended):
 
 ```bash
-git clone https://github.com/gampnico/scintillometry-tools.git
+git clone https://github.com/gampnico/scintillometry.git
 pip install -e .
 ```
 
@@ -158,7 +158,7 @@ If you installed from source, the provided Makefile has many uses. View all the 
 
 ```bash
 make help       # display help for Makefile targets
-make commands   # display help for scintillometry-tools
+make commands   # display help for scintillometry
 ```
 
 ### Run from Terminal
@@ -171,7 +171,7 @@ src/scintillometry/main.py [-h] [-i <input_data>] [-p <path_data>] [-d] [...] [-
 
 ### Import as Package
 
-Scintillometry-Tools and its submodules can be imported as Python modules:
+*Scintillometry* and its submodules can be imported as Python modules:
 
 ```python
 from scintillometry.wrangler.data_parser import WranglerParsing

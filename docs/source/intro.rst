@@ -1,4 +1,4 @@
-.. Copyright 2023 Scintillometry-Tools Contributors.
+.. Copyright 2023 Scintillometry Contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 Introduction
 ============
 
-Scintillometry-Tools is configured for scintillometer experiments in Austria
+*Scintillometry* is configured for scintillometer experiments in Austria
 using public or local data (ZAMG, InnFLUX), but is easily modified to work with
 other data sources. Note that external data sources may have different licensing
 constraints.
