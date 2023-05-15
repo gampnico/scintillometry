@@ -22,7 +22,7 @@ This repository is a complete rewrite of gampnico/ss19-feldkurs. If you have any
 
 This package started life as part of a field course. If you spot any missing citations or licenses please [open an issue](https://github.com/gampnico/scintillometry-tools/issues).
 
-Comprehensive documentation is available [via ReadTheDocs](https://scintillometry.readthedocs.io/en/latest/).
+Comprehensive documentation is available [via ReadTheDocs](https://scintillometry-tools.readthedocs.io/en/latest/).
 
 # Processing Scintillometry Data in Complex Terrain
 

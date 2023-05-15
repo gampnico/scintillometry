@@ -58,7 +58,7 @@ dev=[
 [project.urls]
 "Homepage" = "https://github.com/gampnico/scintillometry-tools"
 "Bug Tracker" = "https://github.com/gampnico/scintillometry-tools/issues"
-"Documentation" = "https://scintillometry.readthedocs.io/en/latest/"
+"Documentation" = "https://scintillometry-tools.readthedocs.io/en/latest/"
 
 [tool.pytest.ini_options]
 addopts = [
