@@ -301,13 +301,13 @@ def perform_data_parsing(**kwargs):
     data_parser = DataParser.WranglerParsing()
 
     # Parse BLS, weather, and topographical data
-    datasets = data_parser.stitch.wrangle_data(
+    datasets = data_parser.wrangle_data(
         bls_path=kwargs["input"],
         transect_path=kwargs["transect_path"],
         calibrate=kwargs["calibration"],
         station_id=kwargs["station_id"],
         tzone=kwargs["timezone"],
-        source="zamg",
+        weather_source="zamg",
     )
 
     # Parse vertical measurements

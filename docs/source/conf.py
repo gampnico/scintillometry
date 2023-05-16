@@ -1,4 +1,4 @@
-"""Copyright 2023 Scintillometry-Tools Contributors.
+"""Copyright 2023 Scintillometry Contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@ limitations under the License.
 
 Configuration file for the Sphinx documentation builder.
 
-For the full list of built-in configuration values, see the documentation:
+For the full list of built-in configuration values, see the
+documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
@@ -49,7 +50,7 @@ def setup(app):
 project = "Scintillometry"
 copyright = f"2019-{date.today().year}, Scintillometry Contributors"
 author = "Scintillometry Contributors"
-release = "1.0.0"
+release = "1.0.4"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
