@@ -1009,7 +1009,7 @@ class WranglerParsing(WranglerIO):
         weather_data = self.weather.parse_weather(
             timestamp=bls_time,
             source=weather_source,
-            klima_id=station_id,
+            station_id=station_id,
             data_dir=weather_dir,
             timezone=tzone,
         )
