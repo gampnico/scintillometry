@@ -15,10 +15,9 @@ python:
   install:
     - requirements: dev-requirements.txt
     - method: pip
-      path: src/scintillometry
+      path: .
       extra_requirements:
         - dev
-
 submodules:
   include: all
   recursive: true
