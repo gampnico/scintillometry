@@ -310,7 +310,7 @@ class TestMetricsFlux:
         """Perform regression on labelled data."""
 
         rng = np.random.default_rng()
-        test_index = np.arange(0, 1000, 10)
+        test_index = pd.date_range(start=self.test_timestamp, periods=100, freq="T")
         test_data = rng.random(size=len(test_index))
 
         test_x = pd.Series(name="obukhov", data=test_data, index=test_index)
@@ -318,7 +318,7 @@ class TestMetricsFlux:
         if arg_mismatch_index:
             test_y = test_y[:-5]
             conftest_boilerplate.index_not_equal(test_x.index, test_y.index)
-
+            assert test_y.shape == (95,)
         assert isinstance(test_x, pd.Series)
         assert test_x.shape == (100,)
         test_keys = ["fit", "score", "regression_line"]
