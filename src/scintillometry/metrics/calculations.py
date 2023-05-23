@@ -19,11 +19,12 @@ Calculates metrics from datasets.
 
 import kneed
 import pandas as pd
+from sklearn.linear_model import LinearRegression
 
-from scintillometry.backend.iterations import IterationMost
 from scintillometry.backend.constants import AtmosConstants
 from scintillometry.backend.constructions import ProfileConstructor
 from scintillometry.backend.derivations import DeriveScintillometer
+from scintillometry.backend.iterations import IterationMost
 from scintillometry.backend.transects import TransectParameters
 from scintillometry.visuals.plotting import FigurePlotter
 
@@ -215,6 +216,41 @@ class MetricsFlux:
             match_time = None
 
         return match_time
+
+    def get_regression(self, x_data, y_data, intercept=True):
+        """Performs regression on labelled data.
+
+        Args:
+            x_data (pd.Series): Labelled explanatory data.
+            y_data (pd.Series): Labelled response data.
+            intercept (bool): If True, calculate intercept (e.g. data is
+            not centred). Default True.
+
+        Returns:
+            dict: Contains the fitted estimator for regression data, the
+            coefficient of determination |R^2|, and predicted values for
+            a fitted regression line.
+        """
+
+        scatter_frame = pd.merge(
+            x_data, y_data, left_index=True, right_index=True, sort=True
+        )
+        scatter_frame = scatter_frame.dropna(axis=0)
+        x_fit_data = scatter_frame.iloc[:, 0].values.reshape(-1, 1)
+        y_fit_data = scatter_frame.iloc[:, 1].values.reshape(-1, 1)
+
+        linear_regressor = LinearRegression(fit_intercept=intercept)
+        estimator = linear_regressor.fit(x_fit_data, y_fit_data)
+        score = estimator.score(x_fit_data, y_fit_data)
+        predictions = linear_regressor.predict(x_fit_data)
+
+        regression = {
+            "fit": estimator,
+            "score": score,
+            "regression_line": predictions,
+        }
+
+        return regression
 
     def get_elbow_point(self, series, min_index=None, max_index=None):
         """Calculate elbow point using Kneedle algorithm.

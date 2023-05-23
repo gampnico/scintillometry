@@ -54,6 +54,7 @@ import numpy as np
 import pandas as pd
 import pandas.api.types as ptypes
 import pytest
+import sklearn
 
 import scintillometry.backend.constants
 import scintillometry.backend.constructions
@@ -299,6 +300,45 @@ class TestMetricsFlux:
                 assert compare_time.strftime("%H:%M") == "05:19"
         else:
             assert compare_time is None
+
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_regression")
+    @pytest.mark.parametrize("arg_intercept", [True, False])
+    @pytest.mark.parametrize("arg_mismatch_index", [True, False])
+    def test_get_regression(
+        self, conftest_boilerplate, arg_intercept, arg_mismatch_index
+    ):
+        """Perform regression on labelled data."""
+
+        rng = np.random.default_rng()
+        test_index = np.arange(0, 1000, 10)
+        test_data = rng.random(size=len(test_index))
+
+        test_x = pd.Series(name="obukhov", data=test_data, index=test_index)
+        test_y = pd.Series(name="other_obukhov", data=test_data + 0.5, index=test_index)
+        if arg_mismatch_index:
+            test_y = test_y[:-5]
+            conftest_boilerplate.index_not_equal(test_x.index, test_y.index)
+
+        assert isinstance(test_x, pd.Series)
+        assert test_x.shape == (100,)
+        test_keys = ["fit", "score", "regression_line"]
+
+        compare_regression = self.test_metrics.get_regression(
+            x_data=test_x, y_data=test_y, intercept=arg_intercept
+        )
+        assert isinstance(compare_regression, dict)
+        assert all(key in compare_regression for key in test_keys)
+        assert isinstance(
+            compare_regression["fit"], sklearn.linear_model.LinearRegression
+        )
+        if not arg_intercept:
+            assert not compare_regression["fit"].fit_intercept
+        else:
+            assert compare_regression["fit"].fit_intercept
+        assert isinstance(compare_regression["score"], float)
+        assert isinstance(compare_regression["regression_line"], np.ndarray)
+        assert not (np.isnan(compare_regression["regression_line"])).any()
+        assert len(test_y.index) == len(compare_regression["regression_line"])
 
     @pytest.mark.dependency(name="TestMetricsFlux::test_get_elbow_point")
     @pytest.mark.parametrize("arg_min_index", [None, 0, 50])

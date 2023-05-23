@@ -50,7 +50,7 @@ def setup(app):
 project = "Scintillometry"
 copyright = f"2019-{date.today().year}, Scintillometry Contributors"
 author = "Scintillometry Contributors"
-release = "1.0.4"
+release = "1.0.5"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -124,6 +124,7 @@ rst_prolog = f"""
 .. |Psi_m| replace:: :math:`\\Psi_{{m}}`
 .. |Q_0| replace:: :math:`Q_{{0}}`
 .. |r| replace:: :math:`r`
+.. |R^2| replace:: math:`R^{{2}}`
 .. |R_dry| replace:: :math:`R_{{dry}}`
 .. |R_v| replace:: :math:`R_{{v}}`
 .. |rho| replace:: :math:`\\rho`
