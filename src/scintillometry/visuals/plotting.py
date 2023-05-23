@@ -24,6 +24,7 @@ import re
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
 class FigureFormat:
@@ -91,8 +92,8 @@ class FigureFormat:
 
         Args:
             site_name (str): Location of data collection.
-            dataframe (pd.DataFrame): Any collected dataset. Default
-                None.
+            dataframe (pd.DataFrame or pd.Series): Any collected
+                dataset. Default None.
 
         Returns:
             str: Location of data collection. Returns empty string if no
@@ -193,7 +194,8 @@ class FigureFormat:
         """Return first time index and timezone.
 
         Args:
-            data (pd.DataFrame): TZ-aware dataframe with DatetimeIndex.
+            data (pd.DataFrame or pd.Series): TZ-aware dataframe with
+                DatetimeIndex.
 
         Returns:
             dict[str, datetime.tzinfo]: Date formatted as
@@ -227,7 +229,7 @@ class FigureFormat:
         if not isinstance(timestamp, str):
             timestamp = timestamp.strftime("%d %B %Y")
 
-        title_string = "".join((f"{title}{location},\n{timestamp}"))
+        title_string = f"{title}{location},\n{timestamp}"
         plt.title(title_string, fontweight="bold")
         plt.legend(loc="upper left")
 
@@ -651,6 +653,68 @@ class FigurePlotter(FigureFormat):
         )
         axes = plt.gca()
         self.set_xy_labels(ax=axes, timezone=iter_tzone["tzone"], name=name)
+
+        return figure, axes
+
+    def plot_scatter(
+        self, x_data, y_data, name, sources, score=None, regression_line=None, site=""
+    ):
+        """Plots scatter between two datasets with a regression line.
+
+        Args:
+            x_data (pd.Series): Labelled explanatory data.
+            y_data (pd.Series): Labelled response data.
+            name (str): Name of variable.
+            sources (list[str, str]): Names of data sources formatted
+                as: [<Explanatory Source>, <Response Source>].
+            score (float): Coefficient of determination |R^2|.
+                Default None.
+            regression_line (np.ndarray): Values for regression line.
+                Default None.
+            site (str): Location of data collection. Default empty
+                string.
+
+        Returns:
+            tuple[plt.Figure, plt.Axes]: Regression plot of explanatory
+            and response data, with fitted regression line and
+            regression score.
+        """
+
+        figure = plt.figure(figsize=(8, 8))
+        date = self.get_date_and_timezone(data=x_data)["date"]
+        scatter_frame = pd.merge(
+            x_data, y_data, left_index=True, right_index=True, sort=True
+        )
+
+        scatter_frame = scatter_frame.dropna(axis=0)  # drop mismatched index
+        x_fit_data = scatter_frame.iloc[:, 0].values.reshape(-1, 1)
+        y_fit_data = scatter_frame.iloc[:, 1].values.reshape(-1, 1)
+        plt.scatter(x_fit_data, y_fit_data, marker=".", color="gray")
+
+        if regression_line is not None:
+            plt.plot(
+                x_fit_data, regression_line, color="black", label="Line of Best Fit"
+            )
+
+        axes = plt.gca()
+        if score is not None:
+            plt.text(
+                0.05,
+                0.9,
+                f"R$^{2}$= {score:.5f}",
+                horizontalalignment="left",
+                verticalalignment="bottom",
+                transform=axes.transAxes,
+            )
+        variable_name = self.label_selector(name)
+        sources_string = f"{sources[0].title()} and {sources[1].title()}"
+        title_string = f"{variable_name[0]} Regression Between\n{sources_string}"
+        site_label = self.get_site_name(site_name=site, dataframe=x_data)
+        self.title_plot(title=title_string, timestamp=date, location=site_label)
+        x_label = self.merge_label_with_unit(label=variable_name)
+        y_label = self.merge_label_with_unit(label=variable_name)
+        plt.xlabel(f"{sources[0].title()} {x_label}")
+        plt.ylabel(f"{sources[1].title()} {y_label}")
 
         return figure, axes
 

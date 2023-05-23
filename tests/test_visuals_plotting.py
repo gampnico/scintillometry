@@ -683,6 +683,68 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
 
         plt.close("all")
 
+    @pytest.mark.dependency(name="TestVisualsPlotting::test_plot_scatter")
+    @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
+    @pytest.mark.parametrize("arg_score", [None, 0.561734521])
+    @pytest.mark.parametrize("arg_regression", [True, False])
+    def test_plot_scatter(
+        self, conftest_boilerplate, arg_score, arg_site, arg_regression
+    ):
+        """Plot scatter between two datasets with regression line."""
+
+        test_name = "obukhov"
+        rng = np.random.default_rng()
+        test_index = pd.date_range(start=self.test_timestamp, periods=100, freq="T")
+        test_data = rng.random(size=len(test_index))
+        test_x = pd.Series(name=test_name, data=test_data, index=test_index)
+        test_y = pd.Series(name=test_name, data=test_data + 0.5, index=test_index)
+        for series in [test_x, test_y]:
+            assert isinstance(series, pd.Series)
+            assert series.shape == (100,)
+            assert not (series.isnull()).any()
+        if arg_site:
+            test_site = f" at {arg_site},"
+        else:
+            test_site = ","
+        test_title = (
+            "Obukhov Length Regression Between",
+            f"Baseline and Comparison{test_site}",
+            f"{self.test_date}",
+        )
+        if not arg_regression:
+            test_line = None
+        else:
+            test_line = np.arange(0, 1000, 10)
+
+        compare_fig, compare_ax = self.test_plotting.plot_scatter(
+            x_data=test_x,
+            y_data=test_y,
+            name=test_name,
+            sources=["Baseline", "Comparison"],
+            site=arg_site,
+            score=arg_score,
+            regression_line=test_line,
+        )
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "x_label": "Baseline Obukhov Length, [m]",
+            "y_label": "Comparison Obukhov Length, [m]",
+            "title": "\n".join(test_title),
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params)
+
+        if arg_regression:
+            _, labels = compare_params["plot"][1].get_legend_handles_labels()
+            assert "Line of Best Fit" in labels
+
+        if arg_score is not None:
+            assert (
+                compare_params["plot"][1].texts[0].get_text()
+                == f"R$^{2}$= {arg_score:.5f}"
+            )
+
+        plt.close("all")
+
     @pytest.mark.dependency(
         name="TestVisualsPlotting::test_plot_vertical_profile",
         depends=["TestVisualsFormatting::test_plot_constant_lines"],
