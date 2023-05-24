@@ -708,14 +708,14 @@ class FigurePlotter(FigureFormat):
                 transform=axes.transAxes,
             )
         variable_name = self.label_selector(name)
-        sources_string = f"{sources[0].title()} and {sources[1].title()}"
+        sources_string = f"{sources[0]} and {sources[1]}"
         title_string = f"{variable_name[0]} Regression Between\n{sources_string}"
         site_label = self.get_site_name(site_name=site, dataframe=x_data)
         self.title_plot(title=title_string, timestamp=date, location=site_label)
         x_label = self.merge_label_with_unit(label=variable_name)
         y_label = self.merge_label_with_unit(label=variable_name)
-        plt.xlabel(f"{sources[0].title()} {x_label}")
-        plt.ylabel(f"{sources[1].title()} {y_label}")
+        plt.xlabel(f"{x_label} ({sources[0]})")
+        plt.ylabel(f"{y_label} ({sources[1]})")
 
         return figure, axes
 

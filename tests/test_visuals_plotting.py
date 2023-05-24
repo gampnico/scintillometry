@@ -733,8 +733,8 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
         )
         compare_params = {
             "plot": (compare_fig, compare_ax),
-            "x_label": "Baseline Obukhov Length, [m]",
-            "y_label": "Comparison Obukhov Length, [m]",
+            "x_label": "Obukhov Length, [m] (Baseline)",
+            "y_label": "Obukhov Length, [m] (Comparison)",
             "title": "\n".join(test_title),
         }
         conftest_boilerplate.check_plot(plot_params=compare_params)

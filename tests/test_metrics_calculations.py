@@ -280,10 +280,10 @@ class TestMetricsFlux:
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
         if arg_empty:
             test_weather["global_irradiance"] = 20
-        if not arg_timestamp:
-            test_timestamp = None
-        else:
+        if arg_timestamp:
             test_timestamp = self.test_timestamp
+        else:
+            test_timestamp = None
 
         compare_time = self.test_metrics.match_time_at_threshold(
             series=test_weather["global_irradiance"],
@@ -331,7 +331,7 @@ class TestMetricsFlux:
         assert isinstance(
             compare_regression["fit"], sklearn.linear_model.LinearRegression
         )
-        if not arg_intercept:
+        if arg_intercept:
             assert compare_regression["fit"].fit_intercept
         else:
             assert not compare_regression["fit"].fit_intercept
@@ -653,7 +653,7 @@ class TestMetricsFlux:
         )
         assert isinstance(test_time, pd.Timestamp)
         test_vertical = test_dataset["vertical"]
-        if arg_location is not None:
+        if arg_location:
             test_location = f"\nat {arg_location}, "
         else:
             test_location = ",\n"
@@ -720,7 +720,7 @@ class TestMetricsFlux:
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
         for key in ["grad_potential_temperature", "environmental_lapse_rate"]:
             assert key in test_dataset["vertical"]
-        if arg_location is not None:
+        if arg_location:
             test_location = f"\nat {arg_location}, "
         else:
             test_location = ",\n"
@@ -899,7 +899,7 @@ class TestMetricsFlux:
         if arg_location:
             test_frame.attrs["name"] = arg_location
             assert "name" in test_frame.attrs
-        if arg_location is not None:
+        if arg_location:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
@@ -918,13 +918,13 @@ class TestMetricsFlux:
                 "plot": (compare_plots[0]),
                 "title": "Sensible Heat Flux",
                 "x_label": "Time, CET",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             },
             "comparison": {
                 "plot": (compare_plots[1]),
                 "title": "Sensible Heat Flux from Free Convection and Iteration",
                 "x_label": "Time, CET",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             },
         }
         for params in compare_params.values():
@@ -1122,24 +1122,32 @@ class TestMetricsWorkflow:
     def test_compare_innflux(
         self,
         conftest_mock_save_figure,
-        conftest_mock_innflux_dataframe_tz,
-        conftest_mock_iterated_dataframe,
         conftest_boilerplate,
+        conftest_generate_series,
         arg_location,
     ):
-        """Compares input data to InnFLUX data."""
+        """Compares input data to innFLUX data."""
 
         _ = conftest_mock_save_figure
 
-        if arg_location is not None:
+        test_data, test_index = conftest_generate_series
+        test_obukhov = pd.Series(data=test_data, index=test_index)
+        test_shf = pd.Series(data=test_data, index=test_index)
+        test_base_dataframe = pd.DataFrame(
+            data={"obukhov": test_obukhov, "shf": test_shf},
+        )
+        test_ext_dataframe = test_base_dataframe.add(0.5)
+
+        if arg_location:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
         test_title = f"{test_location},\n{self.test_date}"
+        test_regression_string = "Regression Between\nMOST Iteration and innFLUX"
 
         compare_plots = self.test_workflow.compare_innflux(
-            innflux_data=conftest_mock_innflux_dataframe_tz,
-            own_data=conftest_mock_iterated_dataframe,
+            own_data=test_base_dataframe,
+            innflux_data=test_ext_dataframe,
             location=arg_location,
         )
         assert isinstance(compare_plots, list)
@@ -1153,9 +1161,21 @@ class TestMetricsWorkflow:
             },
             "shf": {
                 "title": "Sensible Heat Flux from Scintillometer and innFLUX",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "x_label": "Time, CET",
                 "plot": (compare_plots[1]),
+            },
+            "obukhov_regression": {
+                "title": f"Obukhov Length {test_regression_string}",
+                "y_label": "Obukhov Length, [m] (innFLUX)",
+                "x_label": "Obukhov Length, [m] (MOST Iteration)",
+                "plot": (compare_plots[2]),
+            },
+            "shf_regression": {
+                "title": f"Sensible Heat Flux {test_regression_string}",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$] (innFLUX)",
+                "x_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$] (MOST Iteration)",
+                "plot": (compare_plots[3]),
             },
         }
 
@@ -1194,22 +1214,25 @@ class TestMetricsWorkflow:
         ],
     )
     def test_compare_eddy(
-        self,
-        conftest_mock_save_figure,
-        conftest_mock_innflux_dataframe_tz,
-        conftest_mock_iterated_dataframe,
-        conftest_boilerplate,
+        self, conftest_mock_save_figure, conftest_generate_series, conftest_boilerplate
     ):
         """Compares input data to external eddy covariance data."""
 
         _ = conftest_mock_save_figure
 
+        test_data, test_index = conftest_generate_series
+        test_obukhov = pd.Series(data=test_data, index=test_index)
+        test_shf = pd.Series(data=test_data, index=test_index)
+        test_base_dataframe = pd.DataFrame(
+            data={"obukhov": test_obukhov, "shf": test_shf},
+        )
+        test_ext_dataframe = test_base_dataframe.add(0.5)
         test_location = "Test Location"
         test_title = f" at {test_location},\n{self.test_date}"
 
         compare_plots = self.test_workflow.compare_eddy(
-            own_data=conftest_mock_iterated_dataframe,
-            ext_data=conftest_mock_innflux_dataframe_tz,
+            own_data=test_base_dataframe,
+            ext_data=test_ext_dataframe,
             source="innflux",
             location="Test Location",
         )
@@ -1225,7 +1248,7 @@ class TestMetricsWorkflow:
             },
             "shf": {
                 "title": "Sensible Heat Flux from Scintillometer and innFLUX",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "x_label": "Time, CET",
                 "plot": (compare_plots[1]),
             },

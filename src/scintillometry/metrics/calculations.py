@@ -991,26 +991,61 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         """
 
         data_timestamp = own_data.index[0]
-        fig_obukhov, ax_obukhov = self.plotting.plot_innflux(
+        obukhov_plot = self.plotting.plot_innflux(
             iter_data=own_data,
             innflux_data=innflux_data,
             name="obukhov",
             site=location,
         )
         self.plotting.save_figure(
-            figure=fig_obukhov, timestamp=data_timestamp, suffix="innflux_obukhov"
+            figure=obukhov_plot[0], timestamp=data_timestamp, suffix="innflux_obukhov"
         )
-        fig_shf, ax_shf = self.plotting.plot_innflux(
+        obukhov_regression = self.get_regression(
+            x_data=own_data["obukhov"], y_data=innflux_data["obukhov"], intercept=True
+        )
+        obukhov_regression_plot = self.plotting.plot_scatter(
+            x_data=own_data,
+            y_data=innflux_data,
+            sources=["MOST Iteration", "innFLUX"],
+            name="obukhov",
+            score=obukhov_regression["score"],
+            regression_line=obukhov_regression["regression_line"],
+            site=location,
+        )
+        self.plotting.save_figure(
+            figure=obukhov_regression_plot[0],
+            timestamp=data_timestamp,
+            suffix="innflux_obukhov_regression",
+        )
+
+        shf_plot = self.plotting.plot_innflux(
             iter_data=own_data,
             innflux_data=innflux_data,
             name="shf",
             site=location,
         )
         self.plotting.save_figure(
-            figure=fig_shf, timestamp=data_timestamp, suffix="innflux_shf"
+            figure=shf_plot[0], timestamp=data_timestamp, suffix="innflux_shf"
+        )
+        shf_regression = self.get_regression(
+            x_data=own_data["obukhov"], y_data=innflux_data["obukhov"], intercept=True
+        )
+        shf_regression_plot = self.plotting.plot_scatter(
+            x_data=own_data,
+            y_data=innflux_data,
+            sources=["MOST Iteration", "innFLUX"],
+            name="shf",
+            score=shf_regression["score"],
+            regression_line=shf_regression["regression_line"],
+            site=location,
+        )
+        self.plotting.save_figure(
+            figure=shf_regression_plot[0],
+            timestamp=data_timestamp,
+            suffix="innflux_shf_regression",
         )
 
-        plots = [(fig_obukhov, ax_obukhov), (fig_shf, ax_shf)]
+        plots = [obukhov_plot, shf_plot, obukhov_regression_plot, shf_regression_plot]
 
         return plots
 
