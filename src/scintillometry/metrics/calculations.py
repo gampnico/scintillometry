@@ -56,8 +56,9 @@ class MetricsTopography:
             regime (str): Target stability condition. Default None.
 
         Returns:
-            dict[float, float]: Tuples of effective and mean path height
-            |z_eff| and |z_mean| [m], with stability conditions as keys.
+            dict[str, tuple[np.floating, np.floating]]: Tuples of
+            effective and mean path height |z_eff| and |z_mean| [m],
+            with stability conditions as keys.
         """
 
         z_params = self.transect.get_all_path_heights(path_transect=transect)
@@ -106,7 +107,6 @@ class MetricsFlux:
         <interpolated_data>.
 
         Args:
-            user_args (argparse.Namespace): Namespace of user arguments.
             interpolated_data (pd.DataFrame): Dataframe containing
                 parsed and localised weather and scintillometer data
                 with matching temporal resolution.
@@ -176,7 +176,7 @@ class MetricsFlux:
             "vertical" is updated with vertical data for water vapour
             pressure, air pressure, mixing ratio, virtual temperature,
             mean sea-level pressure, and potential temperature.
-            Otherwise the dictionary is returned unmodified.
+            Otherwise, the dictionary is returned unmodified.
         """
 
         if "vertical" in data:
@@ -283,10 +283,10 @@ class MetricsFlux:
             ]
         if series[indices[-1]] < series[indices[0]]:
             curve_direction = "decreasing"
-            online_param = "true"
+            online_param = True
         else:
             curve_direction = "increasing"
-            online_param = "true"
+            online_param = True
         knee = kneed.KneeLocator(
             series[indices],
             indices,
@@ -1004,8 +1004,8 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
             x_data=own_data["obukhov"], y_data=innflux_data["obukhov"], intercept=True
         )
         obukhov_regression_plot = self.plotting.plot_scatter(
-            x_data=own_data,
-            y_data=innflux_data,
+            x_data=own_data["obukhov"],
+            y_data=innflux_data["obukhov"],
             sources=["MOST Iteration", "innFLUX"],
             name="obukhov",
             score=obukhov_regression["score"],
@@ -1031,8 +1031,8 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
             x_data=own_data["obukhov"], y_data=innflux_data["obukhov"], intercept=True
         )
         shf_regression_plot = self.plotting.plot_scatter(
-            x_data=own_data,
-            y_data=innflux_data,
+            x_data=own_data["shf"],
+            y_data=innflux_data["shf"],
             sources=["MOST Iteration", "innFLUX"],
             name="shf",
             score=shf_regression["score"],

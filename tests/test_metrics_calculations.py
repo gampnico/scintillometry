@@ -107,7 +107,7 @@ class TestMetricsTopography:
         assert compare_metrics["None"][0] > compare_metrics["None"][1]
 
         compare_print = capsys.readouterr()
-        if not arg_regime:
+        if arg_regime is None:
             assert "Selected no height dependency:" in compare_print.out
         else:
             assert str(arg_regime) in compare_print.out
@@ -172,7 +172,7 @@ class TestMetricsFlux:
         """Compute sensible heat flux for free convection."""
 
         test_frame = conftest_mock_merged_dataframe[["CT2", "H_convection"]]
-        if arg_kwargs:
+        if isinstance(arg_kwargs, tuple):
             test_kwargs = {
                 "beam_wavelength": arg_kwargs[0],
                 "beam_error": arg_kwargs[1],
@@ -271,7 +271,7 @@ class TestMetricsFlux:
     @pytest.mark.dependency(name="TestMetricsFlux::test_match_time_at_threshold")
     @pytest.mark.parametrize("arg_lessthan", [True, False])
     @pytest.mark.parametrize("arg_empty", [True, False])
-    @pytest.mark.parametrize("arg_timestamp", [True, None])
+    @pytest.mark.parametrize("arg_timestamp", [True, False])
     def test_match_time_at_threshold(
         self, conftest_mock_weather_dataframe_tz, arg_lessthan, arg_empty, arg_timestamp
     ):
@@ -373,7 +373,7 @@ class TestMetricsFlux:
             test_indices,
             S=1.5,
             curve="convex",
-            online="true",
+            online=True,
             direction=test_direction,
             interp_method="interp1d",
         )
@@ -806,8 +806,8 @@ class TestMetricsFlux:
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "timestamp": self.test_timestamp.replace(hour=5, minute=10),
+            "vertical": conftest_mock_hatpro_dataset.copy(),
         }
-        test_dataset["vertical"] = conftest_mock_hatpro_dataset.copy()
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
 
         if not arg_potential:
@@ -974,7 +974,7 @@ class TestMetricsFlux:
         for key in compare_keys:
             assert not (compare_metrics[key].isnull()).any()
             assert key in compare_metrics.keys()
-            assert all(isinstance(x, (mpmath.mpf)) for x in compare_metrics[key])
+            assert all(isinstance(x, mpmath.mpf) for x in compare_metrics[key])
         plt.close("all")
 
 

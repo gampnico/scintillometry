@@ -264,7 +264,7 @@ class FigureFormat:
             labels (list[str]): Labels, which may contain duplicates.
 
         Returns:
-            str: A formatted, puncutated string with no duplicates.
+            str: A formatted, punctuated string with no duplicates.
         """
 
         unique_text = list(dict.fromkeys(labels))
@@ -286,9 +286,9 @@ class FigureFormat:
             name (str): Name or abbreviation of dependent variable.
 
         Returns:
-            plt.Axes: Plot axes with labels for local time on the x axis
-            and for the dependent variable with units on the y axis.
-            Ticks on the x axis are formatted at hourly intervals.
+            plt.Axes: Plot axes with labels for local time on the x-axis
+            and for the dependent variable with units on the y-axis.
+            Ticks on the x-axis are formatted at hourly intervals.
         """
 
         x_label = f"Time, {timezone.zone}"

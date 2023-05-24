@@ -64,10 +64,11 @@ class TestVisualsBoilerplate:
     @pytest.mark.dependency(name="TestVisualsBoilerplate::test_assert_constant_lines")
     @pytest.mark.parametrize("arg_vlines", [{"v_a": 1}, {"v_a": 1, "v_b": 2.1}, None])
     @pytest.mark.parametrize("arg_hlines", [{"h_a": 1}, {"h_a": 1, "h_b": 2.1}, None])
-    def test_assert_constant_lines(self, arg_hlines, arg_vlines):
-        rng = np.random.default_rng()
-        test_index = np.arange(0, 200, 10)
-        test_data = rng.random(size=len(test_index))
+    def test_assert_constant_lines(
+        self, conftest_generate_series, arg_hlines, arg_vlines
+    ):
+        """Validate test for constant lines existing on axis."""
+        test_data, test_index = conftest_generate_series
         test_series = pd.Series(data=test_data, index=test_index)
 
         plt.figure(figsize=(10, 10))
@@ -128,13 +129,11 @@ class TestVisualsFormatting(TestVisualsBoilerplate):
 
     @pytest.mark.dependency(name="TestVisualsFormatting::test_parse_formatting_kwargs")
     @pytest.mark.parametrize("arg_fig", [True, False])
-    def test_parse_formatting_kwargs(self, arg_fig):
+    def test_parse_formatting_kwargs(self, arg_fig, conftest_generate_series):
         """Parse kwargs when formatting."""
 
         if arg_fig:
-            rng = np.random.default_rng()
-            test_index = np.arange(0, 200, 10)
-            test_data = rng.random(size=len(test_index))
+            test_data, test_index = conftest_generate_series
             test_series = pd.Series(data=test_data, index=test_index)
             plt.figure(figsize=(10, 10))
             plt.plot(test_index, test_series)
@@ -333,12 +332,12 @@ class TestVisualsFormatting(TestVisualsBoilerplate):
     )
     @pytest.mark.parametrize("arg_vlines", [{"va": None}, {"va": 1, "vb": 2.1}, None])
     @pytest.mark.parametrize("arg_hlines", [{"ha": None}, {"ha": 1, "hb": 2.1}, None])
-    def test_plot_constant_lines(self, arg_hlines, arg_vlines):
+    def test_plot_constant_lines(
+        self, conftest_generate_series, arg_hlines, arg_vlines
+    ):
         """Plot horizontal and vertical lines."""
 
-        rng = np.random.default_rng()
-        test_index = np.arange(0, 200, 10)
-        test_data = rng.random(size=len(test_index))
+        test_data, test_index = conftest_generate_series
         test_series = pd.Series(data=test_data, index=test_index)
 
         plt.figure(figsize=(10, 10))
@@ -368,7 +367,7 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
     test_date = "03 June 2020"
     test_timestamp = pd.Timestamp(f"{test_date} 05:20", tz="CET")
 
-    def test_visualsplotting_attributes(self):
+    def test_visuals_plotting_attributes(self):
         assert isinstance(self.test_timestamp, pd.Timestamp)
         assert self.test_timestamp.strftime("%Y-%m-%d %H:%M") == "2020-06-03 05:20"
         assert self.test_timestamp.tz.zone == "CET"
