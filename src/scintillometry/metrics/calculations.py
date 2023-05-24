@@ -397,11 +397,11 @@ class MetricsFlux:
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Vertical
-            profiles of lapse rates on a single axis, and vertical
-            profiles of parcel temperatures on a single axis. If a
-            boundary layer height is provided, vertical lines denoting
-            its height are added to the figures.
+            list[tuple[plt.Figure, plt.Axes]]: Vertical profiles of
+            lapse rates on a single axis, and vertical profiles of
+            parcel temperatures on a single axis. If a boundary layer
+            height is provided, vertical lines denoting its height are
+            added to the figures.
         """
 
         lapse_rates = {
@@ -448,7 +448,7 @@ class MetricsFlux:
             suffix=f"{round_time.strftime('%H%M')}_parcel_temperatures",
         )
 
-        return fig_lapse, axes_lapse, fig_parcel, axes_parcel
+        return [(fig_lapse, axes_lapse), (fig_parcel, axes_parcel)]
 
     def get_switch_time_vertical(self, data, method="static", ri_crit=0.25):
         """Gets local time of switch between stability conditions.
@@ -617,10 +617,10 @@ class MetricsFlux:
             bl_height (int): Boundary layer height. Default None.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: Vertical profile of potential
-            temperature. If the gradient potential temperature is also
-            provided, the two vertical profiles are placed side-by-side
-            in separate subplots.
+            list[tuple[plt.Figure, plt.Axes]]: Vertical profile of
+            potential temperature. If the gradient potential temperature
+            is also provided, the two vertical profiles are placed
+            side-by-side in separate subplots.
         """
 
         round_time = self.get_nearest_time_index(
@@ -670,7 +670,7 @@ class MetricsFlux:
                 suffix=f"{mil_time}_gradient_potential_temperature_2km",
             )
 
-        return fig, ax
+        return [(fig, ax)]
 
     def calculate_switch_time(
         self, datasets, method="sun", switch_time=None, location=""
@@ -739,9 +739,9 @@ class MetricsFlux:
         Trades speed from vectorisation for more accurate convergence.
 
         Args:
-            z_parameters (dict[float, float]): Tuples of effective and
-                mean path height |z_eff| and |z_mean| [m], with
-                stability conditions as keys.
+            z_parameters (dict[str, tuple[float, float]): Tuples of
+                effective and mean path height |z_eff| and |z_mean| [m],
+                with stability conditions as keys.
             datasets (dict): Contains parsed, tz-aware dataframes, with
                 at least |CT2|, wind speed, air density, and
                 temperature.
@@ -809,8 +809,9 @@ class MetricsFlux:
             string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: Time series comparing sensible
-            heat fluxes under free convection to on-board software.
+            list[tuple[plt.Figure, plt.Axes]]: Time series comparing
+            sensible heat fluxes under free convection to on-board
+            software.
         """
 
         fig_convection, ax_convection = self.plotting.plot_convection(
@@ -819,25 +820,24 @@ class MetricsFlux:
         self.plotting.save_figure(
             figure=fig_convection, timestamp=time_id, suffix="free_convection"
         )
+        derived_plots = [(fig_convection, ax_convection)]
 
-        return fig_convection, ax_convection
+        return derived_plots
 
     def plot_iterated_metrics(self, iterated_data, time_stamp, site_location=""):
         """Plot and save time series and comparison of iterated fluxes.
 
         Args:
-            user_args (argparse.Namespace): Namespace of user arguments.
-            derived_data (pd.DataFrame): Interpolated tz-aware dataframe
-                with columns for sensible heat fluxes calculated with
-                MOST and for free convection.
-            time_id (pd.Timestamp): Start time of scintillometer data
+            iterated_data (pd.DataFrame): TZ-aware dataframe with
+                columns for heat fluxes and MOST parameters.
+            time_stamp (pd.Timestamp): Start time of scintillometer data
                 collection.
             site_location (str): Name of scintillometer location.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
-            series of sensible heat flux calculated through MOST, and a
-            comparison to sensible heat flux under free convection.
+            list[tuple[plt.Figure, plt.Axes]]: Time series of sensible
+            heat flux calculated through MOST, and a comparison to
+            sensible heat flux under free convection.
         """
 
         plots = self.plotting.plot_iterated_fluxes(
@@ -872,7 +872,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         - Calculates effective path heights for all stability
           conditions.
         - Derives |CT2| and sensible heat flux for free convection.
-        - Estimates the time where stability conditions change.
+        - Estimates the time when stability conditions change.
         - Calculates sensible heat flux using MOST.
         - Plots time series comparing sensible heat flux for free
           convection |H_free| to on-board software, time series of
@@ -965,7 +965,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         return data
 
     def compare_innflux(self, own_data, innflux_data, location=""):
-        """Compares SHF and Obukhov lengths to InnFLUX measurements.
+        """Compares SHF and Obukhov lengths to innFLUX measurements.
 
         This wrapper function:
 
@@ -977,7 +977,6 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         with an argparse.Namespace object.
 
         Args:
-            arguments (argparse.Namespace): User arguments.
             own_data (pd.DataFrame): Labelled data for SHF and Obukhov
                 length.
             innflux_data (pd.DataFrame): Eddy covariance data from
@@ -986,9 +985,9 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
-            series comparing Obukhov length and sensible heat flux to
-            innFlux measurements.
+            list[tuple[plt.Figure, plt.Axes]]: Time series comparing
+            Obukhov length and sensible heat flux to innFLUX
+            measurements.
         """
 
         data_timestamp = own_data.index[0]
@@ -1011,7 +1010,9 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
             figure=fig_shf, timestamp=data_timestamp, suffix="innflux_shf"
         )
 
-        return fig_obukhov, ax_obukhov, fig_shf, ax_shf
+        plots = [(fig_obukhov, ax_obukhov), (fig_shf, ax_shf)]
+
+        return plots
 
     def compare_eddy(self, own_data, ext_data, source="innflux", location=""):
         """Compares data to an external source of eddy covariance data.
@@ -1024,17 +1025,19 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         with an argparse.Namespace object.
 
         Args:
-            arguments (argparse.Namespace): User arguments.
             own_data (pd.DataFrame): Labelled data.
             ext_data (pd.DataFrame): Eddy covariance data from an
                 external source.
+            source (str): Data source of vertical measurements.
+                Currently supports processed innFLUX data.
+                Default "innflux".
             location (str): Location of data collection. Default empty
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
-            series comparing Obukhov length and sensible heat flux to
-            innFlux measurements.
+            list[tuple[plt.Figure, plt.Axes]]: Time series comparing
+            Obukhov length and sensible heat flux to innFLUX
+            measurements.
 
         Raises:
             NotImplementedError: <source> measurements are not
@@ -1043,7 +1046,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         """
 
         if source.lower() == "innflux":
-            fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.compare_innflux(
+            eddy_plots = self.compare_innflux(
                 own_data=own_data, innflux_data=ext_data, location=location
             )
         else:
@@ -1052,4 +1055,4 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
             )
             raise NotImplementedError(error_msg)
 
-        return fig_obukhov, ax_obukhov, fig_shf, ax_shf
+        return eddy_plots

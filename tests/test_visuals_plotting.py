@@ -596,24 +596,26 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
         test_title = f"{test_location},\n{self.test_date}"
         timestamp = test_data.index[0]
 
-        plots = self.test_plotting.plot_iterated_fluxes(
+        compare_plots = self.test_plotting.plot_iterated_fluxes(
             iteration_data=test_data,
             time_id=timestamp,
             location=arg_location,
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
         compare_plots = {
             "shf": {
                 "title": "Sensible Heat Flux",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "xlabel": "Time, CET",
-                "plot": (plots[0], plots[1]),
+                "plot": (compare_plots[0]),
             },
             "comparison": {
                 "title": "Sensible Heat Flux from Free Convection and Iteration",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "xlabel": "Time, CET",
-                "plot": (plots[2], plots[3]),
+                "plot": (compare_plots[1]),
             },
         }
 
@@ -688,14 +690,18 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
     @pytest.mark.parametrize("arg_score", [None, 0.561734521])
     @pytest.mark.parametrize("arg_regression", [True, False])
     def test_plot_scatter(
-        self, conftest_boilerplate, arg_score, arg_site, arg_regression
+        self,
+        conftest_boilerplate,
+        conftest_generate_series,
+        arg_score,
+        arg_site,
+        arg_regression,
     ):
         """Plot scatter between two datasets with regression line."""
 
         test_name = "obukhov"
-        rng = np.random.default_rng()
-        test_index = pd.date_range(start=self.test_timestamp, periods=100, freq="T")
-        test_data = rng.random(size=len(test_index))
+        test_data, test_index = conftest_generate_series
+
         test_x = pd.Series(name=test_name, data=test_data, index=test_index)
         test_y = pd.Series(name=test_name, data=test_data + 0.5, index=test_index)
         for series in [test_x, test_y]:

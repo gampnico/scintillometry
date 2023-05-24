@@ -332,9 +332,9 @@ class TestMetricsFlux:
             compare_regression["fit"], sklearn.linear_model.LinearRegression
         )
         if not arg_intercept:
-            assert not compare_regression["fit"].fit_intercept
-        else:
             assert compare_regression["fit"].fit_intercept
+        else:
+            assert not compare_regression["fit"].fit_intercept
         assert isinstance(compare_regression["score"], float)
         assert isinstance(compare_regression["regression_line"], np.ndarray)
         assert not (np.isnan(compare_regression["regression_line"])).any()
@@ -653,19 +653,12 @@ class TestMetricsFlux:
         )
         assert isinstance(test_time, pd.Timestamp)
         test_vertical = test_dataset["vertical"]
-        if arg_location:
+        if arg_location is not None:
             test_location = f"\nat {arg_location}, "
         else:
             test_location = ",\n"
         test_labels = ["Potential Temperature, [K]"]
-        if not arg_gradient:
-            test_vertical.pop("grad_potential_temperature", None)
-            assert "grad_potential_temperature" not in test_vertical
-            test_title = (
-                f"Vertical Profile of Potential Temperature{test_location}",
-                f"{self.test_date} 05:20 CET",
-            )
-        else:
+        if arg_gradient:
             assert "grad_potential_temperature" in test_vertical
             test_title = (
                 "Vertical Profiles of Potential Temperature ",
@@ -673,23 +666,33 @@ class TestMetricsFlux:
                 f"{self.test_date} 05:20 CET",
             )
             test_labels.append(r"Gradient of Potential Temperature, [K$\cdot$m$^{-1}$]")
+        else:
+            test_vertical.pop("grad_potential_temperature", None)
+            assert "grad_potential_temperature" not in test_vertical
+            test_title = (
+                f"Vertical Profile of Potential Temperature{test_location}",
+                f"{self.test_date} 05:20 CET",
+            )
 
-        compare_fig, compare_ax = self.test_metrics.plot_switch_time_stability(
+        compare_plots = self.test_metrics.plot_switch_time_stability(
             data=test_vertical, local_time=test_time, location=arg_location
         )
-        assert isinstance(compare_fig, plt.Figure)
-
-        if not arg_gradient:
-            assert isinstance(compare_ax, plt.Axes)
-            assert compare_ax.get_title() == "".join(test_title)
-            assert compare_ax.yaxis.get_label_text() == "Height [m]"
-        else:
-            assert isinstance(compare_ax, np.ndarray)
-            assert all(isinstance(ax, plt.Axes) for ax in compare_ax)
-            assert compare_fig.texts[0].get_text() == "".join(test_title)
-            assert compare_ax[0].yaxis.get_label_text() == "Height [m]"
-            for i in range(len(compare_ax)):
-                assert compare_ax[i].xaxis.get_label_text() == test_labels[i]
+        assert isinstance(compare_plots, list)
+        for compare_tuple in compare_plots:
+            assert isinstance(compare_tuple, tuple)
+            assert isinstance(compare_tuple[0], plt.Figure)
+            compare_ax = compare_tuple[1]
+            if arg_gradient:
+                assert isinstance(compare_ax, np.ndarray)
+                assert all(isinstance(ax, plt.Axes) for ax in compare_ax)
+                assert compare_tuple[0].texts[0].get_text() == "".join(test_title)
+                assert compare_ax[0].yaxis.get_label_text() == "Height [m]"
+                for i in range(len(compare_ax)):
+                    assert compare_ax[i].xaxis.get_label_text() == test_labels[i]
+            else:
+                assert isinstance(compare_ax, plt.Axes)
+                assert compare_ax.get_title() == "".join(test_title)
+                assert compare_ax.yaxis.get_label_text() == "Height [m]"
 
         plt.close("all")
 
@@ -717,32 +720,34 @@ class TestMetricsFlux:
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
         for key in ["grad_potential_temperature", "environmental_lapse_rate"]:
             assert key in test_dataset["vertical"]
-        if arg_location:
+        if arg_location is not None:
             test_location = f"\nat {arg_location}, "
         else:
             test_location = ",\n"
         test_title = f"{test_location}{self.test_date} 05:10 CET"
 
-        fig_lapse, ax_lapse, fig_parcel, ax_parcel = self.test_metrics.plot_lapse_rates(
+        compare_plots = self.test_metrics.plot_lapse_rates(
             vertical_data=test_dataset["vertical"],
             dry_adiabat=self.test_metrics.constants.dalr,
             local_time=self.test_timestamp,
             location=arg_location,
             bl_height=arg_height,
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
         compare_params = {
             "lapse": {
                 "title": "Temperature Lapse Rates",
                 "x_label": r"Lapse Rate, [Km$^{-1}$]",
                 "y_label": "Height [m]",
-                "plot": (fig_lapse, ax_lapse),
+                "plot": (compare_plots[0]),
             },
             "parcel": {
                 "title": "Vertical Profiles of Parcel Temperature",
                 "x_label": "Temperature, [K]",
                 "y_label": "Height [m]",
-                "plot": (fig_parcel, ax_parcel),
+                "plot": (compare_plots[1]),
             },
         }
 
@@ -848,7 +853,7 @@ class TestMetricsFlux:
         _ = conftest_mock_save_figure
 
         test_frame = conftest_mock_derived_dataframe
-        if arg_regime:
+        if arg_regime is not None:
             test_conditions = f"{arg_regime.capitalize()} Conditions"
         else:
             test_conditions = "No Height Dependency"
@@ -857,14 +862,17 @@ class TestMetricsFlux:
             f"for Free Convection ({test_conditions}),\n{self.test_date}",
         )
 
-        compare_fig, compare_ax = self.test_metrics.plot_derived_metrics(
+        compare_plots = self.test_metrics.plot_derived_metrics(
             derived_data=test_frame,
             time_id=test_frame.index[0],
             regime=arg_regime,
             location="",
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
+
         compare_params = {
-            "plot": (compare_fig, compare_ax),
+            "plot": (compare_plots[0]),
             "x_label": "Time, CET",
             "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             "title": " ".join(test_title),
@@ -891,33 +899,35 @@ class TestMetricsFlux:
         if arg_location:
             test_frame.attrs["name"] = arg_location
             assert "name" in test_frame.attrs
-        if arg_location:
+        if arg_location is not None:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
         test_title = f"{test_location},\n{self.test_date}"
 
-        plot_pairs = self.test_metrics.plot_iterated_metrics(
+        compare_plots = self.test_metrics.plot_iterated_metrics(
             iterated_data=test_frame,
             time_stamp=test_stamp,
             site_location=arg_location,
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
-        compare_plots = {
+        compare_params = {
             "iteration": {
-                "plot": (plot_pairs[0], plot_pairs[1]),
+                "plot": (compare_plots[0]),
                 "title": "Sensible Heat Flux",
                 "x_label": "Time, CET",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             },
             "comparison": {
-                "plot": (plot_pairs[2], plot_pairs[3]),
+                "plot": (compare_plots[1]),
                 "title": "Sensible Heat Flux from Free Convection and Iteration",
                 "x_label": "Time, CET",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             },
         }
-        for params in compare_plots.values():
+        for params in compare_params.values():
             conftest_boilerplate.check_plot(plot_params=params, title=test_title)
 
         plt.close("all")
@@ -1121,30 +1131,31 @@ class TestMetricsWorkflow:
 
         _ = conftest_mock_save_figure
 
-        if arg_location:
+        if arg_location is not None:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
         test_title = f"{test_location},\n{self.test_date}"
 
-        fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.test_workflow.compare_innflux(
+        compare_plots = self.test_workflow.compare_innflux(
             innflux_data=conftest_mock_innflux_dataframe_tz,
             own_data=conftest_mock_iterated_dataframe,
             location=arg_location,
         )
-
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
         compare_params = {
             "obukhov": {
                 "title": "Obukhov Length from Scintillometer and innFLUX",
                 "y_label": "Obukhov Length, [m]",
                 "x_label": "Time, CET",
-                "plot": (fig_obukhov, ax_obukhov),
+                "plot": (compare_plots[0]),
             },
             "shf": {
                 "title": "Sensible Heat Flux from Scintillometer and innFLUX",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "x_label": "Time, CET",
-                "plot": (fig_shf, ax_shf),
+                "plot": (compare_plots[1]),
             },
         }
 
@@ -1196,25 +1207,27 @@ class TestMetricsWorkflow:
         test_location = "Test Location"
         test_title = f" at {test_location},\n{self.test_date}"
 
-        fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.test_workflow.compare_eddy(
+        compare_plots = self.test_workflow.compare_eddy(
             own_data=conftest_mock_iterated_dataframe,
             ext_data=conftest_mock_innflux_dataframe_tz,
             source="innflux",
             location="Test Location",
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
         compare_params = {
             "obukhov": {
                 "title": "Obukhov Length from Scintillometer and innFLUX",
                 "y_label": "Obukhov Length, [m]",
                 "x_label": "Time, CET",
-                "plot": (fig_obukhov, ax_obukhov),
+                "plot": (compare_plots[0]),
             },
             "shf": {
                 "title": "Sensible Heat Flux from Scintillometer and innFLUX",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "x_label": "Time, CET",
-                "plot": (fig_shf, ax_shf),
+                "plot": (compare_plots[1]),
             },
         }
         for params in compare_params.values():

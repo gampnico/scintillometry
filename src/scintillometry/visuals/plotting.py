@@ -594,7 +594,8 @@ class FigurePlotter(FigureFormat):
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Figure]: Time series and comparison.
+            list[tuple[plt.Figure, plt.Axes]]: Time series and
+            comparison.
         """
 
         fig_shf, ax_shf = self.plot_generic(iteration_data, "shf", site=location)
@@ -611,7 +612,7 @@ class FigurePlotter(FigureFormat):
         fig_comp = plt.gcf()
         self.save_figure(figure=fig_comp, timestamp=time_id, suffix="shf_comp")
 
-        return fig_shf, ax_shf, fig_comp, ax_comp
+        return [(fig_shf, ax_shf), (fig_comp, ax_comp)]
 
     def plot_innflux(self, iter_data, innflux_data, name="obukhov", site=""):
         """Plots comparison between scintillometer and InnFLUX data.
@@ -724,13 +725,14 @@ class FigurePlotter(FigureFormat):
         """Plots vertical profile of variable.
 
         Args:
-            vertical_data (dict[pd.DataFrame]): Contains time series of
-                vertical profiles.
+            vertical_data (dict[str, pd.DataFrame]): Contains time
+                series of vertical measurements.
             time_idx (pd.Timestamp): The local time for which to plot a
                 vertical profile.
             name (str): Name of dependent variable, must be key in
                 <vertical_data>.
-            site (str): Location of data collection. Default empty string.
+            site (str): Location of data collection. Default empty
+                string.
             y_lim (float): Y-axis limit. Default None.
 
         Keyword Args:
@@ -782,8 +784,8 @@ class FigurePlotter(FigureFormat):
             location = ",\n"
         else:
             location = f"\nat {site_label}, "
-        time_idx = time_idx.strftime("%H:%M")
-        time_label = f"{time_data['date']} {time_idx} {time_data['tzone']}"
+        time_string = time_idx.strftime("%H:%M")
+        time_label = f"{time_data['date']} {time_string} {time_data['tzone']}"
         title_string = f"{title}{location}{time_label}"
         plt.title(title_string, fontweight="bold")
         axes = plt.gca()
@@ -813,16 +815,13 @@ class FigurePlotter(FigureFormat):
             profiles.
         """
 
-        key_number = len(keys)
+        key_length = len(keys)
         figure, axes = plt.subplots(
-            nrows=1, ncols=key_number, sharey=False, figsize=(4 * key_number, 8)
+            nrows=1, ncols=key_length, sharey=False, figsize=(4 * key_length, 8)
         )
         subplot_labels = []
-        for i in range(key_number):
+        for i in range(key_length):
             vertical_profile = dataset[keys[i]].loc[[time_index]]
-            time_data = self.get_date_and_timezone(
-                data=dataset[keys[i]].loc[[time_index]]
-            )
             axes[i].plot(
                 vertical_profile.values[0],
                 vertical_profile.columns,
@@ -837,7 +836,6 @@ class FigurePlotter(FigureFormat):
 
             if kwargs:
                 self.parse_formatting_kwargs(axis=axes[i], **kwargs)
-
         axes[0].set_ylabel("Height [m]")
 
         title_name = self.merge_multiple_labels(labels=subplot_labels)
@@ -847,8 +845,9 @@ class FigurePlotter(FigureFormat):
             location = ",\n"
         else:
             location = f"\nat {site_label}, "
-        time_index = time_index.strftime("%H:%M")
-        time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
+        time_data = self.get_date_and_timezone(data=dataset[keys[-1]].loc[[time_index]])
+        time_string = time_index.strftime("%H:%M")
+        time_label = f"{time_data['date']} {time_string} {time_data['tzone']}"
         title_string = f"{title}{location}{time_label}"
         figure.suptitle(title_string, fontweight="bold")
 
@@ -879,15 +878,12 @@ class FigurePlotter(FigureFormat):
         """
 
         keys = list(dataset)
-        key_number = len(keys)
+        key_length = len(keys)
         figure = plt.figure(figsize=(8, 8))
         subplot_labels = []
         xlims = []
-        for i in range(key_number):
+        for i in range(key_length):
             vertical_profile = dataset[keys[i]].loc[[time_index]]
-            time_data = self.get_date_and_timezone(
-                data=dataset[keys[i]].loc[[time_index]]
-            )
             line_label = self.label_selector(dependent=keys[i])
             plt.plot(
                 vertical_profile.values[0],
@@ -903,6 +899,7 @@ class FigurePlotter(FigureFormat):
                 if xlim_max > 1:
                     xlim_min = math.floor(min(vertical_profile[heights].values[0]))
                     xlims.append(xlim_min)
+        line_label = self.label_selector(dependent=keys[-1])
         x_label = self.merge_label_with_unit(label=line_label)
         plt.xlabel(x_label)
         plt.ylabel("Height [m]")
@@ -920,8 +917,9 @@ class FigurePlotter(FigureFormat):
             location = ",\n"
         else:
             location = f"\nat {site_label}, "
-        time_index = time_index.strftime("%H:%M")
-        time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
+        time_data = self.get_date_and_timezone(data=dataset[keys[-1]].loc[[time_index]])
+        time_string = time_index.strftime("%H:%M")
+        time_label = f"{time_data['date']} {time_string} {time_data['tzone']}"
         title_name = self.merge_multiple_labels(labels=subplot_labels)
         title = f"Vertical Profiles of {title_name}"
         title_string = f"{title}{location}{time_label}"
