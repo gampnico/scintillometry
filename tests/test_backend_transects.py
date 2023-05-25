@@ -204,7 +204,7 @@ class TestBackendTransectParameters:
         test_capture = capsys.readouterr()
 
         self.test_transect_parameters.print_path_heights(
-            z_eff=34, z_mean=31.245, stability=arg_stability
+            z_eff=np.float64(34), z_mean=np.float64(31.245), stability=arg_stability
         )
         compare_capture = capsys.readouterr()
 

@@ -606,14 +606,14 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
         compare_plots = {
             "shf": {
                 "title": "Sensible Heat Flux",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
-                "xlabel": "Time, CET",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "x_label": "Time, CET",
                 "plot": (compare_plots[0]),
             },
             "comparison": {
                 "title": "Sensible Heat Flux from Free Convection and Iteration",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
-                "xlabel": "Time, CET",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "x_label": "Time, CET",
                 "plot": (compare_plots[1]),
             },
         }
