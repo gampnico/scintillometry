@@ -585,6 +585,15 @@ class FigurePlotter(FigureFormat):
     def plot_iterated_fluxes(self, iteration_data, time_id, location=""):
         """Plots and saves iterated SHF, comparison to free convection.
 
+        .. note:: Pending deprecation in a future patch release. Use
+            :func:`MetricsFlux.plot_iterated_metrics()
+            <scintillometry.metrics.calculations.MetricsFlux.plot_iterated_metrics>`
+            instead.
+
+        .. todo::
+            ST-126: Deprecate FigurePlotter.plot_iterated_fluxes in
+                favour of plot_iterated_metrics.
+
         Args:
             iteration_data (pd.DataFrame): TZ-aware with sensible heat
                 fluxes calculated for free convection |H_free|, and

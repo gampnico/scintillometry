@@ -825,14 +825,19 @@ class MetricsFlux:
         return derived_plots
 
     def plot_iterated_metrics(self, iterated_data, time_stamp, site_location=""):
-        """Plot and save time series and comparison of iterated fluxes.
+        """Plots and saves iterated SHF, comparison to free convection.
+
+        .. todo::
+            ST-126: Deprecate FigurePlotter.plot_iterated_fluxes in
+                favour of plot_iterated_metrics.
 
         Args:
-            iterated_data (pd.DataFrame): TZ-aware dataframe with
-                columns for heat fluxes and MOST parameters.
-            time_stamp (pd.Timestamp): Start time of scintillometer data
-                collection.
-            site_location (str): Name of scintillometer location.
+            iteration_data (pd.DataFrame): TZ-aware with columns for
+                sensible heat fluxes calculated for free convection
+                |H_free|, and by MOST |H|.
+            time_id (pd.Timestamp): Local time of data collection.
+            site_location (str): Location of data collection. Default empty
+                string.
 
         Returns:
             list[tuple[plt.Figure, plt.Axes]]: Time series of sensible
@@ -840,11 +845,23 @@ class MetricsFlux:
             sensible heat flux under free convection.
         """
 
-        plots = self.plotting.plot_iterated_fluxes(
-            iteration_data=iterated_data, time_id=time_stamp, location=site_location
+        shf_plot = self.plotting.plot_generic(iterated_data, "shf", site=site_location)
+        self.plotting.save_figure(
+            figure=shf_plot[0], timestamp=time_stamp, suffix="shf"
         )
 
-        return plots
+        comparison_plot = self.plotting.plot_comparison(
+            df_01=iterated_data,
+            df_02=iterated_data,
+            keys=["H_free", "shf"],
+            labels=["Free Convection", "Iteration"],
+            site=site_location,
+        )
+        self.plotting.save_figure(
+            figure=comparison_plot[0], timestamp=time_stamp, suffix="shf_comp"
+        )
+
+        return [shf_plot, comparison_plot]
 
 
 class MetricsWorkflow(MetricsFlux, MetricsTopography):
