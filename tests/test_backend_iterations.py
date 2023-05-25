@@ -136,7 +136,7 @@ class TestBackendIterationMost:
 
     @pytest.mark.dependency(name="TestBackendIterationMost::test_similarity_function")
     @pytest.mark.parametrize("arg_obukhov", [(-100, False), (0, True), (100, True)])
-    def test_similarity_function(self, arg_obukhov: tuple[int, bool]):
+    def test_similarity_function(self, arg_obukhov: tuple):
         """Compute similarity function."""
 
         test_f_ct2 = self.test_class.similarity_function(
@@ -224,9 +224,7 @@ class TestBackendIterationMost:
         scope="class",
     )
     @pytest.mark.parametrize("arg_stable", [(200, True), (-100, False)])
-    def test_most_iteration(
-        self, conftest_mock_merged_dataframe, arg_stable: tuple[int, bool]
-    ):
+    def test_most_iteration(self, conftest_mock_merged_dataframe, arg_stable: tuple):
         """Iterate single row of dataframe using MOST."""
 
         test_data = conftest_mock_merged_dataframe.iloc[0].copy(deep=True)
@@ -258,9 +256,7 @@ class TestBackendIterationMost:
         scope="class",
     )
     @pytest.mark.parametrize("arg_stable", [(200, True), (-100, False)])
-    def test_most_iteration_nan(
-        self, conftest_mock_merged_dataframe, arg_stable: tuple[int, bool]
-    ):
+    def test_most_iteration_nan(self, conftest_mock_merged_dataframe, arg_stable):
         """Iterate single row of dataframe using MOST with NaNs."""
 
         test_data = conftest_mock_merged_dataframe.iloc[0].copy(deep=True)
