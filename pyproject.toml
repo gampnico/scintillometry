@@ -31,7 +31,7 @@ dependencies = [
   "scipy >= 1.10",
   "mpmath >= 1.2.1",
   "numpy",
-  "scikit-learn
+  "scikit-learn",
   "matplotlib",
   "kneed",
 ]
