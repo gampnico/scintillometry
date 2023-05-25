@@ -829,13 +829,14 @@ class MetricsFlux:
 
         .. todo::
             ST-126: Deprecate FigurePlotter.plot_iterated_fluxes in
-                favour of plot_iterated_metrics.
+                favour of plot_iterated_metrics. `site_location` should
+                be deprecated in favour of `location`.
 
         Args:
-            iteration_data (pd.DataFrame): TZ-aware with columns for
+            iterated_data (pd.DataFrame): TZ-aware with columns for
                 sensible heat fluxes calculated for free convection
                 |H_free|, and by MOST |H|.
-            time_id (pd.Timestamp): Local time of data collection.
+            time_stamp (pd.Timestamp): Local time of data collection.
             site_location (str): Location of data collection. Default empty
                 string.
 
