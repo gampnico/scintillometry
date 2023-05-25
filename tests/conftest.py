@@ -340,7 +340,7 @@ def conftest_mock_save_figure():
 
 # Mock random data
 @pytest.fixture(name="conftest_generate_series", scope="function", autouse=False)
-def fixture_conftest_generate_series() -> tuple[np.ndarray, pd.Timestamp]:
+def fixture_conftest_generate_series():
     """Generates Series with random data and DatetimeIndex"""
 
     rng = np.random.default_rng()
