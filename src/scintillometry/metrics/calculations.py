@@ -19,11 +19,12 @@ Calculates metrics from datasets.
 
 import kneed
 import pandas as pd
+from sklearn.linear_model import LinearRegression
 
-from scintillometry.backend.iterations import IterationMost
 from scintillometry.backend.constants import AtmosConstants
 from scintillometry.backend.constructions import ProfileConstructor
 from scintillometry.backend.derivations import DeriveScintillometer
+from scintillometry.backend.iterations import IterationMost
 from scintillometry.backend.transects import TransectParameters
 from scintillometry.visuals.plotting import FigurePlotter
 
@@ -55,8 +56,9 @@ class MetricsTopography:
             regime (str): Target stability condition. Default None.
 
         Returns:
-            dict[float, float]: Tuples of effective and mean path height
-            |z_eff| and |z_mean| [m], with stability conditions as keys.
+            dict[str, tuple[np.floating, np.floating]]: Tuples of
+            effective and mean path height |z_eff| and |z_mean| [m],
+            with stability conditions as keys.
         """
 
         z_params = self.transect.get_all_path_heights(path_transect=transect)
@@ -105,7 +107,6 @@ class MetricsFlux:
         <interpolated_data>.
 
         Args:
-            user_args (argparse.Namespace): Namespace of user arguments.
             interpolated_data (pd.DataFrame): Dataframe containing
                 parsed and localised weather and scintillometer data
                 with matching temporal resolution.
@@ -175,7 +176,7 @@ class MetricsFlux:
             "vertical" is updated with vertical data for water vapour
             pressure, air pressure, mixing ratio, virtual temperature,
             mean sea-level pressure, and potential temperature.
-            Otherwise the dictionary is returned unmodified.
+            Otherwise, the dictionary is returned unmodified.
         """
 
         if "vertical" in data:
@@ -216,6 +217,41 @@ class MetricsFlux:
 
         return match_time
 
+    def get_regression(self, x_data, y_data, intercept=True):
+        """Performs regression on labelled data.
+
+        Args:
+            x_data (pd.Series): Labelled explanatory data.
+            y_data (pd.Series): Labelled response data.
+            intercept (bool): If True, calculate intercept (e.g. data is
+            not centred). Default True.
+
+        Returns:
+            dict: Contains the fitted estimator for regression data, the
+            coefficient of determination |R^2|, and predicted values for
+            a fitted regression line.
+        """
+
+        scatter_frame = pd.merge(
+            x_data, y_data, left_index=True, right_index=True, sort=True
+        )
+        scatter_frame = scatter_frame.dropna(axis=0)
+        x_fit_data = scatter_frame.iloc[:, 0].values.reshape(-1, 1)
+        y_fit_data = scatter_frame.iloc[:, 1].values.reshape(-1, 1)
+
+        linear_regressor = LinearRegression(fit_intercept=intercept)
+        estimator = linear_regressor.fit(x_fit_data, y_fit_data)
+        score = estimator.score(x_fit_data, y_fit_data)
+        predictions = linear_regressor.predict(x_fit_data)
+
+        regression = {
+            "fit": estimator,
+            "score": score,
+            "regression_line": predictions,
+        }
+
+        return regression
+
     def get_elbow_point(self, series, min_index=None, max_index=None):
         """Calculate elbow point using Kneedle algorithm.
 
@@ -247,10 +283,10 @@ class MetricsFlux:
             ]
         if series[indices[-1]] < series[indices[0]]:
             curve_direction = "decreasing"
-            online_param = "true"
+            online_param = True
         else:
             curve_direction = "increasing"
-            online_param = "true"
+            online_param = True
         knee = kneed.KneeLocator(
             series[indices],
             indices,
@@ -361,11 +397,11 @@ class MetricsFlux:
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Vertical
-            profiles of lapse rates on a single axis, and vertical
-            profiles of parcel temperatures on a single axis. If a
-            boundary layer height is provided, vertical lines denoting
-            its height are added to the figures.
+            list[tuple[plt.Figure, plt.Axes]]: Vertical profiles of
+            lapse rates on a single axis, and vertical profiles of
+            parcel temperatures on a single axis. If a boundary layer
+            height is provided, vertical lines denoting its height are
+            added to the figures.
         """
 
         lapse_rates = {
@@ -412,7 +448,7 @@ class MetricsFlux:
             suffix=f"{round_time.strftime('%H%M')}_parcel_temperatures",
         )
 
-        return fig_lapse, axes_lapse, fig_parcel, axes_parcel
+        return [(fig_lapse, axes_lapse), (fig_parcel, axes_parcel)]
 
     def get_switch_time_vertical(self, data, method="static", ri_crit=0.25):
         """Gets local time of switch between stability conditions.
@@ -581,10 +617,10 @@ class MetricsFlux:
             bl_height (int): Boundary layer height. Default None.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: Vertical profile of potential
-            temperature. If the gradient potential temperature is also
-            provided, the two vertical profiles are placed side-by-side
-            in separate subplots.
+            list[tuple[plt.Figure, plt.Axes]]: Vertical profile of
+            potential temperature. If the gradient potential temperature
+            is also provided, the two vertical profiles are placed
+            side-by-side in separate subplots.
         """
 
         round_time = self.get_nearest_time_index(
@@ -634,7 +670,7 @@ class MetricsFlux:
                 suffix=f"{mil_time}_gradient_potential_temperature_2km",
             )
 
-        return fig, ax
+        return [(fig, ax)]
 
     def calculate_switch_time(
         self, datasets, method="sun", switch_time=None, location=""
@@ -703,9 +739,9 @@ class MetricsFlux:
         Trades speed from vectorisation for more accurate convergence.
 
         Args:
-            z_parameters (dict[float, float]): Tuples of effective and
-                mean path height |z_eff| and |z_mean| [m], with
-                stability conditions as keys.
+            z_parameters (dict[str, tuple[float, float]): Tuples of
+                effective and mean path height |z_eff| and |z_mean| [m],
+                with stability conditions as keys.
             datasets (dict): Contains parsed, tz-aware dataframes, with
                 at least |CT2|, wind speed, air density, and
                 temperature.
@@ -773,8 +809,9 @@ class MetricsFlux:
             string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: Time series comparing sensible
-            heat fluxes under free convection to on-board software.
+            list[tuple[plt.Figure, plt.Axes]]: Time series comparing
+            sensible heat fluxes under free convection to on-board
+            software.
         """
 
         fig_convection, ax_convection = self.plotting.plot_convection(
@@ -783,32 +820,48 @@ class MetricsFlux:
         self.plotting.save_figure(
             figure=fig_convection, timestamp=time_id, suffix="free_convection"
         )
+        derived_plots = [(fig_convection, ax_convection)]
 
-        return fig_convection, ax_convection
+        return derived_plots
 
     def plot_iterated_metrics(self, iterated_data, time_stamp, site_location=""):
-        """Plot and save time series and comparison of iterated fluxes.
+        """Plots and saves iterated SHF, comparison to free convection.
+
+        .. todo::
+            ST-126: Deprecate FigurePlotter.plot_iterated_fluxes in
+                favour of plot_iterated_metrics.
 
         Args:
-            user_args (argparse.Namespace): Namespace of user arguments.
-            derived_data (pd.DataFrame): Interpolated tz-aware dataframe
-                with columns for sensible heat fluxes calculated with
-                MOST and for free convection.
-            time_id (pd.Timestamp): Start time of scintillometer data
-                collection.
-            site_location (str): Name of scintillometer location.
+            iteration_data (pd.DataFrame): TZ-aware with columns for
+                sensible heat fluxes calculated for free convection
+                |H_free|, and by MOST |H|.
+            time_id (pd.Timestamp): Local time of data collection.
+            site_location (str): Location of data collection. Default empty
+                string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
-            series of sensible heat flux calculated through MOST, and a
-            comparison to sensible heat flux under free convection.
+            list[tuple[plt.Figure, plt.Axes]]: Time series of sensible
+            heat flux calculated through MOST, and a comparison to
+            sensible heat flux under free convection.
         """
 
-        plots = self.plotting.plot_iterated_fluxes(
-            iteration_data=iterated_data, time_id=time_stamp, location=site_location
+        shf_plot = self.plotting.plot_generic(iterated_data, "shf", site=site_location)
+        self.plotting.save_figure(
+            figure=shf_plot[0], timestamp=time_stamp, suffix="shf"
         )
 
-        return plots
+        comparison_plot = self.plotting.plot_comparison(
+            df_01=iterated_data,
+            df_02=iterated_data,
+            keys=["H_free", "shf"],
+            labels=["Free Convection", "Iteration"],
+            site=site_location,
+        )
+        self.plotting.save_figure(
+            figure=comparison_plot[0], timestamp=time_stamp, suffix="shf_comp"
+        )
+
+        return [shf_plot, comparison_plot]
 
 
 class MetricsWorkflow(MetricsFlux, MetricsTopography):
@@ -836,7 +889,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         - Calculates effective path heights for all stability
           conditions.
         - Derives |CT2| and sensible heat flux for free convection.
-        - Estimates the time where stability conditions change.
+        - Estimates the time when stability conditions change.
         - Calculates sensible heat flux using MOST.
         - Plots time series comparing sensible heat flux for free
           convection |H_free| to on-board software, time series of
@@ -929,7 +982,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         return data
 
     def compare_innflux(self, own_data, innflux_data, location=""):
-        """Compares SHF and Obukhov lengths to InnFLUX measurements.
+        """Compares SHF and Obukhov lengths to innFLUX measurements.
 
         This wrapper function:
 
@@ -941,7 +994,6 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         with an argparse.Namespace object.
 
         Args:
-            arguments (argparse.Namespace): User arguments.
             own_data (pd.DataFrame): Labelled data for SHF and Obukhov
                 length.
             innflux_data (pd.DataFrame): Eddy covariance data from
@@ -950,32 +1002,69 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
-            series comparing Obukhov length and sensible heat flux to
-            innFlux measurements.
+            list[tuple[plt.Figure, plt.Axes]]: Time series comparing
+            Obukhov length and sensible heat flux to innFLUX
+            measurements.
         """
 
         data_timestamp = own_data.index[0]
-        fig_obukhov, ax_obukhov = self.plotting.plot_innflux(
+        obukhov_plot = self.plotting.plot_innflux(
             iter_data=own_data,
             innflux_data=innflux_data,
             name="obukhov",
             site=location,
         )
         self.plotting.save_figure(
-            figure=fig_obukhov, timestamp=data_timestamp, suffix="innflux_obukhov"
+            figure=obukhov_plot[0], timestamp=data_timestamp, suffix="innflux_obukhov"
         )
-        fig_shf, ax_shf = self.plotting.plot_innflux(
+        obukhov_regression = self.get_regression(
+            x_data=own_data["obukhov"], y_data=innflux_data["obukhov"], intercept=True
+        )
+        obukhov_regression_plot = self.plotting.plot_scatter(
+            x_data=own_data["obukhov"],
+            y_data=innflux_data["obukhov"],
+            sources=["MOST Iteration", "innFLUX"],
+            name="obukhov",
+            score=obukhov_regression["score"],
+            regression_line=obukhov_regression["regression_line"],
+            site=location,
+        )
+        self.plotting.save_figure(
+            figure=obukhov_regression_plot[0],
+            timestamp=data_timestamp,
+            suffix="innflux_obukhov_regression",
+        )
+
+        shf_plot = self.plotting.plot_innflux(
             iter_data=own_data,
             innflux_data=innflux_data,
             name="shf",
             site=location,
         )
         self.plotting.save_figure(
-            figure=fig_shf, timestamp=data_timestamp, suffix="innflux_shf"
+            figure=shf_plot[0], timestamp=data_timestamp, suffix="innflux_shf"
+        )
+        shf_regression = self.get_regression(
+            x_data=own_data["obukhov"], y_data=innflux_data["obukhov"], intercept=True
+        )
+        shf_regression_plot = self.plotting.plot_scatter(
+            x_data=own_data["shf"],
+            y_data=innflux_data["shf"],
+            sources=["MOST Iteration", "innFLUX"],
+            name="shf",
+            score=shf_regression["score"],
+            regression_line=shf_regression["regression_line"],
+            site=location,
+        )
+        self.plotting.save_figure(
+            figure=shf_regression_plot[0],
+            timestamp=data_timestamp,
+            suffix="innflux_shf_regression",
         )
 
-        return fig_obukhov, ax_obukhov, fig_shf, ax_shf
+        plots = [obukhov_plot, shf_plot, obukhov_regression_plot, shf_regression_plot]
+
+        return plots
 
     def compare_eddy(self, own_data, ext_data, source="innflux", location=""):
         """Compares data to an external source of eddy covariance data.
@@ -988,17 +1077,19 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         with an argparse.Namespace object.
 
         Args:
-            arguments (argparse.Namespace): User arguments.
             own_data (pd.DataFrame): Labelled data.
             ext_data (pd.DataFrame): Eddy covariance data from an
                 external source.
+            source (str): Data source of vertical measurements.
+                Currently supports processed innFLUX data.
+                Default "innflux".
             location (str): Location of data collection. Default empty
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Axes, plt.Figure, plt.Axes]: Time
-            series comparing Obukhov length and sensible heat flux to
-            innFlux measurements.
+            list[tuple[plt.Figure, plt.Axes]]: Time series comparing
+            Obukhov length and sensible heat flux to innFLUX
+            measurements.
 
         Raises:
             NotImplementedError: <source> measurements are not
@@ -1007,7 +1098,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         """
 
         if source.lower() == "innflux":
-            fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.compare_innflux(
+            eddy_plots = self.compare_innflux(
                 own_data=own_data, innflux_data=ext_data, location=location
             )
         else:
@@ -1016,4 +1107,4 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
             )
             raise NotImplementedError(error_msg)
 
-        return fig_obukhov, ax_obukhov, fig_shf, ax_shf
+        return eddy_plots

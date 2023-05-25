@@ -64,10 +64,11 @@ class TestVisualsBoilerplate:
     @pytest.mark.dependency(name="TestVisualsBoilerplate::test_assert_constant_lines")
     @pytest.mark.parametrize("arg_vlines", [{"v_a": 1}, {"v_a": 1, "v_b": 2.1}, None])
     @pytest.mark.parametrize("arg_hlines", [{"h_a": 1}, {"h_a": 1, "h_b": 2.1}, None])
-    def test_assert_constant_lines(self, arg_hlines, arg_vlines):
-        rng = np.random.default_rng()
-        test_index = np.arange(0, 200, 10)
-        test_data = rng.random(size=len(test_index))
+    def test_assert_constant_lines(
+        self, conftest_generate_series, arg_hlines, arg_vlines
+    ):
+        """Validate test for constant lines existing on axis."""
+        test_data, test_index = conftest_generate_series
         test_series = pd.Series(data=test_data, index=test_index)
 
         plt.figure(figsize=(10, 10))
@@ -128,13 +129,11 @@ class TestVisualsFormatting(TestVisualsBoilerplate):
 
     @pytest.mark.dependency(name="TestVisualsFormatting::test_parse_formatting_kwargs")
     @pytest.mark.parametrize("arg_fig", [True, False])
-    def test_parse_formatting_kwargs(self, arg_fig):
+    def test_parse_formatting_kwargs(self, arg_fig, conftest_generate_series):
         """Parse kwargs when formatting."""
 
         if arg_fig:
-            rng = np.random.default_rng()
-            test_index = np.arange(0, 200, 10)
-            test_data = rng.random(size=len(test_index))
+            test_data, test_index = conftest_generate_series
             test_series = pd.Series(data=test_data, index=test_index)
             plt.figure(figsize=(10, 10))
             plt.plot(test_index, test_series)
@@ -333,12 +332,12 @@ class TestVisualsFormatting(TestVisualsBoilerplate):
     )
     @pytest.mark.parametrize("arg_vlines", [{"va": None}, {"va": 1, "vb": 2.1}, None])
     @pytest.mark.parametrize("arg_hlines", [{"ha": None}, {"ha": 1, "hb": 2.1}, None])
-    def test_plot_constant_lines(self, arg_hlines, arg_vlines):
+    def test_plot_constant_lines(
+        self, conftest_generate_series, arg_hlines, arg_vlines
+    ):
         """Plot horizontal and vertical lines."""
 
-        rng = np.random.default_rng()
-        test_index = np.arange(0, 200, 10)
-        test_data = rng.random(size=len(test_index))
+        test_data, test_index = conftest_generate_series
         test_series = pd.Series(data=test_data, index=test_index)
 
         plt.figure(figsize=(10, 10))
@@ -368,7 +367,7 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
     test_date = "03 June 2020"
     test_timestamp = pd.Timestamp(f"{test_date} 05:20", tz="CET")
 
-    def test_visualsplotting_attributes(self):
+    def test_visuals_plotting_attributes(self):
         assert isinstance(self.test_timestamp, pd.Timestamp)
         assert self.test_timestamp.strftime("%Y-%m-%d %H:%M") == "2020-06-03 05:20"
         assert self.test_timestamp.tz.zone == "CET"
@@ -596,24 +595,26 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
         test_title = f"{test_location},\n{self.test_date}"
         timestamp = test_data.index[0]
 
-        plots = self.test_plotting.plot_iterated_fluxes(
+        compare_plots = self.test_plotting.plot_iterated_fluxes(
             iteration_data=test_data,
             time_id=timestamp,
             location=arg_location,
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
         compare_plots = {
             "shf": {
                 "title": "Sensible Heat Flux",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "xlabel": "Time, CET",
-                "plot": (plots[0], plots[1]),
+                "plot": (compare_plots[0]),
             },
             "comparison": {
                 "title": "Sensible Heat Flux from Free Convection and Iteration",
                 "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "xlabel": "Time, CET",
-                "plot": (plots[2], plots[3]),
+                "plot": (compare_plots[1]),
             },
         }
 
@@ -680,6 +681,72 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
         }
         for params in compare_plots.values():
             conftest_boilerplate.check_plot(plot_params=params, title=test_title)
+
+        plt.close("all")
+
+    @pytest.mark.dependency(name="TestVisualsPlotting::test_plot_scatter")
+    @pytest.mark.parametrize("arg_site", ["", "Test Location", None])
+    @pytest.mark.parametrize("arg_score", [None, 0.561734521])
+    @pytest.mark.parametrize("arg_regression", [True, False])
+    def test_plot_scatter(
+        self,
+        conftest_boilerplate,
+        conftest_generate_series,
+        arg_score,
+        arg_site,
+        arg_regression,
+    ):
+        """Plot scatter between two datasets with regression line."""
+
+        test_name = "obukhov"
+        test_data, test_index = conftest_generate_series
+
+        test_x = pd.Series(name=test_name, data=test_data, index=test_index)
+        test_y = pd.Series(name=test_name, data=test_data + 0.5, index=test_index)
+        for series in [test_x, test_y]:
+            assert isinstance(series, pd.Series)
+            assert series.shape == (100,)
+            assert not (series.isnull()).any()
+        if arg_site:
+            test_site = f" at {arg_site},"
+        else:
+            test_site = ","
+        test_title = (
+            "Obukhov Length Regression Between",
+            f"Baseline and Comparison{test_site}",
+            f"{self.test_date}",
+        )
+        if not arg_regression:
+            test_line = None
+        else:
+            test_line = np.arange(0, 1000, 10)
+
+        compare_fig, compare_ax = self.test_plotting.plot_scatter(
+            x_data=test_x,
+            y_data=test_y,
+            name=test_name,
+            sources=["Baseline", "Comparison"],
+            site=arg_site,
+            score=arg_score,
+            regression_line=test_line,
+        )
+        compare_params = {
+            "plot": (compare_fig, compare_ax),
+            "x_label": "Obukhov Length, [m] (Baseline)",
+            "y_label": "Obukhov Length, [m] (Comparison)",
+            "title": "\n".join(test_title),
+        }
+        conftest_boilerplate.check_plot(plot_params=compare_params)
+
+        if arg_regression:
+            _, labels = compare_params["plot"][1].get_legend_handles_labels()
+            assert "Line of Best Fit" in labels
+
+        if arg_score is not None:
+            assert (
+                compare_params["plot"][1].texts[0].get_text()
+                == f"R$^{2}$= {arg_score:.5f}"
+            )
 
         plt.close("all")
 
