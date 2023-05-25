@@ -93,7 +93,7 @@ class WranglerTransform:
         Args:
             x (str): Timestamp containing ISO-8601 duration and date,
                 i.e. "<ISO-8601 duration>/<ISO-8601 date>".
-            date (bool): If True, returns date. Otherwise returns
+            date (bool): If True, returns date. Otherwise, returns
                 duration. Default True.
 
         Returns:
@@ -163,10 +163,9 @@ class WranglerScintillometer(WranglerIO):
             line_list (list): Lines read from .mnd file in FORMAT-1.
 
         Returns:
-            dict[list, list, str, list]: Contains a list of lines of
-            parsed BLS data, an ordered list of variable names, the file
-            timestamp, and any additional header parameters in the file
-            header.
+            dict: Contains a list of lines of parsed BLS data, an
+            ordered list of variable names, the file timestamp, and any
+            additional header parameters in the file header.
 
         Raises:
             Warning: The input file does not follow FORMAT-1.
@@ -251,7 +250,8 @@ class WranglerScintillometer(WranglerIO):
         """Parses .mnd files into dataframes.
 
         Args:
-            filename (str): Path to a raw .mnd data file using FORMAT-1.
+            file_path (str): Path to a raw .mnd data file using
+                FORMAT-1.
             timezone (str): Local timezone during the scintillometer's
                 operation. Default "CET".
             calibration (list): Contains the incorrect and correct path
@@ -680,11 +680,7 @@ class WranglerEddy(WranglerIO):
         """
 
         if source.lower() == "innflux":
-            eddy_data = self.parse_innflux(
-                file_name=file_path,
-                timezone=tzone,
-                headers=None,
-            )
+            eddy_data = self.parse_innflux(file_name=file_path, timezone=tzone)
         else:
             error_msg = (
                 f"{source.title()} measurements are not supported. Use 'innflux'."
@@ -806,8 +802,8 @@ class WranglerVertical(WranglerIO):
                 Default 612.0.
 
         Returns:
-            dict[pd.DataFrame, pd.DataFrame]: Vertical measurements from
-            HATPRO for temperature |T| [K], and absolute humidity
+            dict[str, pd.DataFrame]: Vertical measurements from HATPRO
+            for temperature |T| [K], and absolute humidity
             |rho_v| [|gm^-3|].
         """
 
@@ -828,9 +824,7 @@ class WranglerVertical(WranglerIO):
             station_elevation=elevation,
         )
 
-        data = {}
-        data["humidity"] = humidity_data
-        data["temperature"] = temperature_data
+        data = {"humidity": humidity_data, "temperature": temperature_data}
 
         return data
 

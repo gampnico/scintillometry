@@ -891,7 +891,7 @@ class TestWranglerVertical:
     @pytest.mark.dependency(
         name="TestWranglerVertical::test_construct_hatpro_levels_error"
     )
-    @pytest.mark.parametrize("arg_levels", [[(0, 1), (0)], [1.0, 30]])
+    @pytest.mark.parametrize("arg_levels", [[(0, 1), 0], [1.0, 30]])
     def test_construct_hatpro_levels_error(self, arg_levels):
         """Raise error for incorrectly formatted scanning levels."""
 
@@ -910,7 +910,7 @@ class TestWranglerVertical:
         compare_scan = self.test_wrangler_vertical.construct_hatpro_levels(
             levels=arg_levels
         )
-        assert isinstance(compare_scan, (list))
+        assert isinstance(compare_scan, list)
         assert all(isinstance(x, int) for x in compare_scan)
 
     @pytest.mark.dependency(
