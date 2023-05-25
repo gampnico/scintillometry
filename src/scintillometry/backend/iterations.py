@@ -329,6 +329,8 @@ class IterationMost:
             stable_flag (bool): Stability conditions. If true, assumes
                 stable conditions, otherwise assumes unstable
                 conditions.
+            most_coeffs (list): MOST coefficients for unstable and
+                stable conditions.
 
         Returns:
             pd.DataFrame: Dataframe with additional columns for Obukhov

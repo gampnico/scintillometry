@@ -136,7 +136,7 @@ class TestBackendIterationMost:
 
     @pytest.mark.dependency(name="TestBackendIterationMost::test_similarity_function")
     @pytest.mark.parametrize("arg_obukhov", [(-100, False), (0, True), (100, True)])
-    def test_similarity_function(self, arg_obukhov):
+    def test_similarity_function(self, arg_obukhov: tuple):
         """Compute similarity function."""
 
         test_f_ct2 = self.test_class.similarity_function(
@@ -148,7 +148,7 @@ class TestBackendIterationMost:
 
     @pytest.mark.dependency(name="TestBackendIterationMost::test_calc_theta_star")
     @pytest.mark.parametrize("arg_params", [(1.9e-04, 5.6, True), (2e-03, 3.6, False)])
-    def test_calc_theta_star(self, arg_params):
+    def test_calc_theta_star(self, arg_params: tuple):
         """Calculate temperature scale."""
 
         test_theta = self.test_class.calc_theta_star(
@@ -182,7 +182,7 @@ class TestBackendIterationMost:
         """Calculate Obukhov length."""
 
         compare_lob = self.test_class.calc_obukhov_length(
-            temp=295, u_star=0.2, theta_star=mpmath.mpmathify(arg_theta)
+            temp=np.float64(295.0), u_star=0.2, theta_star=mpmath.mpmathify(arg_theta)
         )
         assert isinstance(compare_lob, mpmath.mpf)
         assert (compare_lob < 0) == (arg_theta < 0)  # obukhov and theta have same sign
@@ -224,7 +224,7 @@ class TestBackendIterationMost:
         scope="class",
     )
     @pytest.mark.parametrize("arg_stable", [(200, True), (-100, False)])
-    def test_most_iteration(self, conftest_mock_merged_dataframe, arg_stable):
+    def test_most_iteration(self, conftest_mock_merged_dataframe, arg_stable: tuple):
         """Iterate single row of dataframe using MOST."""
 
         test_data = conftest_mock_merged_dataframe.iloc[0].copy(deep=True)
@@ -310,7 +310,7 @@ class TestBackendIterationMost:
         for key in compare_keys:
             assert not (compare_most[key].isnull()).any()
             assert key in compare_most.keys()
-            assert all(isinstance(x, (mpmath.mpf)) for x in compare_most[key])
+            assert all(isinstance(x, mpmath.mpf) for x in compare_most[key])
 
         # signs match stability
         assert (compare_most["obukhov"] > 0).all() == arg_stable[1]

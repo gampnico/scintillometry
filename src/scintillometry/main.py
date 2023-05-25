@@ -55,8 +55,8 @@ Optional arguments:
 
 import argparse
 
-import scintillometry.metrics.calculations as MetricsCalculations
-import scintillometry.wrangler.data_parser as DataParser
+import scintillometry.metrics.calculations as calculations
+import scintillometry.wrangler.data_parser as data_parser
 
 
 def user_argumentation():
@@ -298,10 +298,10 @@ def perform_data_parsing(**kwargs):
         measurements, weather observations, and topography.
     """
 
-    data_parser = DataParser.WranglerParsing()
+    parser = data_parser.WranglerParsing()
 
     # Parse BLS, weather, and topographical data
-    datasets = data_parser.wrangle_data(
+    datasets = parser.wrangle_data(
         bls_path=kwargs["input"],
         transect_path=kwargs["transect_path"],
         calibrate=kwargs["calibration"],
@@ -312,7 +312,7 @@ def perform_data_parsing(**kwargs):
 
     # Parse vertical measurements
     if kwargs["profile_prefix"]:
-        datasets["vertical"] = data_parser.vertical.parse_vertical(
+        datasets["vertical"] = parser.vertical.parse_vertical(
             file_path=kwargs["profile_prefix"],
             source="hatpro",
             levels=None,
@@ -360,11 +360,11 @@ def perform_analysis(datasets, **kwargs):
         covariance data.
     """
 
-    metrics_class = MetricsCalculations.MetricsWorkflow()
-    data_parser = DataParser.WranglerParsing()
+    metrics_class = calculations.MetricsWorkflow()
+    parser = data_parser.WranglerParsing()
     metrics_data = metrics_class.calculate_standard_metrics(data=datasets, **kwargs)
     if kwargs["eddy_path"]:
-        eddy_frame = data_parser.eddy.parse_eddy_covariance(
+        eddy_frame = parser.eddy.parse_eddy_covariance(
             file_path=kwargs["eddy_path"], tzone=kwargs["timezone"], source="innflux"
         )
         metrics_data["eddy"] = eddy_frame
@@ -382,7 +382,7 @@ def main():
     """Parses command line arguments and executes analysis.
 
     Converts command line arguments into kwargs. Imports and parses
-    scintillomter, weather, and transect data. If the appropriate
+    scintillometer, weather, and transect data. If the appropriate
     arguments are specified:
 
         - Parses vertical measurements

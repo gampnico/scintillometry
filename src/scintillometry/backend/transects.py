@@ -85,7 +85,7 @@ class TransectParameters:
 
         Returns:
             float: Constant "b" accounting for height dependence of
-                |Cn2|. Values of "b" are from Hartogenesis et al.
+                |Cn2|. Values of "b" are from Hartogensis et al.
                 (2003) [#hartogensis2003]_, and Kleissl et al.
                 (2008) [#kleissl2008]_.
 
@@ -94,7 +94,7 @@ class TransectParameters:
                 stability condition.
         """
 
-        # Hartogenesis et al. (2003), Kleissl et al. (2008).
+        # Hartogensis et al. (2003), Kleissl et al. (2008).
         stability_dict = {"stable": -2 / 3, "unstable": -4 / 3}
 
         if not stability_name:
@@ -168,9 +168,9 @@ class TransectParameters:
             path_transect (pd.DataFrame): Parsed path transect data.
 
         Returns:
-            dict[tuple[np.floating, np.floating]]: Effective and mean
-            path heights of transect |z_eff| and |z_mean| [m], with each
-            stability condition as key.
+            dict[str, tuple[np.floating, np.floating]]: Effective and
+            mean path heights of transect |z_eff| and |z_mean| [m], with
+            each stability condition as key.
         """
 
         path_heights_dict = {}
