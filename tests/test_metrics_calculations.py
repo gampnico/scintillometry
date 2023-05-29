@@ -908,7 +908,7 @@ class TestMetricsFlux:
         compare_plots = self.test_metrics.plot_iterated_metrics(
             iterated_data=test_frame,
             time_stamp=test_stamp,
-            site_location=arg_location,
+            location=arg_location,
         )
         assert isinstance(compare_plots, list)
         assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
@@ -927,6 +927,20 @@ class TestMetricsFlux:
                 "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             },
         }
+        for params in compare_params.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
+
+        plt.close("all")
+
+        # site_location is pending deprecation
+        with pytest.warns(PendingDeprecationWarning):
+            compare_plots = self.test_metrics.plot_iterated_metrics(
+                iterated_data=test_frame,
+                time_stamp=test_stamp,
+                site_location=arg_location,  # pylint:disable=unexpected-keyword-arg
+            )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
         for params in compare_params.values():
             conftest_boilerplate.check_plot(plot_params=params, title=test_title)
 
