@@ -58,7 +58,7 @@ preparation for the subsequent major release.
 import functools
 import inspect
 import warnings
-from typing import Any, Callable, Dict
+from typing import Callable
 
 
 class DeprecationHandler:
@@ -191,13 +191,60 @@ class DeprecationHandler:
         else:
             raise RuntimeError(warn_string.strip())
 
+    def rename_arguments(self, obj, stage, kwargs, alias, reason=None, version=None):
+        """Marks argument as deprecated and redirects to alias.
+
+        The wrapped function's arguments are wrapped into `kwargs` and
+        are safe from being overwritten by arguments in alias.
+
+        Args:
+            obj (Callable): The function or class being deprecated.
+            stage (str): The current stage in the deprecation cycle.
+            kwargs (dict): Keyword arguments.
+            alias (dict): A dictionary map optionally containing the
+                keys:
+
+            reason (str): The reason for deprecation. Default None.
+            version (str): The release number of the latest change in
+                the deprecation cycle. Default None.
+        """
+
+        stage_string, warn_class = self.get_stage(name=stage)
+        reason = self.get_reason(**{"reason": reason})
+        version = self.get_version(**{"version": version})
+
+        for old, new in alias.items():
+            if old in kwargs:
+                if new in kwargs:
+                    warn_string = (
+                        f"{version}{obj.__name__}",
+                        f"received both {old} and {new} as arguments. {old}",
+                        f"is {stage_string}",
+                        f"Use {new} instead.",
+                        f"{reason}",
+                    )
+                    raise TypeError(" ".join(warn_string).strip())
+                else:
+                    warn_string = (
+                        f"{version}The argument {old} in {obj.__name__}",
+                        f"is {stage_string}",
+                        f"Use {new} instead.",
+                        f"{reason}",
+                    )
+                    warnings.warn(
+                        message=" ".join(warn_string).strip(),
+                        category=warn_class,
+                        stacklevel=2,
+                    )
+                kwargs[new] = kwargs.pop(old)
+
 
 class Decorators:
     def __init__(self):
         super().__init__()
 
     @staticmethod
-    def deprecated(stage="deprecated", **details) -> Callable:
+    def deprecated(stage="deprecated", **details):
         """Decorator for deprecated function and method arguments.
 
         Example:
@@ -219,7 +266,6 @@ class Decorators:
                     - defunct
 
                 Default "deprecated".
-
         Keyword Args:
             reason (str): Reason for deprecation.
             version (str): Release number of latest stage in deprecation.
@@ -234,6 +280,58 @@ class Decorators:
             @functools.wraps(f)
             def wrapper(*args, **kwargs):
                 internals.raise_warning(f, stage, details)
+                return f(*args, **kwargs)
+
+            return wrapper
+
+        return decorator
+
+    @staticmethod
+    def deprecated_argument(stage="deprecated", reason=None, version=None, **aliases):
+        """Decorator for deprecated function and method arguments.
+
+        Use as follows:
+
+        .. code-block:: python
+
+            @deprecated_argument(old_argument="new_argument")
+            def myfunc(new_arg):
+                ...
+
+        Args:
+            stage(str): Stage of deprecation cycle. Valid values
+                are:
+
+                    - pending
+                    - deprecated
+                    - eol
+                    - defunct
+
+                Default "deprecated".
+            reason (str): Reason for deprecation. Default None.
+            version (str): Release number of latest stage in
+                deprecation. Default None.
+            aliases (dict[str, str]): Deprecated argument and its
+                alternative.
+
+        Returns:
+            Callable: Decorator for deprecated argument.
+
+        """
+
+        internals = DeprecationHandler()
+
+        def decorator(f: Callable):
+            @functools.wraps(f)
+            def wrapper(*args, **kwargs):
+                internals.rename_arguments(
+                    obj=f,
+                    stage=stage,
+                    reason=reason,
+                    version=version,
+                    kwargs=kwargs,
+                    alias=aliases,
+                )
                 return f(*args, **kwargs)
 
             return wrapper

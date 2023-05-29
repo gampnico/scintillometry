@@ -304,6 +304,122 @@ class TestBackendDeprecationsHandler:
                 obj=test_object, stage="defunct", details=test_warning[3]
             )
 
+    @pytest.mark.dependency(
+        name="TestBackendDeprecationsHandler::test_rename_arguments",
+        depends=["TestBackendDeprecationsHandler::test_setup_warning"],
+    )
+    @pytest.mark.parametrize("arg_stage", ["pending", "deprecated", "eol"])
+    @pytest.mark.parametrize("arg_reason", [True, False])
+    @pytest.mark.parametrize("arg_version", [True, False])
+    def test_rename_arguments(self, arg_stage, arg_reason, arg_version):
+        """Raise warning and redirect deprecated argument."""
+
+        assert arg_stage in self.test_stages
+        test_object = self.get_mock_object(is_class=False)
+        test_warning = self.setup_warning(
+            obj=test_object, stage=arg_stage, reason=arg_reason, version=arg_version
+        )
+        test_alias_old = "a"
+        test_alias_new = "b"
+        test_regex = (
+            f"{test_warning[1]}The argument {test_alias_old} in {test_object.__name__}",
+            f"is {self.test_stages[arg_stage][0]}",
+            f"Use {test_alias_new} instead.",
+            f"{test_warning[3].get('reason','')}",
+        )
+        test_kwargs = {test_alias_old: 2, "extra_arg": 3}
+        test_alias = {test_alias_old: test_alias_new}
+
+        with pytest.warns(
+            self.test_stages[arg_stage][1], match=" ".join(test_regex).strip()
+        ):
+            self.test_handler.rename_arguments(
+                obj=test_object,
+                stage=arg_stage,
+                kwargs=test_kwargs,
+                alias=test_alias,
+                version=test_warning[3].get("version", None),
+                reason=test_warning[3].get("reason", None),
+            )
+        assert test_alias_old not in test_kwargs  # argument is replaced
+        assert test_alias_new in test_kwargs
+        assert test_kwargs[test_alias_new] == 2
+        assert "extra_arg" in test_kwargs
+
+    @pytest.mark.dependency(
+        name="TestBackendDeprecationsHandler::test_rename_arguments_error",
+        depends=["TestBackendDeprecationsHandler::test_setup_warning"],
+    )
+    @pytest.mark.parametrize("arg_stage", ["pending", "deprecated", "eol"])
+    @pytest.mark.parametrize("arg_reason", [True, False])
+    @pytest.mark.parametrize("arg_version", [True, False])
+    def test_rename_arguments_error(self, arg_stage, arg_reason, arg_version):
+        """Raise warning and redirect deprecated argument."""
+
+        assert arg_stage in self.test_stages
+        test_object = self.get_mock_object(is_class=False)
+        test_warning = self.setup_warning(
+            obj=test_object, stage=arg_stage, reason=arg_reason, version=arg_version
+        )
+        test_alias_old = "a"
+        test_alias_new = "b"
+        test_regex = (
+            f"{test_warning[1]}{test_object.__name__}",
+            f"received both {test_alias_old} and {test_alias_new} as arguments.",
+            f"{test_alias_old} is {self.test_stages[arg_stage][0]} "
+            f"Use {test_alias_new} instead.",
+            f"{test_warning[3].get('reason','')}",
+        )
+        test_kwargs = {test_alias_old: 1, test_alias_new: 3, "extra_arg": 2}
+        test_alias = {test_alias_old: test_alias_new}
+
+        with pytest.raises(TypeError, match=" ".join(test_regex).strip()):
+            self.test_handler.rename_arguments(
+                obj=test_object,
+                stage=arg_stage,
+                kwargs=test_kwargs,
+                alias=test_alias,
+                version=test_warning[3].get("version", None),
+                reason=test_warning[3].get("reason", None),
+            )
+        assert test_alias_old in test_kwargs
+        assert test_alias_new in test_kwargs
+        assert test_kwargs[test_alias_new] == 3  # argument is not replaced
+        assert "extra_arg" in test_kwargs
+
+    @pytest.mark.dependency(
+        name="TestBackendDeprecationsHandler::test_rename_arguments_missing",
+        depends=["TestBackendDeprecationsHandler::test_setup_warning"],
+    )
+    @pytest.mark.parametrize("arg_stage", ["pending", "deprecated", "eol"])
+    @pytest.mark.parametrize("arg_reason", [True, False])
+    @pytest.mark.parametrize("arg_version", [True, False])
+    def test_rename_arguments_missing(self, arg_stage, arg_reason, arg_version):
+        """Raise warning and redirect deprecated argument."""
+
+        assert arg_stage in self.test_stages
+        test_object = self.get_mock_object(is_class=False)
+        test_warning = self.setup_warning(
+            obj=test_object, stage=arg_stage, reason=arg_reason, version=arg_version
+        )
+        test_alias_old = "a"
+        test_alias_new = "b"
+        test_kwargs = {test_alias_new: 3, "extra_arg": 2}
+        test_alias = {test_alias_old: test_alias_new}
+
+        self.test_handler.rename_arguments(
+            obj=test_object,
+            stage=arg_stage,
+            kwargs=test_kwargs,
+            alias=test_alias,
+            version=test_warning[3].get("version", None),
+            reason=test_warning[3].get("reason", None),
+        )
+        assert test_alias_old not in test_kwargs
+        assert test_alias_new in test_kwargs
+        assert test_kwargs[test_alias_new] == 3  # argument is not replaced
+        assert "extra_arg" in test_kwargs
+
 
 class TestBackendDeprecationsDecorator(TestBackendDeprecationsHandler):
     """Tests decorators marking deprecated objects."""
@@ -349,7 +465,11 @@ class TestBackendDeprecationsDecorator(TestBackendDeprecationsHandler):
 
     @pytest.mark.dependency(
         name="TestBackendDeprecationsDecorator::test_deprecated_error",
-        depends=["TestBackendDeprecationsMock::test_add_one"],
+        depends=[
+            "TestBackendDeprecationsMock::test_add_one",
+            "TestBackendDeprecationsHandler::test_raise_warning",
+            "TestBackendDeprecationsHandler::test_raise_warning_error",
+        ],
     )
     @pytest.mark.parametrize("arg_reason", [True, False])
     @pytest.mark.parametrize("arg_version", [True, False])
@@ -377,3 +497,47 @@ class TestBackendDeprecationsDecorator(TestBackendDeprecationsHandler):
             match=test_warning[0],
         ):
             deprecated_one(x=1)
+
+    @pytest.mark.dependency(
+        name="TestBackendDeprecationsDecorator::test_deprecated_argument_decorator",
+        depends=["TestBackendDeprecationsMock::test_add_one"],
+    )
+    @pytest.mark.parametrize("arg_stage", ["pending", "deprecated", "eol"])
+    @pytest.mark.parametrize("arg_reason", [True, False])
+    @pytest.mark.parametrize("arg_version", [True, False])
+    def test_deprecated_argument_decorator(self, arg_stage, arg_reason, arg_version):
+        """Use decorator to raise warning."""
+
+        assert arg_stage in self.test_stages
+        test_details = {}
+        if arg_version:
+            test_details["version"] = self.test_details["version"]
+        if arg_reason:
+            test_details["reason"] = self.test_details["reason"]
+        test_alias_new = "a"
+
+        @Decorators.deprecated_argument(
+            stage=arg_stage,
+            reason=test_details.get("reason", ""),
+            version=test_details.get("version", ""),
+            x=test_alias_new,
+        )
+        def deprecated_one(a):  # pragma: no cover
+            b = self.test_mock_instance.add_one(a=a)
+            return b
+
+        test_warning = self.setup_warning(
+            obj=deprecated_one, stage=arg_stage, reason=arg_reason, version=arg_version
+        )
+        test_regex = (
+            f"{test_warning[1]}The argument x in {deprecated_one.__name__}",
+            f"is {self.test_stages[arg_stage][0]}",
+            f"Use {test_alias_new} instead.",
+            f"{test_warning[3].get('reason','')}",
+        )
+
+        with pytest.warns(
+            self.test_stages[arg_stage][1], match=" ".join(test_regex).strip()
+        ):
+            y = deprecated_one(x=1)  # pylint:disable=no-value-for-parameter
+            assert y == 2
