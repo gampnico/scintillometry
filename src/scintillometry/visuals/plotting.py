@@ -24,6 +24,8 @@ import re
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+from scintillometry.backend.deprecations import Decorators
 
 
 class FigureFormat:
@@ -91,8 +93,8 @@ class FigureFormat:
 
         Args:
             site_name (str): Location of data collection.
-            dataframe (pd.DataFrame): Any collected dataset. Default
-                None.
+            dataframe (pd.DataFrame or pd.Series): Any collected
+                dataset. Default None.
 
         Returns:
             str: Location of data collection. Returns empty string if no
@@ -193,7 +195,8 @@ class FigureFormat:
         """Return first time index and timezone.
 
         Args:
-            data (pd.DataFrame): TZ-aware dataframe with DatetimeIndex.
+            data (pd.DataFrame or pd.Series): TZ-aware dataframe with
+                DatetimeIndex.
 
         Returns:
             dict[str, datetime.tzinfo]: Date formatted as
@@ -227,7 +230,7 @@ class FigureFormat:
         if not isinstance(timestamp, str):
             timestamp = timestamp.strftime("%d %B %Y")
 
-        title_string = "".join((f"{title}{location},\n{timestamp}"))
+        title_string = f"{title}{location},\n{timestamp}"
         plt.title(title_string, fontweight="bold")
         plt.legend(loc="upper left")
 
@@ -262,7 +265,7 @@ class FigureFormat:
             labels (list[str]): Labels, which may contain duplicates.
 
         Returns:
-            str: A formatted, puncutated string with no duplicates.
+            str: A formatted, punctuated string with no duplicates.
         """
 
         unique_text = list(dict.fromkeys(labels))
@@ -284,9 +287,9 @@ class FigureFormat:
             name (str): Name or abbreviation of dependent variable.
 
         Returns:
-            plt.Axes: Plot axes with labels for local time on the x axis
-            and for the dependent variable with units on the y axis.
-            Ticks on the x axis are formatted at hourly intervals.
+            plt.Axes: Plot axes with labels for local time on the x-axis
+            and for the dependent variable with units on the y-axis.
+            Ticks on the x-axis are formatted at hourly intervals.
         """
 
         x_label = f"Time, {timezone.zone}"
@@ -580,8 +583,22 @@ class FigurePlotter(FigureFormat):
 
         return figure, axes
 
+    @Decorators.deprecated(
+        stage="pending",
+        reason="Superseded by MetricsFlux.plot_iterated_metrics.",
+        version="1.0.5",
+    )
     def plot_iterated_fluxes(self, iteration_data, time_id, location=""):
         """Plots and saves iterated SHF, comparison to free convection.
+
+        .. note:: Pending deprecation in a future patch release. Use
+            :func:`MetricsFlux.plot_iterated_metrics()
+            <scintillometry.metrics.calculations.MetricsFlux.plot_iterated_metrics>`
+            instead.
+
+        .. todo::
+            ST-126: Deprecate FigurePlotter.plot_iterated_fluxes in
+                favour of plot_iterated_metrics.
 
         Args:
             iteration_data (pd.DataFrame): TZ-aware with sensible heat
@@ -592,7 +609,8 @@ class FigurePlotter(FigureFormat):
                 string.
 
         Returns:
-            tuple[plt.Figure, plt.Figure]: Time series and comparison.
+            list[tuple[plt.Figure, plt.Axes]]: Time series and
+            comparison.
         """
 
         fig_shf, ax_shf = self.plot_generic(iteration_data, "shf", site=location)
@@ -609,7 +627,7 @@ class FigurePlotter(FigureFormat):
         fig_comp = plt.gcf()
         self.save_figure(figure=fig_comp, timestamp=time_id, suffix="shf_comp")
 
-        return fig_shf, ax_shf, fig_comp, ax_comp
+        return [(fig_shf, ax_shf), (fig_comp, ax_comp)]
 
     def plot_innflux(self, iter_data, innflux_data, name="obukhov", site=""):
         """Plots comparison between scintillometer and InnFLUX data.
@@ -654,19 +672,82 @@ class FigurePlotter(FigureFormat):
 
         return figure, axes
 
+    def plot_scatter(
+        self, x_data, y_data, name, sources, score=None, regression_line=None, site=""
+    ):
+        """Plots scatter between two datasets with a regression line.
+
+        Args:
+            x_data (pd.Series): Labelled explanatory data.
+            y_data (pd.Series): Labelled response data.
+            name (str): Name of variable.
+            sources (list[str, str]): Names of data sources formatted
+                as: [<Explanatory Source>, <Response Source>].
+            score (float): Coefficient of determination |R^2|.
+                Default None.
+            regression_line (np.ndarray): Values for regression line.
+                Default None.
+            site (str): Location of data collection. Default empty
+                string.
+
+        Returns:
+            tuple[plt.Figure, plt.Axes]: Regression plot of explanatory
+            and response data, with fitted regression line and
+            regression score.
+        """
+
+        figure = plt.figure(figsize=(8, 8))
+        date = self.get_date_and_timezone(data=x_data)["date"]
+        scatter_frame = pd.merge(
+            x_data, y_data, left_index=True, right_index=True, sort=True
+        )
+
+        scatter_frame = scatter_frame.dropna(axis=0)  # drop mismatched index
+        x_fit_data = scatter_frame.iloc[:, 0].values.reshape(-1, 1)
+        y_fit_data = scatter_frame.iloc[:, 1].values.reshape(-1, 1)
+        plt.scatter(x_fit_data, y_fit_data, marker=".", color="gray")
+
+        if regression_line is not None:
+            plt.plot(
+                x_fit_data, regression_line, color="black", label="Line of Best Fit"
+            )
+
+        axes = plt.gca()
+        if score is not None:
+            plt.text(
+                0.05,
+                0.9,
+                f"R$^{2}$= {score:.5f}",
+                horizontalalignment="left",
+                verticalalignment="bottom",
+                transform=axes.transAxes,
+            )
+        variable_name = self.label_selector(name)
+        sources_string = f"{sources[0]} and {sources[1]}"
+        title_string = f"{variable_name[0]} Regression Between\n{sources_string}"
+        site_label = self.get_site_name(site_name=site, dataframe=x_data)
+        self.title_plot(title=title_string, timestamp=date, location=site_label)
+        x_label = self.merge_label_with_unit(label=variable_name)
+        y_label = self.merge_label_with_unit(label=variable_name)
+        plt.xlabel(f"{x_label} ({sources[0]})")
+        plt.ylabel(f"{y_label} ({sources[1]})")
+
+        return figure, axes
+
     def plot_vertical_profile(
         self, vertical_data, time_idx, name, site="", y_lim=None, **kwargs
     ):
         """Plots vertical profile of variable.
 
         Args:
-            vertical_data (dict[pd.DataFrame]): Contains time series of
-                vertical profiles.
+            vertical_data (dict[str, pd.DataFrame]): Contains time
+                series of vertical measurements.
             time_idx (pd.Timestamp): The local time for which to plot a
                 vertical profile.
             name (str): Name of dependent variable, must be key in
                 <vertical_data>.
-            site (str): Location of data collection. Default empty string.
+            site (str): Location of data collection. Default empty
+                string.
             y_lim (float): Y-axis limit. Default None.
 
         Keyword Args:
@@ -718,8 +799,8 @@ class FigurePlotter(FigureFormat):
             location = ",\n"
         else:
             location = f"\nat {site_label}, "
-        time_idx = time_idx.strftime("%H:%M")
-        time_label = f"{time_data['date']} {time_idx} {time_data['tzone']}"
+        time_string = time_idx.strftime("%H:%M")
+        time_label = f"{time_data['date']} {time_string} {time_data['tzone']}"
         title_string = f"{title}{location}{time_label}"
         plt.title(title_string, fontweight="bold")
         axes = plt.gca()
@@ -749,16 +830,13 @@ class FigurePlotter(FigureFormat):
             profiles.
         """
 
-        key_number = len(keys)
+        key_length = len(keys)
         figure, axes = plt.subplots(
-            nrows=1, ncols=key_number, sharey=False, figsize=(4 * key_number, 8)
+            nrows=1, ncols=key_length, sharey=False, figsize=(4 * key_length, 8)
         )
         subplot_labels = []
-        for i in range(key_number):
+        for i in range(key_length):
             vertical_profile = dataset[keys[i]].loc[[time_index]]
-            time_data = self.get_date_and_timezone(
-                data=dataset[keys[i]].loc[[time_index]]
-            )
             axes[i].plot(
                 vertical_profile.values[0],
                 vertical_profile.columns,
@@ -773,7 +851,6 @@ class FigurePlotter(FigureFormat):
 
             if kwargs:
                 self.parse_formatting_kwargs(axis=axes[i], **kwargs)
-
         axes[0].set_ylabel("Height [m]")
 
         title_name = self.merge_multiple_labels(labels=subplot_labels)
@@ -783,8 +860,9 @@ class FigurePlotter(FigureFormat):
             location = ",\n"
         else:
             location = f"\nat {site_label}, "
-        time_index = time_index.strftime("%H:%M")
-        time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
+        time_data = self.get_date_and_timezone(data=dataset[keys[-1]].loc[[time_index]])
+        time_string = time_index.strftime("%H:%M")
+        time_label = f"{time_data['date']} {time_string} {time_data['tzone']}"
         title_string = f"{title}{location}{time_label}"
         figure.suptitle(title_string, fontweight="bold")
 
@@ -815,15 +893,12 @@ class FigurePlotter(FigureFormat):
         """
 
         keys = list(dataset)
-        key_number = len(keys)
+        key_length = len(keys)
         figure = plt.figure(figsize=(8, 8))
         subplot_labels = []
         xlims = []
-        for i in range(key_number):
+        for i in range(key_length):
             vertical_profile = dataset[keys[i]].loc[[time_index]]
-            time_data = self.get_date_and_timezone(
-                data=dataset[keys[i]].loc[[time_index]]
-            )
             line_label = self.label_selector(dependent=keys[i])
             plt.plot(
                 vertical_profile.values[0],
@@ -839,6 +914,7 @@ class FigurePlotter(FigureFormat):
                 if xlim_max > 1:
                     xlim_min = math.floor(min(vertical_profile[heights].values[0]))
                     xlims.append(xlim_min)
+        line_label = self.label_selector(dependent=keys[-1])
         x_label = self.merge_label_with_unit(label=line_label)
         plt.xlabel(x_label)
         plt.ylabel("Height [m]")
@@ -856,8 +932,9 @@ class FigurePlotter(FigureFormat):
             location = ",\n"
         else:
             location = f"\nat {site_label}, "
-        time_index = time_index.strftime("%H:%M")
-        time_label = f"{time_data['date']} {time_index} {time_data['tzone']}"
+        time_data = self.get_date_and_timezone(data=dataset[keys[-1]].loc[[time_index]])
+        time_string = time_index.strftime("%H:%M")
+        time_label = f"{time_data['date']} {time_string} {time_data['tzone']}"
         title_name = self.merge_multiple_labels(labels=subplot_labels)
         title = f"Vertical Profiles of {title_name}"
         title_string = f"{title}{location}{time_label}"

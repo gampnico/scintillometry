@@ -34,10 +34,6 @@ class AtmosConstants(object):
             BLS type.
         lamda (float): BLS wavelength, |lamda| [nm].
         lamda_error (float): BLS wavelength error, [nm].
-        m1_opt (float): Needed for |A_T| and |A_q|, from Owens (1967).
-            [#owens1967]_
-        m2_opt (float): Needed for |A_T| and |A_q|, from Owens (1967).
-            [#owens1967]_
 
         at_opt (float): |A_T| coefficient for 880 nm & typical
             atmospheric conditions, from Ward et al. (2013).
@@ -60,7 +56,7 @@ class AtmosConstants(object):
             20°C [|Jkg^-1|].
         r_dry (float): Specific gas constant for dry air,
             |R_dry| [|JK^-1| |kg^-1|].
-        r_vapour (float): Specific gas contstant for water vapour,
+        r_vapour (float): Specific gas constant for water vapour,
             |R_v| [|JK^-1| |kg^-1|].
         ratio_rmm (float): Ratio of molecular masses of water vapour and
             dry air i.e. ratio of gas constants |epsilon|.
@@ -149,7 +145,7 @@ class AtmosConstants(object):
             pressure (Union[pd.DataFrame, pd.Series]): Pressure
                 measurements |P| in pascals [Pa], hectopascals [hPa], or
                 bars [bar].
-            base (bool): If True, converts to pascals [Pa]. Otherwise
+            base (bool): If True, converts to pascals [Pa]. Otherwise,
                 converts to hectopascals [hPa]. Default True.
 
         Returns:
@@ -186,12 +182,12 @@ class AtmosConstants(object):
         - T [°C] < 130 °C
 
         This method should therefore only be used on pre-processed data
-        as a *convenience*. By default converts to kelvins.
+        as a *convenience*. By default, converts to kelvins.
 
         Args:
             temperature (Union[pd.DataFrame, pd.Series]): Temperature
                 measurements |T| in kelvins [K] or Celsius [°C].
-            base (bool): If True, converts to kelvins [K]. Otherwise
+            base (bool): If True, converts to kelvins [K]. Otherwise,
                 converts to Celsius [°C]. Default True.
 
         Returns:

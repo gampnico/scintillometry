@@ -227,7 +227,7 @@ class TestBoilerplate:
         self.check_timezone(dataframe=test_frame, tzone=arg_timezone)
 
     def index_not_equal(self, index_01: pd.Index, index_02: pd.Index):
-        """Check that two indices are not equal."""
+        """Check if two indices are not equal."""
 
         with pytest.raises(AssertionError, match="Index are different"):
             assert pd.testing.assert_index_equal(
@@ -336,6 +336,21 @@ def conftest_mock_save_figure():
     patcher = patch.object(scintillometry.visuals.plotting.FigurePlotter, "save_figure")
     mock_exists = patcher.start()
     mock_exists.return_value = None
+
+
+# Mock random data
+@pytest.fixture(name="conftest_generate_series", scope="function", autouse=False)
+def fixture_conftest_generate_series():
+    """Generates Series with random data and DatetimeIndex"""
+
+    rng = np.random.default_rng()
+    test_timestamp = pd.Timestamp("03 June 2020 05:20", tz="CET")
+    test_index = pd.date_range(start=test_timestamp, periods=100, freq="T")
+    assert ptypes.is_datetime64_any_dtype(test_index)
+    test_data = rng.random(size=len(test_index))
+    assert isinstance(test_data, np.ndarray)
+
+    yield test_data, test_index
 
 
 # Mock scintillometer data

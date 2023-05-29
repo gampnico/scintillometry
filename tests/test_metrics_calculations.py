@@ -54,6 +54,7 @@ import numpy as np
 import pandas as pd
 import pandas.api.types as ptypes
 import pytest
+import sklearn
 
 import scintillometry.backend.constants
 import scintillometry.backend.constructions
@@ -106,7 +107,7 @@ class TestMetricsTopography:
         assert compare_metrics["None"][0] > compare_metrics["None"][1]
 
         compare_print = capsys.readouterr()
-        if not arg_regime:
+        if arg_regime is None:
             assert "Selected no height dependency:" in compare_print.out
         else:
             assert str(arg_regime) in compare_print.out
@@ -171,7 +172,7 @@ class TestMetricsFlux:
         """Compute sensible heat flux for free convection."""
 
         test_frame = conftest_mock_merged_dataframe[["CT2", "H_convection"]]
-        if arg_kwargs:
+        if isinstance(arg_kwargs, tuple):
             test_kwargs = {
                 "beam_wavelength": arg_kwargs[0],
                 "beam_error": arg_kwargs[1],
@@ -270,7 +271,7 @@ class TestMetricsFlux:
     @pytest.mark.dependency(name="TestMetricsFlux::test_match_time_at_threshold")
     @pytest.mark.parametrize("arg_lessthan", [True, False])
     @pytest.mark.parametrize("arg_empty", [True, False])
-    @pytest.mark.parametrize("arg_timestamp", [True, None])
+    @pytest.mark.parametrize("arg_timestamp", [True, False])
     def test_match_time_at_threshold(
         self, conftest_mock_weather_dataframe_tz, arg_lessthan, arg_empty, arg_timestamp
     ):
@@ -279,10 +280,10 @@ class TestMetricsFlux:
         test_weather = conftest_mock_weather_dataframe_tz.copy(deep=True)
         if arg_empty:
             test_weather["global_irradiance"] = 20
-        if not arg_timestamp:
-            test_timestamp = None
-        else:
+        if arg_timestamp:
             test_timestamp = self.test_timestamp
+        else:
+            test_timestamp = None
 
         compare_time = self.test_metrics.match_time_at_threshold(
             series=test_weather["global_irradiance"],
@@ -299,6 +300,45 @@ class TestMetricsFlux:
                 assert compare_time.strftime("%H:%M") == "05:19"
         else:
             assert compare_time is None
+
+    @pytest.mark.dependency(name="TestMetricsFlux::test_get_regression")
+    @pytest.mark.parametrize("arg_intercept", [True, False])
+    @pytest.mark.parametrize("arg_mismatch_index", [True, False])
+    def test_get_regression(
+        self, conftest_boilerplate, arg_intercept, arg_mismatch_index
+    ):
+        """Perform regression on labelled data."""
+
+        rng = np.random.default_rng()
+        test_index = pd.date_range(start=self.test_timestamp, periods=100, freq="T")
+        test_data = rng.random(size=len(test_index))
+
+        test_x = pd.Series(name="obukhov", data=test_data, index=test_index)
+        test_y = pd.Series(name="other_obukhov", data=test_data + 0.5, index=test_index)
+        if arg_mismatch_index:
+            test_y = test_y[:-5]
+            conftest_boilerplate.index_not_equal(test_x.index, test_y.index)
+            assert test_y.shape == (95,)
+        assert isinstance(test_x, pd.Series)
+        assert test_x.shape == (100,)
+        test_keys = ["fit", "score", "regression_line"]
+
+        compare_regression = self.test_metrics.get_regression(
+            x_data=test_x, y_data=test_y, intercept=arg_intercept
+        )
+        assert isinstance(compare_regression, dict)
+        assert all(key in compare_regression for key in test_keys)
+        assert isinstance(
+            compare_regression["fit"], sklearn.linear_model.LinearRegression
+        )
+        if arg_intercept:
+            assert compare_regression["fit"].fit_intercept
+        else:
+            assert not compare_regression["fit"].fit_intercept
+        assert isinstance(compare_regression["score"], float)
+        assert isinstance(compare_regression["regression_line"], np.ndarray)
+        assert not (np.isnan(compare_regression["regression_line"])).any()
+        assert len(test_y.index) == len(compare_regression["regression_line"])
 
     @pytest.mark.dependency(name="TestMetricsFlux::test_get_elbow_point")
     @pytest.mark.parametrize("arg_min_index", [None, 0, 50])
@@ -333,7 +373,7 @@ class TestMetricsFlux:
             test_indices,
             S=1.5,
             curve="convex",
-            online="true",
+            online=True,
             direction=test_direction,
             interp_method="interp1d",
         )
@@ -618,14 +658,7 @@ class TestMetricsFlux:
         else:
             test_location = ",\n"
         test_labels = ["Potential Temperature, [K]"]
-        if not arg_gradient:
-            test_vertical.pop("grad_potential_temperature", None)
-            assert "grad_potential_temperature" not in test_vertical
-            test_title = (
-                f"Vertical Profile of Potential Temperature{test_location}",
-                f"{self.test_date} 05:20 CET",
-            )
-        else:
+        if arg_gradient:
             assert "grad_potential_temperature" in test_vertical
             test_title = (
                 "Vertical Profiles of Potential Temperature ",
@@ -633,23 +666,33 @@ class TestMetricsFlux:
                 f"{self.test_date} 05:20 CET",
             )
             test_labels.append(r"Gradient of Potential Temperature, [K$\cdot$m$^{-1}$]")
+        else:
+            test_vertical.pop("grad_potential_temperature", None)
+            assert "grad_potential_temperature" not in test_vertical
+            test_title = (
+                f"Vertical Profile of Potential Temperature{test_location}",
+                f"{self.test_date} 05:20 CET",
+            )
 
-        compare_fig, compare_ax = self.test_metrics.plot_switch_time_stability(
+        compare_plots = self.test_metrics.plot_switch_time_stability(
             data=test_vertical, local_time=test_time, location=arg_location
         )
-        assert isinstance(compare_fig, plt.Figure)
-
-        if not arg_gradient:
-            assert isinstance(compare_ax, plt.Axes)
-            assert compare_ax.get_title() == "".join(test_title)
-            assert compare_ax.yaxis.get_label_text() == "Height [m]"
-        else:
-            assert isinstance(compare_ax, np.ndarray)
-            assert all(isinstance(ax, plt.Axes) for ax in compare_ax)
-            assert compare_fig.texts[0].get_text() == "".join(test_title)
-            assert compare_ax[0].yaxis.get_label_text() == "Height [m]"
-            for i in range(len(compare_ax)):
-                assert compare_ax[i].xaxis.get_label_text() == test_labels[i]
+        assert isinstance(compare_plots, list)
+        for compare_tuple in compare_plots:
+            assert isinstance(compare_tuple, tuple)
+            assert isinstance(compare_tuple[0], plt.Figure)
+            compare_ax = compare_tuple[1]
+            if arg_gradient:
+                assert isinstance(compare_ax, np.ndarray)
+                assert all(isinstance(ax, plt.Axes) for ax in compare_ax)
+                assert compare_tuple[0].texts[0].get_text() == "".join(test_title)
+                assert compare_ax[0].yaxis.get_label_text() == "Height [m]"
+                for i in range(len(compare_ax)):
+                    assert compare_ax[i].xaxis.get_label_text() == test_labels[i]
+            else:
+                assert isinstance(compare_ax, plt.Axes)
+                assert compare_ax.get_title() == "".join(test_title)
+                assert compare_ax.yaxis.get_label_text() == "Height [m]"
 
         plt.close("all")
 
@@ -683,26 +726,28 @@ class TestMetricsFlux:
             test_location = ",\n"
         test_title = f"{test_location}{self.test_date} 05:10 CET"
 
-        fig_lapse, ax_lapse, fig_parcel, ax_parcel = self.test_metrics.plot_lapse_rates(
+        compare_plots = self.test_metrics.plot_lapse_rates(
             vertical_data=test_dataset["vertical"],
             dry_adiabat=self.test_metrics.constants.dalr,
             local_time=self.test_timestamp,
             location=arg_location,
             bl_height=arg_height,
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
         compare_params = {
             "lapse": {
                 "title": "Temperature Lapse Rates",
                 "x_label": r"Lapse Rate, [Km$^{-1}$]",
                 "y_label": "Height [m]",
-                "plot": (fig_lapse, ax_lapse),
+                "plot": (compare_plots[0]),
             },
             "parcel": {
                 "title": "Vertical Profiles of Parcel Temperature",
                 "x_label": "Temperature, [K]",
                 "y_label": "Height [m]",
-                "plot": (fig_parcel, ax_parcel),
+                "plot": (compare_plots[1]),
             },
         }
 
@@ -761,8 +806,8 @@ class TestMetricsFlux:
         test_dataset = {
             "weather": conftest_mock_weather_dataframe_tz.copy(deep=True),
             "timestamp": self.test_timestamp.replace(hour=5, minute=10),
+            "vertical": conftest_mock_hatpro_dataset.copy(),
         }
-        test_dataset["vertical"] = conftest_mock_hatpro_dataset.copy()
         test_dataset = self.test_metrics.append_vertical_variables(data=test_dataset)
 
         if not arg_potential:
@@ -808,7 +853,7 @@ class TestMetricsFlux:
         _ = conftest_mock_save_figure
 
         test_frame = conftest_mock_derived_dataframe
-        if arg_regime:
+        if arg_regime is not None:
             test_conditions = f"{arg_regime.capitalize()} Conditions"
         else:
             test_conditions = "No Height Dependency"
@@ -817,14 +862,17 @@ class TestMetricsFlux:
             f"for Free Convection ({test_conditions}),\n{self.test_date}",
         )
 
-        compare_fig, compare_ax = self.test_metrics.plot_derived_metrics(
+        compare_plots = self.test_metrics.plot_derived_metrics(
             derived_data=test_frame,
             time_id=test_frame.index[0],
             regime=arg_regime,
             location="",
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
+
         compare_params = {
-            "plot": (compare_fig, compare_ax),
+            "plot": (compare_plots[0]),
             "x_label": "Time, CET",
             "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             "title": " ".join(test_title),
@@ -857,27 +905,43 @@ class TestMetricsFlux:
             test_location = ""
         test_title = f"{test_location},\n{self.test_date}"
 
-        plot_pairs = self.test_metrics.plot_iterated_metrics(
+        compare_plots = self.test_metrics.plot_iterated_metrics(
             iterated_data=test_frame,
             time_stamp=test_stamp,
-            site_location=arg_location,
+            location=arg_location,
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
-        compare_plots = {
+        compare_params = {
             "iteration": {
-                "plot": (plot_pairs[0], plot_pairs[1]),
+                "plot": (compare_plots[0]),
                 "title": "Sensible Heat Flux",
                 "x_label": "Time, CET",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             },
             "comparison": {
-                "plot": (plot_pairs[2], plot_pairs[3]),
+                "plot": (compare_plots[1]),
                 "title": "Sensible Heat Flux from Free Convection and Iteration",
                 "x_label": "Time, CET",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
             },
         }
-        for params in compare_plots.values():
+        for params in compare_params.values():
+            conftest_boilerplate.check_plot(plot_params=params, title=test_title)
+
+        plt.close("all")
+
+        # site_location is pending deprecation
+        with pytest.warns(PendingDeprecationWarning):
+            compare_plots = self.test_metrics.plot_iterated_metrics(
+                iterated_data=test_frame,
+                time_stamp=test_stamp,
+                site_location=arg_location,  # pylint:disable=unexpected-keyword-arg
+            )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
+        for params in compare_params.values():
             conftest_boilerplate.check_plot(plot_params=params, title=test_title)
 
         plt.close("all")
@@ -924,7 +988,7 @@ class TestMetricsFlux:
         for key in compare_keys:
             assert not (compare_metrics[key].isnull()).any()
             assert key in compare_metrics.keys()
-            assert all(isinstance(x, (mpmath.mpf)) for x in compare_metrics[key])
+            assert all(isinstance(x, mpmath.mpf) for x in compare_metrics[key])
         plt.close("all")
 
 
@@ -1072,39 +1136,60 @@ class TestMetricsWorkflow:
     def test_compare_innflux(
         self,
         conftest_mock_save_figure,
-        conftest_mock_innflux_dataframe_tz,
-        conftest_mock_iterated_dataframe,
         conftest_boilerplate,
+        conftest_generate_series,
         arg_location,
     ):
-        """Compares input data to InnFLUX data."""
+        """Compares input data to innFLUX data."""
 
         _ = conftest_mock_save_figure
+
+        test_data, test_index = conftest_generate_series
+        test_obukhov = pd.Series(data=test_data, index=test_index)
+        test_shf = pd.Series(data=test_data, index=test_index)
+        test_base_dataframe = pd.DataFrame(
+            data={"obukhov": test_obukhov, "shf": test_shf},
+        )
+        test_ext_dataframe = test_base_dataframe.add(0.5)
 
         if arg_location:
             test_location = f" at {arg_location}"
         else:
             test_location = ""
         test_title = f"{test_location},\n{self.test_date}"
+        test_regression_string = "Regression Between\nMOST Iteration and innFLUX"
 
-        fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.test_workflow.compare_innflux(
-            innflux_data=conftest_mock_innflux_dataframe_tz,
-            own_data=conftest_mock_iterated_dataframe,
+        compare_plots = self.test_workflow.compare_innflux(
+            own_data=test_base_dataframe,
+            innflux_data=test_ext_dataframe,
             location=arg_location,
         )
-
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
         compare_params = {
             "obukhov": {
                 "title": "Obukhov Length from Scintillometer and innFLUX",
                 "y_label": "Obukhov Length, [m]",
                 "x_label": "Time, CET",
-                "plot": (fig_obukhov, ax_obukhov),
+                "plot": (compare_plots[0]),
             },
             "shf": {
                 "title": "Sensible Heat Flux from Scintillometer and innFLUX",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "x_label": "Time, CET",
-                "plot": (fig_shf, ax_shf),
+                "plot": (compare_plots[1]),
+            },
+            "obukhov_regression": {
+                "title": f"Obukhov Length {test_regression_string}",
+                "y_label": "Obukhov Length, [m] (innFLUX)",
+                "x_label": "Obukhov Length, [m] (MOST Iteration)",
+                "plot": (compare_plots[2]),
+            },
+            "shf_regression": {
+                "title": f"Sensible Heat Flux {test_regression_string}",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$] (innFLUX)",
+                "x_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$] (MOST Iteration)",
+                "plot": (compare_plots[3]),
             },
         }
 
@@ -1143,38 +1228,43 @@ class TestMetricsWorkflow:
         ],
     )
     def test_compare_eddy(
-        self,
-        conftest_mock_save_figure,
-        conftest_mock_innflux_dataframe_tz,
-        conftest_mock_iterated_dataframe,
-        conftest_boilerplate,
+        self, conftest_mock_save_figure, conftest_generate_series, conftest_boilerplate
     ):
         """Compares input data to external eddy covariance data."""
 
         _ = conftest_mock_save_figure
 
+        test_data, test_index = conftest_generate_series
+        test_obukhov = pd.Series(data=test_data, index=test_index)
+        test_shf = pd.Series(data=test_data, index=test_index)
+        test_base_dataframe = pd.DataFrame(
+            data={"obukhov": test_obukhov, "shf": test_shf},
+        )
+        test_ext_dataframe = test_base_dataframe.add(0.5)
         test_location = "Test Location"
         test_title = f" at {test_location},\n{self.test_date}"
 
-        fig_obukhov, ax_obukhov, fig_shf, ax_shf = self.test_workflow.compare_eddy(
-            own_data=conftest_mock_iterated_dataframe,
-            ext_data=conftest_mock_innflux_dataframe_tz,
+        compare_plots = self.test_workflow.compare_eddy(
+            own_data=test_base_dataframe,
+            ext_data=test_ext_dataframe,
             source="innflux",
             location="Test Location",
         )
+        assert isinstance(compare_plots, list)
+        assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 
         compare_params = {
             "obukhov": {
                 "title": "Obukhov Length from Scintillometer and innFLUX",
                 "y_label": "Obukhov Length, [m]",
                 "x_label": "Time, CET",
-                "plot": (fig_obukhov, ax_obukhov),
+                "plot": (compare_plots[0]),
             },
             "shf": {
                 "title": "Sensible Heat Flux from Scintillometer and innFLUX",
-                "ylabel": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
+                "y_label": r"Sensible Heat Flux, [W$\cdot$m$^{-2}$]",
                 "x_label": "Time, CET",
-                "plot": (fig_shf, ax_shf),
+                "plot": (compare_plots[1]),
             },
         }
         for params in compare_params.values():

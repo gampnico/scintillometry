@@ -190,7 +190,7 @@ class ProfileConstructor:
 
         # (wv_pressure * self.r_dry) / (d_pressure * self.r_vapour)
         m_ratio = (wv_pressure.multiply(self.constants.r_dry)).divide(
-            (d_pressure).multiply(self.constants.r_vapour)
+            d_pressure.multiply(self.constants.r_vapour)
         )
 
         return m_ratio
@@ -236,7 +236,7 @@ class ProfileConstructor:
             elevation (float): Station elevation, |z_stn| [m].
 
         Returns:
-            pd.DataDrame: Derived vertical measurements for mean
+            pd.DataFrame: Derived vertical measurements for mean
             sea-level pressure, |P_MSL| [Pa].
         """
 
@@ -495,7 +495,7 @@ class ProfileConstructor:
         :math:`\\partial T/\\partial z` for heights |z| with time
         index t.
 
-        By default the gradient is calculated using a 1-D
+        By default, the gradient is calculated using a 1-D
         centred-differencing scheme for non-uniform meshes, since
         vertical measurements are rarely made at uniform intervals.
 

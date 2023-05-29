@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scintillometry"
-version = "1.0.4"
+version = "1.0.5"
 authors = [
   { name="Scintillometry Contributors", email="" },
 ]
 description = "Analyse data & 2D flux footprints from Scintec's BLS scintillometers."
 readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
+license = "Apache-2.0"
 classifiers = [
     "Private :: Do Not Upload",
     "License :: OSI Approved :: Apache Software License",
@@ -31,6 +31,7 @@ dependencies = [
   "scipy >= 1.10",
   "mpmath >= 1.2.1",
   "numpy",
+  "scikit-learn",
   "matplotlib",
   "kneed",
 ]

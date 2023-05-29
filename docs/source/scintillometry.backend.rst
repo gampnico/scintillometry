@@ -70,6 +70,16 @@ In: scintillometry.backend.iterations.py
    :undoc-members:
    :show-inheritance:
 
+Deprecations module
+-------------------
+
+In: scintillometry.backend.deprecations.py
+
+.. automodule:: scintillometry.backend.deprecations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 References
 ----------
 
