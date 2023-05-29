@@ -595,11 +595,12 @@ class TestVisualsPlotting(TestVisualsBoilerplate):
         test_title = f"{test_location},\n{self.test_date}"
         timestamp = test_data.index[0]
 
-        compare_plots = self.test_plotting.plot_iterated_fluxes(
-            iteration_data=test_data,
-            time_id=timestamp,
-            location=arg_location,
-        )
+        with pytest.deprecated_call():
+            compare_plots = self.test_plotting.plot_iterated_fluxes(
+                iteration_data=test_data,
+                time_id=timestamp,
+                location=arg_location,
+            )
         assert isinstance(compare_plots, list)
         assert all(isinstance(compare_tuple, tuple) for compare_tuple in compare_plots)
 

@@ -25,6 +25,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scintillometry.backend.deprecations import Decorators
 
 
 class FigureFormat:
@@ -582,6 +583,11 @@ class FigurePlotter(FigureFormat):
 
         return figure, axes
 
+    @Decorators.deprecated(
+        stage="pending",
+        reason="Superseded by MetricsFlux.plot_iterated_metrics.",
+        version="1.0.5",
+    )
     def plot_iterated_fluxes(self, iteration_data, time_id, location=""):
         """Plots and saves iterated SHF, comparison to free convection.
 
