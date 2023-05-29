@@ -11,7 +11,7 @@ authors = [
 description = "Analyse data & 2D flux footprints from Scintec's BLS scintillometers."
 readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
+license = "Apache-2.0"
 classifiers = [
     "Private :: Do Not Upload",
     "License :: OSI Approved :: Apache Software License",
