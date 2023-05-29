@@ -832,9 +832,8 @@ class MetricsFlux:
         """Plots and saves iterated SHF, comparison to free convection.
 
         .. todo::
-            ST-126: Deprecate FigurePlotter.plot_iterated_fluxes in
-                favour of plot_iterated_metrics. `site_location` should
-                be deprecated in favour of `location`.
+            ST-126: Deprecate the argument `site_location` for
+                `location`.
 
         Args:
             iterated_data (pd.DataFrame): TZ-aware with columns for
