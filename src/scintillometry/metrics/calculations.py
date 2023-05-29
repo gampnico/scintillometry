@@ -27,6 +27,7 @@ from scintillometry.backend.derivations import DeriveScintillometer
 from scintillometry.backend.iterations import IterationMost
 from scintillometry.backend.transects import TransectParameters
 from scintillometry.visuals.plotting import FigurePlotter
+from scintillometry.backend.deprecations import Decorators
 
 
 class MetricsTopography:
@@ -824,20 +825,22 @@ class MetricsFlux:
 
         return derived_plots
 
-    def plot_iterated_metrics(self, iterated_data, time_stamp, site_location=""):
+    @Decorators.deprecated_argument(
+        stage="pending", version="1.0.5", site_location="location"
+    )
+    def plot_iterated_metrics(self, iterated_data, time_stamp, location=""):
         """Plots and saves iterated SHF, comparison to free convection.
 
         .. todo::
-            ST-126: Deprecate FigurePlotter.plot_iterated_fluxes in
-                favour of plot_iterated_metrics. `site_location` should
-                be deprecated in favour of `location`.
+            ST-126: Deprecate the argument `site_location` for
+                `location`.
 
         Args:
             iterated_data (pd.DataFrame): TZ-aware with columns for
                 sensible heat fluxes calculated for free convection
                 |H_free|, and by MOST |H|.
             time_stamp (pd.Timestamp): Local time of data collection.
-            site_location (str): Location of data collection. Default empty
+            location (str): Location of data collection. Default empty
                 string.
 
         Returns:
@@ -846,7 +849,7 @@ class MetricsFlux:
             sensible heat flux under free convection.
         """
 
-        shf_plot = self.plotting.plot_generic(iterated_data, "shf", site=site_location)
+        shf_plot = self.plotting.plot_generic(iterated_data, "shf", site=location)
         self.plotting.save_figure(
             figure=shf_plot[0], timestamp=time_stamp, suffix="shf"
         )
@@ -856,7 +859,7 @@ class MetricsFlux:
             df_02=iterated_data,
             keys=["H_free", "shf"],
             labels=["Free Convection", "Iteration"],
-            site=site_location,
+            site=location,
         )
         self.plotting.save_figure(
             figure=comparison_plot[0], timestamp=time_stamp, suffix="shf_comp"
@@ -974,7 +977,7 @@ class MetricsWorkflow(MetricsFlux, MetricsTopography):
         self.plot_iterated_metrics(
             iterated_data=iterated_dataframe,
             time_stamp=data_timestamp,
-            site_location=location,
+            location=location,
         )
 
         data["derivation"] = derived_dataframe
